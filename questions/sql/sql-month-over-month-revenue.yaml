@@ -1,0 +1,54 @@
+id: sql-month-over-month-revenue
+title: Month-over-month revenue growth
+round: sql
+topic: [period-over-period, window-functions]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 15
+prompt: |
+  Tables:
+
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  For each calendar month, return completed-order revenue, the previous month's revenue, and the growth rate `(revenue - prev_revenue) / prev_revenue` rounded to 4 decimals. The first month has NULL for both.
+
+  Output: `month` (first day of the month), `revenue, prev_revenue, pct_change`. Order by `month`.
+hints:
+  - Aggregate to months first, then `LAG` over the monthly rows.
+solution:
+  sql: |
+    WITH monthly AS (
+      SELECT CAST(DATE_TRUNC('month', o.order_date) AS DATE) AS month,
+             SUM(oi.quantity * oi.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY 1
+    ),
+    with_prev AS (
+      SELECT month, revenue, LAG(revenue) OVER (ORDER BY month) AS prev_revenue
+      FROM monthly
+    )
+    SELECT month,
+           revenue,
+           prev_revenue,
+           ROUND(CAST(revenue - prev_revenue AS DOUBLE) / prev_revenue, 4) AS pct_change
+    FROM with_prev
+    ORDER BY month;
+  explanation: |
+    `LAG` gives "the previous row", not "the previous month". That's the same thing here only because every month has orders. If a month could be empty, build a month spine first, or the growth rate silently compares March to January.
+
+    Cast before dividing. Integer or fixed-scale decimal division can truncate in some engines.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+rubric:
+  - point: 'Notes that LAG means previous row, and a missing month would break it (month spine)'
+    weight: 2
+    topic: date-spine
+follow_ups:
+  - Change it to year-over-year by month. What does LAG need now?
+  - Finance wants growth by category too. Where does PARTITION BY go?

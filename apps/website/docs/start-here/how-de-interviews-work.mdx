@@ -1,0 +1,56 @@
+---
+title: How DE interviews work
+sidebar_position: 2
+description: The rounds in a data engineering interview loop, what each one tests, and how loops differ by company size.
+levels: [junior, mid, senior, lead]
+topic: [interview-process]
+---
+
+# How DE interviews work
+
+<LevelExpectations
+  junior="Expect SQL-heavy loops with a Python screen and light modeling. Clear thinking beats tool trivia."
+  mid="Expect every round below. Modeling and pipeline design start to decide the level you're offered."
+  senior="Design rounds carry the most weight. Interviewers expect you to drive: ask the right questions, manage time, cover failure modes."
+  lead="Expect extra rounds on strategy, cross-team influence and people. Your behavioral stories must show organization-wide impact."
+/>
+
+Most data engineering loops are built from the same building blocks. Companies mix them differently, but if you can handle each block you can handle any loop.
+
+## The rounds
+
+| Round | What it really tests | Typical format |
+|---|---|---|
+| **Recruiter / hiring manager screen** | Do your background and role type fit? Can you explain your work simply? | 30 min call |
+| **SQL** | Correctness on tricky data (NULLs, duplicates, ties, time), and explaining your logic | 45–60 min, shared editor, 2–4 questions |
+| **Python / coding** | Clean, tested code for data tasks: parsing, files, APIs, small transforms. Light algorithms. | 45–60 min, editor or take-home |
+| **Data modeling** | Turning a fuzzy business process into tables with the right grain, and handling history | 45–60 min, whiteboard or doc |
+| **Pipeline system design** | Designing an end-to-end data system under real constraints: scale, latency, failure, cost | 45–60 min, whiteboard |
+| **Tool deep dive** | Do you understand the tools on your resume (Spark, Kafka, Airflow, dbt, a warehouse) beyond the happy path? | Often folded into design or experience rounds |
+| **Behavioral** | Ownership, incidents, migrations, stakeholder conflicts, growth | 45 min, story-based |
+
+Some companies add a **take-home** (build a small pipeline or model a dataset) instead of, or before, live coding. Treat it like production work: tests, a README, clear trade-offs.
+
+## How loops differ by company size
+
+**Early-stage startups (under ~50 people).** Fewer rounds, often a take-home plus a long conversation with the founders or the first data hire. They test **breadth**: can you build ingestion, modeling, dashboards and the infra under them, alone? Practical judgment matters more than polish.
+
+**Scale-ups (~50–2,000 people).** The most "standard" loop: SQL, Python, modeling and a system design round, plus behavioral. Interviewers often run the systems you'd inherit, so expect questions shaped by their real problems: migrations, cost, data quality, late data.
+
+**Large tech companies.** Structured loops with calibrated rubrics and a hiring committee. SQL and coding bars are high and consistent. Design rounds expect scale numbers and failure modes. **Level** is decided in the loop, mostly by the design and behavioral rounds, so prepare to show scope.
+
+**Enterprises and consultancies.** More emphasis on specific platforms (a given cloud, warehouse or ETL tool), governance, migration experience (legacy → cloud) and working with many stakeholders. Expect scenario questions like "the client's nightly batch misses its SLA; what do you do?"
+
+## What interviewers write down
+
+Across rounds, interviewers tend to score the same few things:
+
+- **Clarifying before solving.** Did you ask about grain, volume, latency and edge cases?
+- **Correctness under messy data.** NULLs, duplicates, late and out-of-order records, time zones.
+- **Trade-offs, stated out loud.** "I'd use X because Y; if Z mattered more, I'd pick W."
+- **Operability.** Idempotency, backfills, monitoring, what happens at 3 a.m.
+- **Communication.** Could a teammate follow your reasoning?
+
+## Next
+
+Find out [which kind of data engineer you are](./which-de-are-you.mdx), because it changes how you should split your prep time.

@@ -1,0 +1,41 @@
+---
+title: Telling a migration story
+sidebar_position: 2
+description: How to present a legacy-to-cloud or platform migration on your resume and in interviews.
+levels: [mid, senior, lead]
+topic: [resume, migrations, behavioral]
+---
+
+# Telling a migration story
+
+Migrations (on-prem to cloud, Hadoop to lakehouse, an old ETL tool to dbt, cron to Airflow) are the most common big project in data engineering, which makes them the most common story in interviews. Told well, a migration shows planning, risk management, technical depth and stakeholder work at once. Told badly, it sounds like "we moved stuff".
+
+<LevelExpectations
+  mid="Explain your part clearly: what you moved, how you validated it, one problem you solved."
+  senior="Own the plan: inventory, sequencing, parity checks, cutover and rollback, and the result in numbers."
+  lead="Show the strategy and the people side: why now, what not to migrate, staffing, keeping teams moving, decommissioning."
+/>
+
+## The five-part story
+
+1. **Why.** The business reason, with a number. "License renewal in 9 months at $1.2M/yr." "Nightly batch missed the 07:00 SLA six times a month." Avoid "the old system was legacy".
+2. **What.** The scope, also with numbers: jobs, tables, TB, consumers, teams. Also what you deliberately **didn't** migrate (dead jobs, unused tables). Cutting scope is a sign of seniority.
+3. **How you de-risked it.** This is the heart of the story:
+   - an **inventory** and dependency map before moving anything
+   - **parallel runs** with automated parity checks (row counts, checksums, key metrics within a tolerance)
+   - **waves** of consumers, with a rollback path per wave
+4. **What went wrong.** Pick one real problem and how you handled it, such as a time zone difference, a hidden consumer, or a performance cliff. Without one, the story isn't believable.
+5. **Result.** Runtime, cost, incidents, freshness, decommission date. Then one sentence on what you'd do differently.
+
+## On the resume
+
+One bullet for the headline, one for the method if there's room:
+
+- "Led migration of 340 Teradata jobs (60 TB) to Snowflake and dbt across 4 domains; nightly runtime 6h → 70 min, legacy decommissioned a month early (−$420k/yr)."
+- "Built an automated parity harness that compared every migrated model to its legacy job for two weeks, catching 12 discrepancies before cutover."
+
+## Practice
+
+The bank has a behavioral question built for this story. Draft your answer, then grade it against the rubric:
+
+<RelatedQuestions ids={["behavioral-migration-you-led", "sd-cdc-postgres-to-lakehouse"]} />

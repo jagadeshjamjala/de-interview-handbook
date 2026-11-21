@@ -15,7 +15,9 @@ export type Question = {
   companies: {name: string; source: string}[];
   dataset?: string;
   time_minutes: number;
-  solution: {sql?: string};
+  solution: {sql?: string; python?: string};
+  tests?: string;
+  guide?: string;
   check?: {order_matters: boolean; float_tolerance?: number};
   rubric?: {point: string; weight: number; topic?: string}[];
   follow_ups?: string[];
@@ -24,6 +26,7 @@ export type Question = {
 };
 
 export const questions = data as unknown as Question[];
+export const questionsById = new Map(questions.map((q) => [q.id, q]));
 
 export const LEVELS: Level[] = ['junior', 'mid', 'senior', 'lead'];
 export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];

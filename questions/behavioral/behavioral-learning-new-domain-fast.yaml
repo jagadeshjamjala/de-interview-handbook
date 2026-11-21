@@ -1,0 +1,39 @@
+id: behavioral-learning-new-domain-fast
+title: Getting productive in an unfamiliar domain or codebase
+round: behavioral
+topic: [learning, onboarding, communication]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+time_minutes: 8
+prompt: |
+  "Tell me about a time you had to get productive quickly in a domain, tool or codebase you didn't know, for example a new business area, an unfamiliar orchestrator or a legacy pipeline nobody understood."
+hints:
+  - Interviewers want your method for learning, not that you're a fast learner.
+solution:
+  answer: |
+    **Structure:** what was new → why speed mattered → the steps you took → the first useful thing you delivered → what you'd reuse next time.
+
+    **Strong signals:**
+    - **A method, with specifics.** For example: traced one important number end to end (dashboard → table → job → source); drew the lineage; read the last 20 incidents or tickets; ran the pipeline locally on one day of data.
+    - **Asking good questions early**, prepared ("I've read X and think Y; is that right?"), and writing the answers down.
+    - **An early, small win** that proved understanding, like a fixed alert, a documented runbook or a test on a flaky table.
+    - **Leaving it better:** the onboarding doc or lineage diagram you made is now used by the next person.
+
+    **Avoid:** "I just read all the docs"; a story where you never asked anyone anything; no concrete outcome.
+rubric:
+  - point: 'Describes a concrete learning method (e.g. trace one metric end to end)'
+    weight: 2
+    topic: learning
+  - point: 'Asks prepared questions and records answers'
+    weight: 1
+    topic: communication
+  - point: 'Delivers an early, specific win'
+    weight: 2
+    topic: onboarding
+  - point: 'Leaves documentation or tooling that helps the next person'
+    weight: 1
+    topic: onboarding
+follow_ups:
+  - What's the first thing you'd do in your first week here?
+  - How do you know when you understand a system well enough to change it?

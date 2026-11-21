@@ -1,0 +1,43 @@
+id: behavioral-production-incident
+title: Tell me about a data incident you owned
+round: behavioral
+topic: [incidents, ownership]
+levels: [junior, mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 10
+prompt: |
+  "Tell me about a time a pipeline you owned broke, or produced wrong data, in production. What happened, what did you do, and what changed afterwards?"
+hints:
+  - Pick an incident with real impact, like a wrong number someone acted on, or an SLA missed, not a typo caught in review.
+  - Interviewers listen for what you changed so it can't happen again, not only how you fixed it that night.
+solution:
+  answer: |
+    **Structure:** situation (one or two sentences) → impact (who was affected, how badly, with a number) → what you did, in order → root cause → what you changed → what you learned.
+
+    **A strong answer sounds like this:**
+
+    > "Our daily revenue table double-counted refunds for three days after a source team added a new refund status. Finance had already sent a board pre-read with revenue 4% too high. I noticed it when a dashboard check flagged revenue above the 30-day range. I paused the downstream publish, posted in the finance channel with what we knew and when we'd know more, and traced it to our CASE statement that treated any unknown status as a sale. I fixed the mapping, backfilled the three days, and confirmed totals against the payment processor. Then I made two changes: unknown statuses now fail the load instead of passing through, and we added an accepted-values test on the status column with an alert to the source team. We haven't had a silent status change since."
+
+    **What separates levels:** junior candidates show calm debugging and honesty. Mid candidates add communication and a permanent fix. Senior and lead candidates show the systemic change (contracts, tests, on-call process, a blameless postmortem that changed how other teams work too).
+
+    **Avoid:** blaming another team; incidents with no impact; ending at "and I fixed it".
+rubric:
+  - point: 'Quantifies impact (who was affected, how much, for how long)'
+    weight: 2
+    topic: incidents
+  - point: 'Clear personal actions in sequence, including communicating to stakeholders early'
+    weight: 2
+    topic: ownership
+  - point: 'Identifies the root cause, not just the symptom'
+    weight: 2
+    topic: incidents
+  - point: 'Describes a lasting prevention (test, contract, alert, process), not only the fix'
+    weight: 3
+    topic: incidents
+  - point: 'Owns their part without blaming others'
+    weight: 1
+    topic: ownership
+follow_ups:
+  - What would you do differently in the first 30 minutes now?
+  - How did you decide whether to stop the dashboards or let them show possibly-wrong data?

@@ -1,0 +1,46 @@
+---
+title: Portfolio projects that get callbacks
+sidebar_position: 3
+description: What makes a data engineering portfolio project worth showing, with five project ideas.
+levels: [junior, mid]
+topic: [resume, portfolio]
+---
+
+# Portfolio projects that get callbacks
+
+If you're early in your career or switching into data engineering, one good project is worth more than five tutorials. Hiring managers open the repo for about two minutes. In that time, it must show you can build something that would survive in production.
+
+<LevelExpectations
+  junior="One end-to-end project with tests, a clear README and real (or realistic) data. This often decides whether you get an interview."
+  mid="Optional. Work experience matters more. A focused project can show a skill your job didn't give you (for example streaming)."
+/>
+
+## What makes a project stand out
+
+- **Real, messy data.** A public API or open dataset that changes over time, not a static Kaggle CSV. Messy data forces real decisions.
+- **End to end.** Ingestion → storage → transformation → a consumer (dashboard, API, model). Each piece can be small.
+- **Production habits.** Idempotent loads, a backfill command, data tests, logging, config outside code, a scheduler.
+- **A README that sells it.** A diagram, how to run it in one command, the design decisions and trade-offs, and what you'd do with more time.
+- **Small and finished** beats ambitious and half-built.
+
+## The README checklist
+
+1. One-paragraph summary: what it does and for whom.
+2. Architecture diagram.
+3. How to run it (Docker Compose or a single `make` target).
+4. Data model with grain stated for each table.
+5. Data quality: what's tested and what happens on failure.
+6. Trade-offs: "I chose X over Y because…"
+7. What you'd do next.
+
+## Five project ideas
+
+1. **Public transit delays.** Pull a transit agency's real-time feed every few minutes, land raw JSON, model trips and delays, and publish on-time performance by route. Shows streaming-ish ingestion, late data and time zones.
+2. **Personal finance lakehouse.** Ingest bank CSV exports with different formats into Iceberg or Delta, normalize currencies with daily FX rates, and categorize transactions. Shows schema drift, as-of joins and dedup.
+3. **GitHub activity warehouse.** Use the GitHub API (with pagination and rate limits) for a set of repos, model contributors, PRs and review times in dbt, and add tests. Shows API ingestion, incremental models and SCD for repo metadata.
+4. **Weather + energy prices.** Join hourly weather data with public electricity prices. Backfill a year, then run daily. Shows backfills, partitioning and orchestration.
+5. **CDC demo.** Postgres → Debezium → Kafka → a lakehouse table kept current with MERGE, with a script that generates inserts, updates and deletes. Shows streaming fundamentals that most junior candidates lack.
+
+## On the resume
+
+Treat it like a job: "Built an Airflow + dbt pipeline ingesting 2M GitHub events/day with idempotent daily partitions and 40 data tests; [repo link]." Then be ready to walk through it in detail, because interviewers will ask.

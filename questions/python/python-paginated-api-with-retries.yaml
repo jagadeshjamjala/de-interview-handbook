@@ -1,0 +1,100 @@
+id: python-paginated-api-with-retries
+title: Fetch every page from a flaky paginated API
+round: python
+topic: [apis, retries, idempotency]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  An API returns pages like `{"items": [...], "next": "cursor-or-None"}`. Write:
+
+  ```python
+  def fetch_all(get_page, max_retries=3, base_delay=1.0, sleep=time.sleep):
+  ```
+
+  - `get_page(cursor)` fetches one page; the first call uses `cursor=None`.
+  - It may raise `TransientError` (timeouts, HTTP 429/5xx). Retry **that page** with exponential backoff: `base_delay`, then 2×, then 4×, …, up to `max_retries` retries. Any other exception propagates immediately.
+  - If a page still fails after `max_retries` retries, raise the last `TransientError`.
+  - Return all items in order.
+
+  `sleep` is injected so tests don't wait. `TransientError` is defined for you.
+hints:
+  - Retry around one page fetch, not around the whole loop, or a failure on page 40 refetches pages 1–39.
+  - Reset the retry counter after each successful page.
+solution:
+  python: |
+    import time
+
+    class TransientError(Exception):
+        pass
+
+    def fetch_all(get_page, max_retries=3, base_delay=1.0, sleep=time.sleep):
+        items, cursor = [], None
+        while True:
+            for attempt in range(max_retries + 1):
+                try:
+                    page = get_page(cursor)
+                    break
+                except TransientError:
+                    if attempt == max_retries:
+                        raise
+                    sleep(base_delay * 2 ** attempt)
+            items.extend(page["items"])
+            cursor = page["next"]
+            if cursor is None:
+                return items
+  explanation: |
+    Retry the smallest unit that can fail, **one page**, so progress isn't lost. Retry only errors that are worth retrying. A 400 or a bug should fail fast, not be hammered three more times.
+
+    In production you'd add **jitter** to the delay (so many workers don't retry in lockstep), honor a `Retry-After` header, and checkpoint the cursor so a crashed job resumes instead of starting over. Injecting `sleep` and `get_page` is what makes all of this testable without a network.
+tests: |
+  # TransientError comes from the solution above.
+  pages ={None: {"items": [1, 2], "next": "a"}, "a": {"items": [3], "next": "b"}, "b": {"items": [4], "next": None}}
+  fail_plan = {"a": 2}  # page "a" fails twice, then works
+  calls, slept = [], []
+  def get_page(cursor):
+      calls.append(cursor)
+      if fail_plan.get(cursor, 0) > 0:
+          fail_plan[cursor] -= 1
+          raise TransientError("503")
+      return pages[cursor]
+  assert fetch_all(get_page, sleep=slept.append) == [1, 2, 3, 4]
+  assert calls == [None, "a", "a", "a", "b"]      # only the failing page is retried
+  assert slept == [1.0, 2.0]                       # exponential backoff
+
+  def always_down(cursor):
+      raise TransientError("down")
+  slept = []
+  try:
+      fetch_all(always_down, max_retries=2, base_delay=0.5, sleep=slept.append)
+      raise AssertionError("should have raised")
+  except TransientError:
+      pass
+  assert slept == [0.5, 1.0]
+
+  def bug(cursor):
+      raise KeyError("not transient")
+  slept = []
+  try:
+      fetch_all(bug, sleep=slept.append)
+      raise AssertionError("should have raised")
+  except KeyError:
+      pass
+  assert slept == []                               # no retries for non-transient errors
+rubric:
+  - point: 'Retries a single page, not the whole crawl, and resets per page'
+    weight: 2
+    topic: retries
+  - point: 'Retries only transient errors; others fail fast'
+    weight: 2
+    topic: retries
+  - point: 'Correct exponential backoff and re-raises after the last retry'
+    weight: 2
+    topic: retries
+  - point: 'Mentions jitter, Retry-After, and checkpointing the cursor for resumability'
+    weight: 1
+    topic: idempotency
+follow_ups:
+  - The job runs hourly and must only pull records changed since the last run. What do you store, and where?
+  - The API rate limit is 10 requests/second across 20 workers. How do you enforce it?

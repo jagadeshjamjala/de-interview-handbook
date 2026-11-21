@@ -1,0 +1,6 @@
+city,requests,cancelled,cancel_rate,cancelled_before_assignment
+Austin,3610,455,0.1260,223
+Boston,2886,379,0.1313,178
+Chicago,4395,535,0.1217,270
+Denver,1465,176,0.1201,92
+Seattle,735,114,0.1551,55

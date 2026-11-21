@@ -1,0 +1,90 @@
+---
+title: Payments ledger reconciliation
+sidebar_position: 4
+description: Worked design for reconciling an internal payments ledger against processor and bank settlement files.
+levels: [senior, lead]
+topic: [system-design, reconciliation, fintech]
+---
+
+# Worked design: payments ledger reconciliation
+
+<LevelExpectations
+  senior="Design the canonical schema, tiered matching, control totals and idempotent daily runs. Treat money exactly."
+  lead="Add the operating model with finance: break ownership, sign-off, audit, and how to raise the auto-match rate over time."
+/>
+
+<QuestionEmbed id="sd-payments-ledger-reconciliation" />
+
+## 1. Requirements
+
+- **Inputs:** an internal ledger (payment state-change events) and settlement data from five counterparties (three card processors, two banks), mostly daily files, one API.
+- **Deadline:** results by 08:00 for the business date that just ended.
+- **Outputs:** matched pairs; unmatched items on both sides with age and reason; fee and FX differences; per-source **control totals** that tie out; a sign-off record.
+- **Correctness:** exact to the minor unit (cent). Auditable: anyone must be able to see why two records were matched.
+
+## 2. Data contracts
+
+Each counterparty has a spec: file naming, delivery window, columns, amount sign conventions, time zone, and how corrections are sent (a new full file, or an adjustments file). Record them as **per-source parsers with tests** against sample files. When a processor changes the format, the parser fails loudly instead of misreading columns.
+
+## 3. Ingestion
+
+- **Files:** pull from SFTP into an immutable raw bucket with `source`, `file_name`, `received_at` and a **SHA-256 checksum**. An identical file received twice is ignored; a corrected file with the same name is stored as a new version.
+- **API:** paginate with retries into the same raw zone, as one logical "file" per business date.
+- **Ledger:** CDC or event stream into a ledger table, with the event time and the state.
+
+## 4. Storage and format
+
+All amounts are stored as **integers in minor units** plus an ISO currency code. Never floats. Raw files are kept for the regulatory retention period. Normalized tables use one **canonical settlement schema**:
+
+`source, source_record_id, our_reference (nullable), amount_minor, currency, fee_minor, fx_rate, value_date, card_fingerprint, raw_file_version`.
+
+## 5. Transform: matching in tiers
+
+Matching runs per **business date** and records, for each match, the **rule** and a **confidence**:
+
+1. **Exact reference:** our payment ID echoed back by the processor. Highest confidence.
+2. **Attribute match:** same amount, currency and card fingerprint, value date within ±1 day, and exactly one candidate on each side.
+3. **Many-to-one:** one bank payout equals the sum of many processor settlements for a day, minus fees.
+4. **Fuzzy / manual:** anything left becomes a **break** for a person to review.
+
+Each record can be matched once. Run the tiers in order, removing matched items before the next tier, so a loose rule can't steal a record an exact rule would have matched.
+
+## 6. Serving
+
+- `recon_matches`, `recon_breaks` (status, reason, owner, age, notes) and `recon_control_totals` per source and date.
+- A finance-facing view of breaks over N days old, sorted by amount.
+- **Sign-off:** finance approves the day once control totals tie and breaks are explained. The approval is stored with who and when.
+
+## 7. Quality
+
+**Control totals are the central check.** For each source and date:
+
+`ledger total = matched + unmatched ledger items` and `source total = matched + unmatched source items ± fees ± FX differences`.
+
+If they don't tie, the run is marked failed and the day can't be signed off. Other checks: every raw file parsed (row counts per file versus the file's own trailer if it has one), no duplicate `source_record_id`, and the auto-match rate compared with the 30-day average.
+
+## 8. Orchestration and backfill
+
+Runs are **keyed by business date, not arrival time**, and are idempotent: re-running a date deletes and rebuilds that date's matches from raw. A late or corrected file triggers a re-run of the affected dates and a **diff report** for finance ("these 14 breaks were resolved by the corrected file").
+
+## 9. Failure modes
+
+| Failure | Mitigation |
+|---|---|
+| File missing at 06:00 | Alert to the payments ops channel; run with the available sources, marked partial |
+| Same file delivered twice | Checksum dedup |
+| Processor changes column order | Parser tests fail; raw file kept for re-processing |
+| Floating-point rounding | Integers in minor units end to end |
+| Someone edits a match by hand | Manual matches stored as their own rule, with user and reason, never overwriting automatic ones |
+
+## 10. Cost
+
+Volumes are modest compared with clickstream (millions, not billions, of rows a day), so cost is rarely the driver. **People's time spent on breaks** is the real cost. Track the auto-match rate per source and rule, and invest in rules that remove the most break volume.
+
+## 11. What changes at 10×
+
+More counterparties and currencies: make parsers configuration-driven, partition matching by source and currency, and add near-real-time matching for sources with APIs, so breaks are found during the day instead of the next morning.
+
+## Related practice
+
+<RelatedQuestions ids={["sql-usd-volume-with-latest-fx-rate", "sql-dedup-replayed-transactions", "sql-chargeback-rate-by-month", "modeling-bridge-table-joint-accounts"]} />

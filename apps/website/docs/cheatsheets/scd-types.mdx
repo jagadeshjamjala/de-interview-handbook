@@ -1,0 +1,74 @@
+---
+title: SCD types
+sidebar_position: 2
+description: Slowly changing dimension types 0, 1, 2, 3, 4 and 6 compared, with the SCD2 columns and load pattern.
+levels: [junior, mid, senior, lead]
+topic: [data-modeling, scd-type-2, cheatsheet]
+---
+
+# Slowly changing dimensions (SCD) cheatsheet
+
+<LevelExpectations
+  junior="Know Type 1 vs Type 2, and when history matters."
+  mid="Choose types per attribute, build and load SCD2, and join facts to the right version."
+  senior="Handle late-arriving changes, no-op updates, deletes, and the cost of history at scale."
+  lead="Set the default policy for the organization, and decide where history lives (dimension, snapshots, event log)."
+/>
+
+## The types
+
+| Type | What happens on change | History? | Use when |
+|---|---|---|---|
+| **0** | Nothing. The original value is kept forever | Original only | Values that must never change (signup date, original channel) |
+| **1** | Overwrite | None | Corrections, or attributes where only the current value matters |
+| **2** | Close the old row, insert a new row | Full | Reporting by the value **at the time** (region at order time) |
+| **3** | Keep a `previous_value` column | One step | Rare; a single "before and after" comparison, like a reorg |
+| **4** | Current table plus a separate history table | Full, separate | Very large or fast-changing dimensions |
+| **6** | Type 2 rows **plus** a Type 1 "current" column (1 + 2 + 3) | Full, plus current on every row | Both "then" and "now" reporting without a self-join |
+
+You can mix types in one dimension: Type 2 for `region`, Type 1 for `email`.
+
+## SCD Type 2 columns
+
+```sql
+customer_key   -- surrogate key, one per version
+customer_id    -- natural/business key, same across versions
+region, ...    -- tracked attributes
+valid_from     -- inclusive
+valid_to       -- exclusive; '9999-12-31' for the current version
+is_current     -- convenience flag
+```
+
+**Join a fact to the version valid at the event time:**
+
+```sql
+JOIN dim_customer d
+  ON d.customer_id = f.customer_id
+ AND f.order_date >= d.valid_from
+ AND f.order_date <  d.valid_to
+```
+
+Or store `customer_key` on the fact at load time, which is faster to query but fixes the version when the row loads.
+
+## Load pattern
+
+1. Compute a **hash of the tracked columns** for incoming rows.
+2. Compare with the current version (`is_current = true`) by natural key.
+3. **Changed:** set `valid_to = change time`, `is_current = false` on the old row, and insert a new row.
+4. **New key:** insert.
+5. **Unchanged:** do nothing. This matters, because no-op updates create fake versions.
+6. Do it in one `MERGE` or one transaction.
+
+dbt **snapshots** implement this pattern for you (timestamp or check strategy).
+
+## Gotchas
+
+- **No-op changes** (same values re-sent) must not create versions. Compare hashes.
+- **Late-arriving changes** (a change dated before the current version started) need the timeline re-cut, and possibly facts re-keyed. Decide the policy up front.
+- **Deletes:** close the version and mark `is_deleted`, or remove history for GDPR. Know which one the law requires.
+- **Use a far-future `valid_to`, not NULL.** It keeps range joins simple and index-friendly.
+- **Don't track noisy columns** (`last_login_at`) as Type 2, or the table explodes.
+
+## Practice
+
+<RelatedQuestions ids={["sql-build-scd2-from-change-log", "sql-revenue-by-country-at-order-time", "modeling-customer-address-scd", "modeling-ride-sharing-trips-star-schema"]} />

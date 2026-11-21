@@ -1,0 +1,65 @@
+id: sql-docs-pricing-billing-funnel
+title: Three-step page funnel with step-to-step conversion
+round: sql
+topic: [funnels, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: events
+time_minutes: 25
+prompt: |
+  Table: `page_views(user_id, viewed_at, page)`
+
+  Product wants a funnel: `/docs` → `/pricing` → `/billing`. A user reaches a step only if they viewed that page **at or after** the time they reached the previous step. Step 1 is the user's first `/docs` view.
+
+  Output: `step, page, users, pct_of_previous`, where `pct_of_previous = users / users of the previous step` rounded to 4 decimals (NULL for step 1). Order by `step`.
+hints:
+  - Find each user's first time at step 1, then the first step-2 view after it, and so on.
+  - Counting users who viewed each page at all is not a funnel. Order matters.
+solution:
+  sql: |
+    WITH step1 AS (
+      SELECT user_id, MIN(viewed_at) AS reached_at
+      FROM page_views
+      WHERE page = '/docs'
+      GROUP BY user_id
+    ),
+    step2 AS (
+      SELECT s.user_id, MIN(p.viewed_at) AS reached_at
+      FROM step1 s
+      JOIN page_views p
+        ON p.user_id = s.user_id AND p.page = '/pricing' AND p.viewed_at >= s.reached_at
+      GROUP BY s.user_id
+    ),
+    step3 AS (
+      SELECT DISTINCT s.user_id
+      FROM step2 s
+      JOIN page_views p
+        ON p.user_id = s.user_id AND p.page = '/billing' AND p.viewed_at >= s.reached_at
+    ),
+    counts AS (
+      SELECT 1 AS step, '/docs' AS page, COUNT(*) AS users FROM step1
+      UNION ALL SELECT 2, '/pricing', COUNT(*) FROM step2
+      UNION ALL SELECT 3, '/billing', COUNT(*) FROM step3
+    )
+    SELECT step, page, users,
+           ROUND(users * 1.0 / LAG(users) OVER (ORDER BY step), 4) AS pct_of_previous
+    FROM counts
+    ORDER BY step;
+  explanation: |
+    Each step joins only the users who made the previous step, and only page views **after** the time they made it. Carrying `reached_at` forward is what enforces the order.
+
+    Taking `MIN(viewed_at)` at each step keeps the funnel as generous as possible: the earliest qualifying view gives the most time for the next step. Say this choice out loud, because "first `/pricing` after the *last* `/docs`" would give a different, also defensible, number.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+rubric:
+  - point: 'Enforces step order with timestamps, not just "viewed both pages"'
+    weight: 2
+    topic: funnels
+  - point: 'States which occurrence (first/last) anchors each step and why'
+    weight: 1
+    topic: funnels
+follow_ups:
+  - Product wants the funnel to count only if all three steps happen within 7 days. What changes?
+  - How would you build this as a dbt model that is cheap to refresh daily?

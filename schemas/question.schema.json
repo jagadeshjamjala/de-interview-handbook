@@ -94,6 +94,9 @@
         },
         "explanation": {
           "$ref": "#/definitions/text"
+        },
+        "python": {
+          "$ref": "#/definitions/text"
         }
       }
     },
@@ -175,6 +178,15 @@
           }
         }
       }
+    },
+    "tests": {
+      "description": "Python only: plain assert statements run against solution.python in CI.",
+      "$ref": "#/definitions/text"
+    },
+    "guide": {
+      "description": "Doc path of the long-form walkthrough, e.g. /docs/rounds/system-design/x",
+      "type": "string",
+      "pattern": "^/docs/[a-z0-9/-]+$"
     }
   },
   "allOf": [
@@ -190,12 +202,12 @@
         "required": ["dataset", "check"],
         "properties": {
           "solution": {
-            "required": ["sql"],
-            "type": "object"
+            "type": "object",
+            "required": ["sql"]
           },
           "rubric": {
-            "maxItems": 3,
-            "type": "array"
+            "type": "array",
+            "maxItems": 3
           }
         }
       },
@@ -213,12 +225,60 @@
         },
         "properties": {
           "solution": {
-            "required": ["answer"],
+            "type": "object",
             "not": {
-              "required": ["sql"],
-              "type": "object"
-            },
-            "type": "object"
+              "type": "object",
+              "required": ["sql"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "round": {
+            "const": "python"
+          }
+        }
+      },
+      "then": {
+        "required": ["tests"],
+        "properties": {
+          "solution": {
+            "type": "object",
+            "required": ["python"]
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": ["tests"]
+        },
+        "properties": {
+          "solution": {
+            "type": "object",
+            "not": {
+              "type": "object",
+              "required": ["python"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "round": {
+            "enum": ["modeling", "system-design", "tools", "behavioral"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "solution": {
+            "type": "object",
+            "required": ["answer"]
           }
         }
       }

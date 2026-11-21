@@ -1,0 +1,48 @@
+id: sql-transaction-status-as-of-cutoff
+title: Reconstruct what the dashboard showed at a past moment
+round: sql
+topic: [bitemporal, deduplication, point-in-time-joins]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+dataset: payments
+time_minutes: 25
+prompt: |
+  Table: `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`. Each `txn_id` can have several copies; a copy is visible from its `ingested_at`.
+
+  An auditor asks: "What did our status breakdown look like at **2024-06-30 23:59:59**, using only the data we had at that moment?"
+
+  Count transactions with `txn_ts` at or before the cutoff, by the status of their latest copy **ingested at or before the cutoff**.
+
+  Output: `status, txn_count`. Order by `status`.
+hints:
+  - There are two time axes, when it happened (`txn_ts`) and when we learned it (`ingested_at`). Filter both.
+solution:
+  sql: |
+    WITH known_then AS (
+      SELECT *,
+             ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+      FROM transactions
+      WHERE txn_ts <= TIMESTAMP '2024-06-30 23:59:59'
+        AND ingested_at <= TIMESTAMP '2024-06-30 23:59:59'
+    )
+    SELECT status, COUNT(*) AS txn_count
+    FROM known_then
+    WHERE rn = 1
+    GROUP BY status
+    ORDER BY status;
+  explanation: |
+    This is a **bitemporal** question: *event time* (`txn_ts`) and *knowledge time* (`ingested_at`). Filter on knowledge time **before** you dedup, so a transaction that settled on 1 July still shows as `pending` at the cutoff, which is what the dashboard really showed.
+
+    Deduplicating first and filtering after gives today's status for June transactions. It answers a different question and is the usual wrong answer.
+
+    Keeping every copy with its ingestion time (append-only) is what makes this reconstructable at all. If the pipeline had updated rows in place, the answer would be gone.
+check:
+  order_matters: true
+rubric:
+  - point: 'Filters on ingestion time before deduplicating, and explains why the order matters'
+    weight: 3
+    topic: bitemporal
+follow_ups:
+  - Which table design lets you answer this for any cutoff cheaply (hint, valid_from / valid_to on ingestion time)?
+  - How do Iceberg or Delta time travel relate to this, and where do they fall short?

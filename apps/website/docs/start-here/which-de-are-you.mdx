@@ -1,0 +1,62 @@
+---
+title: Which DE are you?
+sidebar_position: 3
+description: Analytics engineer, platform data engineer, streaming data engineer or ML data engineer, and how each changes your interview prep.
+levels: [junior, mid, senior, lead]
+topic: [interview-process, role-types]
+---
+
+# Which DE are you?
+
+"Data engineer" covers several different jobs. Job titles are unreliable, so read the job description for **what you'd build** and **who you'd serve**, then match it to one of these four types. Most roles are a blend; pick the closest one to guide your prep.
+
+<LevelExpectations
+  junior="Pick the role type closest to your target job and focus on its top two rounds. Breadth comes later."
+  mid="Be strong in your type's core rounds, and conversational in the others."
+  senior="Show depth in your type, and know where it hands off to the others (for example platform to analytics)."
+  lead="Be able to explain how all four fit into one data organization, and when to hire for which."
+/>
+
+## The four types
+
+### Analytics engineer
+**Builds:** the modeled layer analysts and BI tools use: dbt models, metrics definitions, tests, documentation.
+**Serves:** analysts, finance, product.
+**Interviews weight:** **SQL (heavy)**, **data modeling (heavy)**, metrics and definitions, data quality, stakeholder behavioral. System design is lighter and focused on the warehouse.
+**Prep priority:** SQL → modeling → behavioral (metric disputes) → dbt and warehouse deep dive.
+
+### Platform data engineer
+**Builds:** the infrastructure everyone else runs on: ingestion frameworks, orchestration, lakehouse storage, compute, access control, cost.
+**Serves:** other data engineers and data teams.
+**Interviews weight:** **pipeline system design (heavy)**, **Python / coding (heavy)**, tool deep dives (Spark, Airflow, storage formats), reliability and cost. SQL is still tested, usually at a lower bar.
+**Prep priority:** system design → Python → tool internals → SQL.
+
+### Streaming data engineer
+**Builds:** real-time pipelines: Kafka, Flink or Spark Structured Streaming, CDC, low-latency serving.
+**Serves:** product features, fraud, ops dashboards.
+**Interviews weight:** **system design with streaming semantics (heavy)**: event time, watermarks, exactly-once, ordering, state. Also coding and Kafka internals.
+**Prep priority:** streaming system design → coding → Kafka/Flink deep dive → SQL.
+
+### ML data engineer
+**Builds:** data for machine learning: feature pipelines, training datasets, feature stores, data versioning, inference logging.
+**Serves:** data scientists and ML engineers.
+**Interviews weight:** **point-in-time correctness**, **training/serving skew**, feature pipelines (batch and streaming), data versioning and reproducibility. Plus Python and SQL.
+**Prep priority:** modeling for ML (point-in-time joins, leakage) → system design for feature pipelines → Python → SQL.
+
+## Quick way to tell
+
+| If the job description says… | You're probably looking at |
+|---|---|
+| dbt, Looker/Tableau, "metrics", "single source of truth" | Analytics engineer |
+| Spark, Kubernetes, Terraform, "self-serve platform", "cost" | Platform DE |
+| Kafka, Flink, "real-time", "sub-second", CDC | Streaming DE |
+| feature store, "training data", "model features", MLflow | ML data engineer |
+
+## Start practicing
+
+The [question bank](/questions) is filterable by round and topic. Some good first picks by type:
+
+- **Analytics:** <RelatedQuestions ids={["sql-weekly-cohort-retention", "modeling-customer-address-scd", "behavioral-metric-definition-dispute"]} />
+- **Platform:** <RelatedQuestions ids={["sd-daily-batch-with-backfills", "sd-cdc-postgres-to-lakehouse", "python-paginated-api-with-retries"]} />
+- **Streaming:** <RelatedQuestions ids={["sd-late-and-out-of-order-events", "sd-clickstream-to-warehouse", "sql-sessionize-page-views"]} />
+- **ML data:** <RelatedQuestions ids={["modeling-point-in-time-training-data", "sql-revenue-by-country-at-order-time", "sql-transaction-status-as-of-cutoff"]} />

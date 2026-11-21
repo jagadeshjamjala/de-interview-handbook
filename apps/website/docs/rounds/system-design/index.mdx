@@ -1,0 +1,65 @@
+---
+title: Pipeline system design
+sidebar_position: 1
+description: A framework for data pipeline system design interviews, a 45-minute time plan, and five worked designs.
+levels: [junior, mid, senior, lead]
+topic: [system-design]
+---
+
+# Pipeline system design
+
+"Design a pipeline that…" is the round that decides most senior offers. There's no single right answer. The interviewer wants to see you **turn vague requirements into a working, operable design**, and reason about trade-offs as constraints change.
+
+<LevelExpectations
+  junior="Explain a simple batch pipeline end to end: source, storage, transform, serve. Ask about volume and freshness."
+  mid="Cover idempotency, backfills, data quality and monitoring. Choose tools and say why."
+  senior="Drive the session. Put numbers on volume and latency, cover failure modes and late data, and say what changes at 10×."
+  lead="All of the above, plus build vs buy, cost over time, ownership and contracts between teams, and how you'd roll it out."
+/>
+
+## The design template
+
+Every worked design here follows the same steps. Use them as your checklist in the interview.
+
+1. **Requirements.** Who consumes the data, and for what decision? Freshness (seconds, minutes, daily)? Volume now and in two years? Correctness needs (approximate is fine vs money-exact)? History and retention?
+2. **Data contracts.** What exactly does the source promise: schema, keys, ordering, delivery guarantees, how it signals deletes? Who is told when it changes?
+3. **Ingestion.** Batch pull, push via API, a log or queue, or CDC. How do you get data in without hurting the source?
+4. **Storage and format.** Raw (immutable, replayable) vs modeled. File format (Parquet), table format (Iceberg, Delta, Hudi) or warehouse tables. Partitioning and clustering.
+5. **Transform.** Engine (SQL in the warehouse, Spark, Flink, dbt) and the modeled tables with their grain.
+6. **Serving.** BI, an API, a feature store, reverse ETL. Latency and concurrency needs.
+7. **Quality.** Tests at each layer, contracts, reconciliation against the source, anomaly alerts, and where bad data goes (quarantine).
+8. **Orchestration and backfill.** Scheduling, dependencies, idempotent re-runs, how you backfill a month safely.
+9. **Failure modes.** What breaks first? Source down, late data, duplicates, schema change, a bad deploy. How do you detect and recover?
+10. **Cost.** What dominates the bill, and the dials you'd turn.
+11. **What changes at 10×.** Volume, consumers or freshness. Which parts survive and which you'd redesign.
+
+## Running the 45 minutes
+
+| Minutes | What to do |
+|---|---|
+| 0–8 | Requirements and numbers. Write them on the board. Confirm the top two priorities. |
+| 8–15 | High-level diagram, sources to consumers, five or six boxes. |
+| 15–30 | Deep dive on the hardest part (usually ingestion semantics, late data or the core model). |
+| 30–40 | Quality, failure modes, backfills, monitoring. |
+| 40–45 | Cost, 10×, and what you'd do differently with more time. |
+
+Ask the interviewer where they want depth. It's a good question, not a weakness.
+
+## Numbers worth knowing
+
+Rough figures for back-of-envelope estimates. They vary a lot by provider and configuration, so state them as assumptions.
+
+- 1 billion events/day ≈ 11,600/second on average; plan for 3–5× peaks.
+- At 1 KB per event, 1 billion events ≈ 1 TB/day raw JSON, often 5–10× smaller as compressed Parquet.
+- A single Kafka partition comfortably handles thousands to tens of thousands of small messages per second. Choose partition counts for peak throughput and consumer parallelism.
+- Small files hurt. Aim for Parquet files in the hundreds-of-MB range, and plan compaction.
+
+## Worked designs
+
+1. [Clickstream to warehouse](./clickstream-to-warehouse.mdx): high-volume events, late data, raw vs modeled.
+2. [CDC from Postgres to the lakehouse](./cdc-postgres-to-lakehouse.mdx): log-based capture, MERGE, deletes, schema changes.
+3. [Payments ledger reconciliation](./payments-ledger-reconciliation.mdx): matching, control totals, auditability.
+4. [Daily batch with backfills](./daily-batch-with-backfills.mdx): idempotency, logical dates, write-audit-publish.
+5. [Late and out-of-order events](./late-and-out-of-order-events.mdx): event time, watermarks, stream plus batch.
+
+<RelatedQuestions round="system-design" />

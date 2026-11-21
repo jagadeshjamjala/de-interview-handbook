@@ -1,0 +1,8 @@
+.list li {
+  margin-bottom: 0.35rem;
+}
+
+.meta {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.85rem;
+}

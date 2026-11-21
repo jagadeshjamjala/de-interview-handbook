@@ -99,3 +99,48 @@ test('duplicate ids fail', () => {
   const {errors} = run({'sql/sql-ok.yaml': sql, 'sql/nested/sql-ok.yaml': sql});
   assert.match(errors.join('\n'), /duplicate id/);
 });
+
+const python = `id: python-ok
+title: A valid python question
+round: python
+topic: [generators]
+levels: [mid]
+difficulty: easy
+companies: []
+time_minutes: 15
+prompt: Write f.
+solution:
+  python: |
+    def f():
+        return 1
+tests: |
+  assert f() == 1
+rubric:
+  - point: Uses a generator
+    weight: 1
+`;
+
+test('valid python question passes', () => {
+  assert.deepEqual(run({'python/python-ok.yaml': python}).errors, []);
+});
+
+for (const [name, files] of [
+  [
+    'python without tests',
+    {'python/python-ok.yaml': python.replace(/tests:[\s\S]*?rubric:/, 'rubric:')},
+  ],
+  [
+    'python without solution.python',
+    {'python/python-ok.yaml': python.replace(/ {2}python: \|\n.*\n.*\n/, '  answer: text\n')},
+  ],
+  ['sql with tests', {'sql/sql-ok.yaml': sql + 'tests: assert True\n'}],
+  [
+    'modeling without answer',
+    {'modeling/modeling-ok.yaml': modeling.replace('  answer: Like this.\n', '  explanation: x\n')},
+  ],
+  ['guide outside /docs', {'modeling/modeling-ok.yaml': modeling + 'guide: https://example.com\n'}],
+] as [string, Record<string, string>][]) {
+  test(`fails: ${name}`, () => {
+    assert.ok(run(files).errors.length > 0, 'expected an error');
+  });
+}

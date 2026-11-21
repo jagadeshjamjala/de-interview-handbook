@@ -1,0 +1,56 @@
+id: sql-rolling-28-day-active-users
+title: Rolling 28-day active users for each day of December
+round: sql
+topic: [rolling-distinct-counts, date-spine]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: events
+time_minutes: 20
+prompt: |
+  Table: `logins(user_id, login_ts)`
+
+  For each day from 2024-12-01 to 2024-12-31, count the distinct users who logged in at least once during the 28 days ending on that day (the day itself and the 27 before it).
+
+  Output: `activity_date, active_users_28d`. Order by `activity_date`.
+hints:
+  - Most engines don't allow `COUNT(DISTINCT …)` as a window function. You need a join instead.
+  - Join each day to the logins that fall inside its window.
+solution:
+  sql: |
+    WITH days AS (
+      SELECT CAST(UNNEST(GENERATE_SERIES(DATE '2024-12-01', DATE '2024-12-31', INTERVAL 1 DAY)) AS DATE) AS activity_date
+    ),
+    login_days AS (
+      SELECT DISTINCT user_id, CAST(login_ts AS DATE) AS login_date
+      FROM logins
+    )
+    SELECT d.activity_date, COUNT(DISTINCT l.user_id) AS active_users_28d
+    FROM days d
+    LEFT JOIN login_days l
+      ON l.login_date BETWEEN d.activity_date - 27 AND d.activity_date
+    GROUP BY d.activity_date
+    ORDER BY d.activity_date;
+  explanation: |
+    A sliding window of *distinct* users can't be built by adding daily counts: a user active on 5 of the 28 days would be counted 5 times. So each output day joins to the raw activity in its window and counts distinct users there.
+
+    Reducing logins to one row per user per day first shrinks the join a lot. At scale, the next steps are per-day HyperLogLog sketches merged over the window, or a per-user "last active date" table that turns the count into a range filter.
+check:
+  order_matters: true
+rubric:
+  - point: 'Explains why summing daily actives over 28 days double-counts'
+    weight: 2
+    topic: rolling-distinct-counts
+  - point: 'Mentions a scalable approach (pre-aggregated user-days, HLL sketches)'
+    weight: 1
+    topic: rolling-distinct-counts
+follow_ups:
+  - Compute this for every day of the year on 2 billion login rows. What do you precompute?
+  - How do DAU / MAU ratios behave when you change the window from 28 to 30 days?
+dialect_notes:
+  bigquery:
+    note: '`HLL_COUNT.MERGE` over daily `HLL_COUNT.INIT` sketches gives approximate rolling distinct counts cheaply.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/hll_functions
+  snowflake:
+    note: '`HLL_ACCUMULATE` per day and `HLL_COMBINE` over the window are the approximate equivalent.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/hll_combine

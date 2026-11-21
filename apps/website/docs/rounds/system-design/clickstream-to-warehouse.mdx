@@ -1,0 +1,99 @@
+---
+title: Clickstream to warehouse
+sidebar_position: 2
+description: Worked design for a high-volume clickstream pipeline with late events, an immutable raw layer and modeled tables.
+levels: [mid, senior, lead]
+topic: [system-design, streaming-ingestion, late-arriving-data]
+---
+
+# Worked design: clickstream to warehouse
+
+<LevelExpectations
+  mid="Get the layers right (raw vs modeled), dedup on event_id, and explain partitioning."
+  senior="Add late data handling with a reprocessing window, contracts and quarantine, cost controls and 10× changes."
+  lead="Add ownership (who owns the tracking plan), rollout to many product teams, and the build vs buy decision for collection."
+/>
+
+Try the question yourself first, then compare with the walkthrough below.
+
+<QuestionEmbed id="sd-clickstream-to-warehouse" />
+
+## 1. Requirements
+
+Clarify and write down:
+
+- **Volume:** 50k events/s peak, about 2.5B/day, around 1 KB each, so about 2.5 TB/day raw and roughly 300 GB/day as Parquet.
+- **Freshness:** 15 minutes for dashboards. Data science is fine with daily.
+- **Late data:** most within minutes; offline phones up to **3 days**. Anything later is rare enough for a monthly fix-up.
+- **Correctness:** analytics-grade. Small duplicate rates are tolerable but should be removed; not money.
+- **Retention:** raw for 13 months hot, then archive; modeled tables indefinitely.
+
+## 2. Data contracts
+
+A **tracking plan** (event name, owner, required properties and types) lives in a schema registry. The collector validates every event against it. The contract also promises: a globally unique `event_id` generated on the device, an `event_ts` set by the client, and no PII in free-text properties.
+
+## 3. Ingestion
+
+```
+SDK → collector API → Kafka (raw-events, partitioned by device_id) → sink → object storage (raw)
+                ↘ invalid events → Kafka (quarantine) → quarantine table
+```
+
+- The **collector** is a thin, stateless HTTP service: it authenticates, validates, stamps `received_at`, and writes to Kafka. If it's down, SDKs buffer and retry.
+- **Kafka** decouples producers from consumers and gives replay. Partitioning by `device_id` keeps one device's events in order.
+- A **sink** (Kafka Connect or a small Spark/Flink job) writes Parquet to object storage every few minutes.
+
+## 4. Storage and format
+
+- **Raw:** an Iceberg (or Delta) table, append-only, partitioned by `received_hour`. The payload is kept as-is. This is the replay source for everything.
+- **Modeled:** Iceberg or warehouse tables partitioned by `event_date` (from `event_ts`) and clustered by `event_name`.
+
+Partitioning raw by *received* time makes loads idempotent: each run processes a closed set of hours. Partitioning modeled by *event* time makes queries match how analysts think.
+
+## 5. Transform
+
+Every 15 minutes, an incremental job:
+
+1. Reads newly landed raw partitions.
+2. **Dedups on `event_id`** against the affected event dates (SDK retries create duplicates).
+3. Types the common columns, normalizes time zones, stitches `anonymous_id` to `user_id`.
+4. **Overwrites** the affected `event_date` partitions of `fct_events`.
+
+Downstream: `fct_sessions`, `agg_user_daily` and per-event tables (`fct_purchases`) with exploded properties. See the modeling question below.
+
+## 6. Serving
+
+Dashboards read the daily and session aggregates, not raw events. Data scientists read `fct_events` directly. A "data complete through" timestamp is published per table, so dashboards can show how fresh they are.
+
+## 7. Quality
+
+- **At the collector:** schema validation, with invalid events quarantined, not dropped. Alert when the quarantine rate jumps.
+- **On the modeled layer:** uniqueness of `event_id`, not-null keys, volume per event type versus the same hour last week (catches a broken release), and the share of late events.
+- **Reconciliation:** events in Kafka versus rows landed in raw per hour.
+
+## 8. Orchestration and backfill
+
+- The incremental job always reprocesses the **last 3 event dates**, which absorbs late events automatically.
+- Backfills replay raw partitions for a date range through the same code, at limited concurrency.
+- Because every write is a partition overwrite keyed on dedup'd `event_id`, re-running is always safe.
+
+## 9. Failure modes
+
+| Failure | Detection | Recovery |
+|---|---|---|
+| Bad SDK release sends wrong property types | Contract violations spike | Quarantine, fix SDK, replay quarantined events |
+| Sink falls behind | Kafka consumer lag alert | Scale consumers; Kafka retention gives a buffer (set it to at least 3 days) |
+| Duplicate events | Uniqueness test | Dedup on `event_id` is already part of the transform |
+| Late event after the 3-day window | Late-share metric | Monthly correction job over older partitions |
+
+## 10. Cost
+
+The biggest costs are usually **storage of raw events**, **re-processing** and **small files**. The dials: compress and compact raw hourly, keep raw hot for 13 months then archive, prune by partition in every job, and don't run streaming where a 15-minute micro-batch meets the SLA.
+
+## 11. What changes at 10×
+
+At 500k events/s: more Kafka partitions and brokers, a horizontally scaled collector, sinks that write larger files less often, and probably sampling or aggregating very chatty low-value events (such as scroll events) at the collector. The layered design and the late-data policy don't change.
+
+## Related practice
+
+<RelatedQuestions ids={["modeling-clickstream-events", "sql-sessionize-page-views", "sql-docs-pricing-billing-funnel", "sd-late-and-out-of-order-events"]} />

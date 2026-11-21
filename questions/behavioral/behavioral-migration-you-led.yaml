@@ -1,0 +1,48 @@
+id: behavioral-migration-you-led
+title: Walk me through a migration you led
+round: behavioral
+topic: [migrations, planning, stakeholders]
+levels: [mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 12
+prompt: |
+  "Tell me about a significant migration you led or played a key part in, for example on-prem to cloud, one orchestrator or warehouse to another, or batch to streaming. How did you plan it, how did you know it worked, and what went wrong?"
+hints:
+  - Migrations are judged on how you de-risked them, so explain parallel runs, validation and rollback.
+  - Have one "what went wrong" moment ready; a migration story with no problems isn't believable.
+solution:
+  answer: |
+    **Structure:** why migrate (business reason, with a number) → scope and constraints → plan (phases, order, what moved first and why) → how you proved parity → cutover and rollback → what went wrong and how you handled it → result.
+
+    **Strong signals:**
+    - A real reason ("license renewal in 9 months", "nightly batch missed the 7am SLA 6 times a month"), not "cloud is modern".
+    - An **inventory** of what existed (jobs, tables, consumers) and a decision on what *not* to migrate.
+    - **Parallel runs** with automated comparison (row counts, checksums, key metrics within tolerance) before cutover, and a documented rollback.
+    - Moving consumers in waves, with the highest-risk or noisiest consumer early, not last.
+    - A quantified result: cost, runtime, incidents, freshness.
+
+    **Example spine:**
+
+    > "We moved 340 Teradata jobs to Snowflake and dbt before the contract renewal. I built a comparison harness that ran every migrated model next to the legacy job for two weeks and flagged differences over 0.1%. That caught a timestamp-timezone difference affecting 12 models before any consumer saw it. We cut over in four waves by business domain. Nightly runtime went from 6 hours to 70 minutes, and we decommissioned the old system a month early."
+
+    **Lead level:** add how you staffed it, how you kept feature work going during it, and how you got other teams to move their consumers.
+rubric:
+  - point: 'States a concrete business reason and measurable goal'
+    weight: 2
+    topic: migrations
+  - point: 'Describes de-risking: inventory, parallel runs with automated parity checks, rollback'
+    weight: 3
+    topic: migrations
+  - point: 'Explains sequencing and stakeholder/consumer coordination'
+    weight: 2
+    topic: stakeholders
+  - point: 'Shares a real problem and how it was handled'
+    weight: 2
+    topic: planning
+  - point: 'Quantifies the outcome'
+    weight: 1
+    topic: migrations
+follow_ups:
+  - What did you decide not to migrate, and how did you get agreement on that?
+  - How did you handle a consumer who refused to move?

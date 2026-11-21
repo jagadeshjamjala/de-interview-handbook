@@ -1,0 +1,50 @@
+---
+title: Python / coding round
+sidebar_position: 2
+description: What the data engineering coding round tests, how to approach it, and practice questions with runnable tests.
+levels: [junior, mid, senior, lead]
+topic: [python]
+---
+
+# Python / coding round
+
+The DE coding round is usually **less algorithmic** than a software engineering one, and **more about data**: parsing messy input, streaming large files, calling flaky APIs, transforming records, and writing code you'd trust in a pipeline.
+
+<LevelExpectations
+  junior="Working, readable code with sensible names and a few tests. Talk through edge cases (empty input, bad records)."
+  mid="Clean structure, defensive parsing, generators for large data, and tests you write without being asked."
+  senior="Production thinking: retries, idempotency, memory, observability, and how this code fits into a pipeline."
+  lead="Same as senior. Use follow-ups to discuss code review standards, shared libraries and testing strategy for a team."
+/>
+
+## What gets tested
+
+- **Parsing and validation:** logs, CSV, JSON with missing or wrong fields. Never crash on one bad record; count and report it.
+- **Streaming and memory:** generators, `itertools`, processing a file bigger than RAM.
+- **APIs:** pagination, rate limits, retries with backoff, idempotent writes.
+- **Data transforms:** dedup, group, merge, join two lists of records.
+- **Light algorithms:** dictionaries and sets, sorting, sliding windows, merging intervals, top-k with a heap. Rarely graphs or dynamic programming.
+- **Testing:** can you write a few good asserts or pytest cases for your own code?
+
+## How to approach a coding question
+
+1. **Clarify input and output.** Types, sizes, can it be empty, what to do with bad records.
+2. **Write the signature and one example first.** It forces precision.
+3. **Start simple and correct,** then improve. Say the complexity.
+4. **Handle the edge cases explicitly:** empty input, duplicates, malformed lines, ties.
+5. **Test it.** Write two or three asserts, including an edge case. Interviewers notice when you test without being asked.
+6. **Talk about production:** "In a pipeline I'd log the bad lines to a quarantine file and emit a metric."
+
+## Python that reads like a data engineer wrote it
+
+- Use `csv`, `json`, `datetime`, `collections` (`defaultdict`, `Counter`), `itertools` (`islice`, `groupby`) and `heapq` from the standard library before reaching for pandas.
+- Prefer generators for anything row-by-row, and return plain data structures.
+- Inject dependencies (the HTTP call, the clock, `sleep`) so the code is testable.
+- Use `datetime` with time zones (`datetime.fromisoformat`, `timezone.utc`) and never compare naive and aware datetimes.
+- Don't use floats for money. Use integer cents or `decimal.Decimal`.
+
+## Practice
+
+Each question has example tests you can run locally. The reference solutions are checked against those tests automatically.
+
+<RelatedQuestions round="python" />

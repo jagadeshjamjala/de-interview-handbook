@@ -1,0 +1,69 @@
+---
+title: The DE resume
+sidebar_position: 1
+description: How to write data engineering resume bullets that show volume, latency, cost and reliability.
+levels: [junior, mid, senior, lead]
+topic: [resume]
+---
+
+# The DE resume: quantify your pipelines
+
+A recruiter spends under a minute on your resume, and a hiring manager scans it for one thing: **evidence you've built data systems that mattered**. Tool lists don't show that. Numbers do.
+
+<LevelExpectations
+  junior="One page. Projects and internships count. Show you built something end to end and measured it."
+  mid="Show ownership: pipelines you ran, incidents you fixed, consumers you served, with numbers."
+  senior="Show scope: systems that serve many teams, migrations, cost or reliability wins, people you made more effective."
+  lead="Show direction and leverage: strategy you set, platforms adopted across teams, hiring, budget, org-level outcomes."
+/>
+
+## The four numbers DE managers look for
+
+Every pipeline has these. Put at least one in most bullets:
+
+| Dimension | Examples |
+|---|---|
+| **Volume** | 2B events/day, 40 TB, 300 tables, 5k writes/sec |
+| **Latency / freshness** | nightly → 15 min, p95 query time 40s → 4s, SLA 07:00 |
+| **Cost** | warehouse spend −35%, $180k/yr saved, cost per query |
+| **Reliability / quality** | failed runs 12/month → 1, data incidents −80%, 99.9% on-time |
+
+Add a fifth when you can: **who used it** ("used by 60 analysts", "feeds the pricing model").
+
+## The bullet formula
+
+**Action verb + what you built + how + measurable result.**
+
+- ❌ "Worked on ETL pipelines using Airflow and Spark."
+- ✅ "Rebuilt the nightly orders pipeline in Spark and Airflow with partition-level backfills, cutting runtime from 6h to 50 min and missed SLAs from 9 to 0 per month."
+
+- ❌ "Responsible for data quality."
+- ✅ "Added dbt tests and freshness alerts to 120 core models; caught 14 source breaks before they reached finance dashboards in the first quarter."
+
+- ❌ "Migrated data warehouse to the cloud."
+- ✅ "Led migration of 340 Teradata jobs to Snowflake and dbt with automated parity checks; decommissioned the legacy system a month early, saving $420k/yr."
+
+If you don't know the exact number, estimate honestly and be ready to explain how ("about 2B events/day, from the Kafka topic metrics"). Never invent one.
+
+## Structure
+
+1. **Header:** name, location or remote, email, LinkedIn, GitHub (only if it has something worth showing).
+2. **Summary (optional, two lines):** your role type and strongest area, for example "Platform data engineer, 6 years, batch and streaming on AWS; focus on reliability and cost."
+3. **Experience:** 3–6 bullets per recent role, fewer for older ones. Most impressive first.
+4. **Skills:** grouped and short. *Languages:* SQL, Python, Scala. *Processing:* Spark, Flink, dbt. *Storage:* Snowflake, Iceberg, Postgres. *Orchestration:* Airflow. *Cloud:* AWS. Only list what you'd be happy to be quizzed on.
+5. **Projects** (junior, career switchers): see [portfolio projects](./portfolio-projects.mdx).
+
+## What to cut
+
+- Tools you used once. Each one invites a deep-dive question.
+- Responsibilities without outcomes ("maintained pipelines").
+- Buzzword chains ("big data, real-time, AI-driven, cloud-native").
+- More than two pages, at any level.
+
+## Tailoring
+
+Match the [role type](../start-here/which-de-are-you.mdx). For an analytics engineer role, lead with modeling, dbt and stakeholder outcomes. For a platform role, lead with infra, reliability and cost. Same experience, different ordering.
+
+## Prepare to defend every line
+
+Each bullet is a question waiting to happen. For your top three bullets, be ready to explain the design, the trade-offs, what broke and what you'd do differently. The [behavioral page](../rounds/behavioral.mdx) shows how to turn them into stories.

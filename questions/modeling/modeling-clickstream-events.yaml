@@ -1,0 +1,48 @@
+id: modeling-clickstream-events
+title: Model clickstream events for product analytics
+round: modeling
+topic: [event-modeling, grain, late-arriving-data]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 30
+prompt: |
+  A mobile and web app sends events (`screen_view`, `button_click`, `add_to_cart`, `purchase`, …) with a few common fields and a JSON `properties` blob that differs per event type. About 300 million events a day. Events can arrive up to 3 days late from offline phones.
+
+  Product wants daily active users, funnels, session metrics and feature adoption. Design the warehouse model from raw events to the tables analysts use.
+hints:
+  - Separate "store everything faithfully" from "make the common questions fast".
+  - Which timestamp does a late event belong to, and which partitions must be rebuilt?
+solution:
+  answer: |
+    **Layers**
+
+    1. **Raw events** (`raw_events`): append-only, one row per event as received, with `event_id`, `event_name`, `user_id`, `anonymous_id`, `device`, `event_ts` (client), `received_at` (server), and the untouched `properties` JSON. Partition by **received date**, which makes loads idempotent and cheap to replay.
+    2. **Clean events** (`fct_events`): one row per **unique** `event_id` (dedup retries), with typed common columns, both timestamps normalized to UTC, `event_date` derived from `event_ts`, and identity stitched (`anonymous_id` → `user_id` once known). Partition or cluster by `event_date`.
+    3. **Per-event-type tables** for the hot ones (`fct_purchases`, `fct_add_to_cart`): `properties` exploded into typed columns, so analysts don't parse JSON.
+    4. **Derived facts**: `fct_sessions` (one row per session: start, end, events, entry and exit screen) and `agg_user_daily` (one row per user per day: events, sessions, purchases). DAU and retention come from the latter.
+
+    **Late data:** report by `event_ts` date (when it happened), but load by `received_at`. Each daily run re-processes the last **3 event dates** (the late window) for clean, session and daily tables. Anything later than that goes into a monthly correction job. Say which policy, and that numbers for the last 3 days are provisional.
+
+    **Schema evolution:** new event types and properties land in raw automatically. Promote a property to a typed column only when it's used. A registry or tracking plan (event name, owner, property types) keeps producers honest, and a data contract test fails the load on type changes.
+
+    **Identity:** DAU on `user_id` misses logged-out usage; on `anonymous_id` it double-counts across devices. Pick one definition, document it, and keep the stitching table so both are possible.
+rubric:
+  - point: 'Keeps an append-only raw layer with the original payload, separate from cleaned tables'
+    weight: 2
+    topic: event-modeling
+  - point: 'States grain for each table (event, session, user-day) and dedups on event_id'
+    weight: 2
+    topic: grain
+  - point: 'Distinguishes event time vs received time and defines a late-data reprocessing window'
+    weight: 3
+    topic: late-arriving-data
+  - point: 'Handles the JSON properties: typed tables for hot events, raw kept for the rest'
+    weight: 1
+    topic: event-modeling
+  - point: 'Addresses identity (anonymous vs logged-in) and its effect on DAU'
+    weight: 1
+    topic: event-modeling
+follow_ups:
+  - A producer starts sending `price` as a string instead of a number. What catches it, and where?
+  - Storage costs are doubling every quarter. Where would you cut first?

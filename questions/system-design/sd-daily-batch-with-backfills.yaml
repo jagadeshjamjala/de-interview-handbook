@@ -1,0 +1,42 @@
+id: sd-daily-batch-with-backfills
+title: A daily batch pipeline that can be backfilled safely
+round: system-design
+topic: [batch, backfills, orchestration, idempotency]
+levels: [junior, mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 40
+guide: /docs/rounds/system-design/daily-batch-with-backfills
+prompt: |
+  Every day at 02:00 a pipeline loads yesterday's orders from an API and a vendor SFTP drop, transforms them, and publishes `daily_revenue` for an 07:00 executive dashboard.
+
+  Last month a bug in the transform went unnoticed for 9 days, and fixing it took a week of manual reruns. Design the pipeline so that reruns and backfills of any date range are boring.
+hints:
+  - What does running the same day twice do to the output?
+  - How do you rerun 90 days without overloading the API or blocking today's run?
+solution:
+  answer: |
+    Orchestrate with **Airflow/Dagster**, one run per **logical date**. Each task is a pure function of that date: extract **only** that date's window into a raw path that includes the date (`raw/orders/dt=2024-05-01/`), transform, and **overwrite** the output partition for that date. Never append. This makes every run idempotent: running a day twice gives the same result.
+
+    Backfills are just runs for past logical dates with **limited concurrency** (pools), lower priority than the daily run, and a rate limit on the source API. Prefer re-transforming from stored raw data, so the API isn't hit again. Publish via a **write-audit-publish** pattern: build into staging, run data quality checks (row counts versus source, revenue versus the previous day, nulls, duplicates), and swap or overwrite only if they pass, so the 07:00 dashboard never shows a half-loaded or broken day.
+
+    Add an SLA alert at 06:00, lineage so you know which downstream tables a backfill must touch, and a "data as of" note on the dashboard.
+rubric:
+  - point: 'Parameterizes everything by logical date (no "now()" inside tasks)'
+    weight: 3
+    topic: orchestration
+  - point: 'Idempotent writes: overwrite the partition for that date, never blind append'
+    weight: 3
+    topic: idempotency
+  - point: 'Keeps raw extracts so backfills re-transform without re-extracting'
+    weight: 2
+    topic: backfills
+  - point: 'Backfill throttling: concurrency limits, priority below the daily run, source rate limits'
+    weight: 2
+    topic: backfills
+  - point: 'Quality gate before publishing (write-audit-publish) and SLA alerting'
+    weight: 2
+    topic: data-quality
+follow_ups:
+  - The transform depends on a dimension that has changed since then. Should a backfill use today's dimension or the historical one?
+  - How do you backfill a table that 30 downstream dbt models depend on?

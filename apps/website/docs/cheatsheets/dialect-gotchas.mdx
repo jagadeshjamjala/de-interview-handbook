@@ -1,0 +1,54 @@
+---
+title: SQL dialect gotchas
+sidebar_position: 3
+description: The SQL differences between Snowflake, BigQuery, Databricks and SQL Server that change results, with links to vendor docs.
+levels: [junior, mid, senior, lead]
+topic: [sql, dialects, cheatsheet]
+---
+
+# SQL dialect gotchas
+
+Interviewers rarely fail you for dialect syntax. But in real work, and in take-homes on a specific warehouse, a few differences **silently change results**. These are the ones worth knowing. Each one links to the vendor documentation, because defaults change between versions.
+
+<LevelExpectations
+  junior="Know your target warehouse's date functions and string concatenation."
+  mid="Know the result-changing ones: integer division, NULL ordering, week start, DATEDIFF boundaries."
+  senior="Know them all, and the migration risks they create when moving SQL between engines."
+  lead="Use them to plan migration validation: which differences to test for automatically."
+/>
+
+The playground runs **DuckDB**, which behaves like PostgreSQL in most of these cases.
+
+## Changes your results
+
+| Gotcha | What happens | Docs |
+|---|---|---|
+| **Integer division** | SQL Server: `5 / 2 = 2` (integer). BigQuery: `/` returns FLOAT64 (`2.5`); use `DIV` for integers. Snowflake: returns a decimal with extra scale (`2.500000`). | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/divide-transact-sql) · [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/operators#arithmetic_operators) · [Snowflake](https://docs.snowflake.com/en/sql-reference/operators-arithmetic) |
+| **Default NULL sort order** | Snowflake: NULLs sort **last** in ascending order (configurable with `DEFAULT_NULL_ORDERING`). BigQuery and SQL Server: NULLs are lowest, so **first** in ascending order. Changes `ORDER BY … LIMIT` and `ROW_NUMBER` results. Write `NULLS FIRST/LAST` explicitly where supported. | [Snowflake](https://docs.snowflake.com/en/sql-reference/constructs/order-by) · [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#order_by_clause) |
+| **Week start** | BigQuery `DATE_TRUNC(d, WEEK)` starts on **Sunday**; use `WEEK(MONDAY)` or `ISOWEEK`. Snowflake depends on the `WEEK_START` parameter. | [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc) · [Snowflake](https://docs.snowflake.com/en/sql-reference/parameters#week-start) |
+| **DATEDIFF counts boundaries** | Snowflake and SQL Server `DATEDIFF(minute, a, b)` count minute **boundaries crossed**, not elapsed minutes. 10:00:59 to 10:01:00 is "1 minute". Use seconds and divide. | [Snowflake](https://docs.snowflake.com/en/sql-reference/functions/datediff) · [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/functions/datediff-transact-sql) |
+| **Case-sensitive comparisons** | SQL Server's default collations are case-**insensitive** (`'A' = 'a'`); Snowflake compares case-**sensitively** by default. Joins and GROUP BYs on text change. | [SQL Server](https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support) |
+| **Timestamp types** | BigQuery `TIMESTAMP` is an absolute instant (UTC); `DATETIME` has no time zone. Snowflake has `TIMESTAMP_NTZ`, `_LTZ` and `_TZ`, and plain `TIMESTAMP` maps to one of them by setting. | [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#timestamp_type) · [Snowflake](https://docs.snowflake.com/en/sql-reference/data-types-datetime) |
+
+## Syntax that won't run elsewhere
+
+| Gotcha | Difference | Docs |
+|---|---|---|
+| **Row limits** | SQL Server uses `TOP n` or `OFFSET … FETCH`, not `LIMIT`. | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/queries/top-transact-sql) |
+| **String concatenation** | SQL Server uses `+` (or `CONCAT`); most others use `\|\|`. With `+`, a NULL makes the whole result NULL. | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/string-concatenation-transact-sql) |
+| **Booleans** | SQL Server has no boolean column type; use `BIT` and compare `= 1`. | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/data-types/bit-transact-sql) |
+| **GROUP BY alias or position** | SQL Server doesn't allow `GROUP BY 1` or a SELECT alias; repeat the expression. | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/queries/select-group-by-transact-sql) |
+| **QUALIFY** | Snowflake, BigQuery and Databricks support it; SQL Server doesn't (use a CTE). | [Snowflake](https://docs.snowflake.com/en/sql-reference/constructs/qualify) · [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#qualify_clause) · [Databricks](https://docs.databricks.com/en/sql/language-manual/sql-ref-syntax-qry-select-qualify.html) |
+| **DATE_TRUNC argument order** | BigQuery: `DATE_TRUNC(d, MONTH)`. Snowflake and Databricks: `DATE_TRUNC('MONTH', d)`. SQL Server 2022+: `DATETRUNC(month, d)`. | [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc) · [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/functions/datetrunc-transact-sql) |
+| **Recursive CTEs** | SQL Server omits the `RECURSIVE` keyword; BigQuery requires it. | [SQL Server](https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql) · [BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#recursive_keyword) |
+| **Identifier case** | Snowflake uppercases unquoted identifiers; `"orderId"` and `orderid` are different columns. | [Snowflake](https://docs.snowflake.com/en/sql-reference/identifiers-syntax) |
+
+## Teradata
+
+Teradata notes are being reviewed and will be added with sources. Many migration projects start from Teradata, so this section is a priority.
+
+## Practice
+
+Most SQL questions in the bank include dialect notes with sources. Open a question's solution to see them.
+
+<RelatedQuestions ids={["sql-weekly-cohort-retention", "sql-session-duration-by-plan", "sql-gaps-islands-login-streaks", "sql-fill-forward-fx-rates"]} />

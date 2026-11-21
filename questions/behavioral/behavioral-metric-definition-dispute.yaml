@@ -1,0 +1,42 @@
+id: behavioral-metric-definition-dispute
+title: Two teams disagree on what a metric means
+round: behavioral
+topic: [stakeholders, metrics, influence]
+levels: [mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 10
+prompt: |
+  "Tell me about a time two stakeholders or teams disagreed about a number, for example two dashboards showing different 'active users' or 'revenue'. What did you do?"
+hints:
+  - Explain how you found out *why* the numbers differed before anyone argued about which was right.
+  - The win is usually a shared definition with an owner, not you picking a side.
+solution:
+  answer: |
+    **Structure:** the conflict and why it mattered → how you found the actual difference → how you got to a decision → how you made it stick.
+
+    **Strong signals:**
+    - **Diagnose first.** Lay the two definitions side by side (filters, time zone, dedup, grain, late data) and quantify how much each difference explains ("marketing excludes trial users: 70% of the gap; time zone: 25%").
+    - **Separate facts from decisions.** The data team explains the options and their consequences, and the business owner of the metric decides. If nobody owns it, getting an owner named *is* the outcome.
+    - **Make it durable.** One definition in code (a semantic layer or dbt metric), documented, with the old dashboards migrated or clearly labeled.
+    - **Keep relationships intact.** Nobody was publicly "wrong".
+
+    **Example spine:**
+
+    > "Sales and finance reported Q2 revenue 3% apart. I reconciled the two queries line by line: finance recognized annual contracts monthly, sales counted bookings, and sales also included a test account. I presented both as valid for different questions, and the CFO decided 'revenue' meant recognized revenue and sales would show 'bookings' under that name. I implemented both in our metrics layer and added a dashboard banner during the transition. The weekly 'which number is right' thread stopped."
+rubric:
+  - point: 'Diagnoses and quantifies the sources of the difference before debating'
+    weight: 3
+    topic: metrics
+  - point: 'Gets a decision from the right owner instead of deciding unilaterally'
+    weight: 2
+    topic: stakeholders
+  - point: 'Makes the definition durable (single definition in code, documentation, migration)'
+    weight: 2
+    topic: metrics
+  - point: 'Maintains trust and relationships'
+    weight: 1
+    topic: influence
+follow_ups:
+  - What if the business owner chose the definition you thought was wrong?
+  - How do you stop new conflicting definitions from appearing?

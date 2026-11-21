@@ -33,9 +33,11 @@ jobs:
           git diff --exit-code -- datasets/checksums.sha256 apps/website/static/datasets
       - name: SQL solutions match golden results
         run: python scripts/verify_sql.py
+      - name: Python solutions pass their tests
+        run: python scripts/verify_python.py
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm questions # validates every question YAML; fails on error
+      - run: pnpm questions # validates question YAML + docs frontmatter and question references
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

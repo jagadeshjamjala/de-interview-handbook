@@ -1,0 +1,43 @@
+id: modeling-one-big-table-tradeoffs
+title: Star schema or One Big Table for the BI layer?
+round: modeling
+topic: [one-big-table, star-schema, performance]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your analysts use a BI tool on a columnar cloud warehouse. They complain that joining `fct_orders` to six dimensions is slow and confusing, and ask for "one wide table with everything".
+
+  Do you build it? When is a One Big Table (OBT) the right call, and what do you lose?
+hints:
+  - Columnar storage changes the cost of wide tables. What does it not change?
+solution:
+  answer: |
+    **Usually yes, as a serving layer on top of the star, not instead of it.**
+
+    **Why OBT works on columnar warehouses:** queries read only the columns they touch, so 200 columns cost little until they're used. Pre-joining removes join cost and join *mistakes* (wrong key, fan-out) from every dashboard. BI tools and casual users find one table far easier.
+
+    **What you lose**
+    - **History semantics.** Flattening an SCD2 dimension means picking *one* version per row, usually the one at the fact's time. "Current region" vs "region at order time" must become two explicit columns, or one meaning silently wins.
+    - **Rebuild cost.** A change to a dimension attribute (customer renames segment) means updating every fact row, not one dimension row. With huge facts that's a big recurring bill, so OBTs are usually rebuilt incrementally or on a schedule.
+    - **Consistency.** Each OBT duplicates logic. Two OBTs that both define `region` will drift unless they're built from the same conformed dimensions.
+    - **Grain discipline.** Wide tables tempt people to add columns from a different grain (customer lifetime value on an order line), which invites double counting.
+
+    **Rule of thumb:** keep the star as the source of truth (staging → conformed dims and facts), and build OBTs per use case (`obt_orders_for_bi`) from it, with one stated grain, documented columns and an automated rebuild. Don't build one OBT for the whole company.
+rubric:
+  - point: 'Recommends OBT as a derived serving layer, keeping the star as source of truth'
+    weight: 2
+    topic: one-big-table
+  - point: 'Explains why columnar storage makes wide tables cheap to query'
+    weight: 1
+    topic: performance
+  - point: 'Names the loss of SCD/history semantics when flattening'
+    weight: 2
+    topic: star-schema
+  - point: 'Mentions rebuild cost and logic duplication/drift'
+    weight: 2
+    topic: one-big-table
+follow_ups:
+  - How would you build the OBT incrementally when a dimension attribute changes?
+  - The BI tool has a semantic layer. Does that change your answer?

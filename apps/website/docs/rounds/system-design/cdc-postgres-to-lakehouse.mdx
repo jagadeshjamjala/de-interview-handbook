@@ -1,0 +1,94 @@
+---
+title: CDC from Postgres to the lakehouse
+sidebar_position: 3
+description: Worked design for log-based change data capture from Postgres into Iceberg or Delta tables.
+levels: [mid, senior, lead]
+topic: [system-design, cdc, lakehouse]
+---
+
+# Worked design: CDC from Postgres to the lakehouse
+
+<LevelExpectations
+  mid="Explain log-based CDC vs polling, MERGE into a current-state table, and how deletes arrive."
+  senior="Cover the snapshot-to-stream handoff, ordering, replication slot risk, schema evolution and reconciliation."
+  lead="Add the operating model: who owns source schemas, how changes are announced, and how you roll CDC out across 50 services."
+/>
+
+<QuestionEmbed id="sd-cdc-postgres-to-lakehouse" />
+
+## 1. Requirements
+
+- **Sources:** about 200 tables in one Postgres cluster; the largest has 2B rows; 5k writes/s at peak.
+- **Freshness:** at most 10 minutes behind.
+- **Hard constraint:** don't hurt production. No long-running scans on the primary during business hours.
+- **Consumers:** analytics (current state), finance (history: "what did this order look like on date D").
+- **Correctness:** exact. The copy must match the source.
+
+## 2. Data contracts
+
+Every replicated table must have a **primary key**. Without one, updates and deletes can't be applied. Source teams agree to: announce breaking changes (renames, type changes) in advance, use additive changes by default, and never reuse a dropped column name with a different meaning.
+
+## 3. Ingestion: log-based CDC
+
+```
+Postgres WAL → logical replication slot → Debezium (Kafka Connect) → Kafka (topic per table, key = PK)
+                                                                      → merge job → Iceberg/Delta
+```
+
+**Why log-based, not polling** (`WHERE updated_at > last_run`)? Polling misses deletes, misses updates where nobody set `updated_at`, and puts query load on the source. The WAL already records every change, in commit order, at almost no extra cost.
+
+**Initial snapshot:** Debezium's **incremental snapshot** reads each table in primary-key chunks while the stream is already running, so there's no long lock and no gap. Snapshot rows and streamed changes can overlap; ordering by the source position (LSN) per key resolves it. The newest change wins.
+
+## 4. Storage and format
+
+Two tables per source table:
+
+- `orders_changes` (bronze) is **append-only**: every change event with `op` (c/u/d), before/after images, `source_lsn` and `commit_ts`. This is the history and the replay source.
+- `orders` (silver) is the **current state**, maintained by `MERGE` on the primary key.
+
+Iceberg or Delta give atomic MERGE, schema evolution and time travel on object storage.
+
+## 5. Transform: applying changes
+
+Every few minutes, per table:
+
+1. Read new change events since the last committed offset.
+2. **Keep only the last change per key** in the batch (highest `source_lsn`).
+3. `MERGE` into the current table: insert new keys, update existing ones, and delete (or set `is_deleted`) on `op = d`.
+4. Commit the Kafka offset **after** the table commit. If the job crashes between the two, the batch is reapplied. That's harmless because MERGE by key with "newest LSN wins" is idempotent.
+
+## 6. Serving
+
+Analysts query the current-state tables. Finance's "as of date D" uses table time travel for recent history, or a history model built from `orders_changes` (SCD2 with `valid_from` / `valid_to` from `commit_ts`) for anything older than snapshot retention.
+
+## 7. Quality
+
+- **Row counts and checksums** per table versus the source, daily, at a consistent point (for example from a read replica).
+- **Freshness:** lag between source `commit_ts` and the lakehouse commit, alerted above 10 minutes.
+- **Contract checks:** a schema change event that isn't additive pauses that table's pipeline and pages the owner, instead of corrupting data.
+
+## 8. Orchestration and backfill
+
+The merge jobs run continuously (or every few minutes) under an orchestrator that tracks per-table offsets. To **re-snapshot** one table (after a bug or a breaking change), trigger an incremental snapshot for just that table. The stream keeps flowing for the others.
+
+## 9. Failure modes
+
+| Failure | Why it's dangerous | Mitigation |
+|---|---|---|
+| Consumer stops reading | **The replication slot keeps WAL, and the primary's disk fills up** | Alert on slot lag; set `max_slot_wal_keep_size`; runbook to drop and re-snapshot |
+| Huge transaction (300M-row UPDATE) | Burst of events, MERGE takes hours | Autoscale merge job; for planned bulk changes, re-snapshot instead |
+| Column renamed | Old column stops updating silently | Contract: rename = add + backfill + drop; schema-change alert |
+| Table without PK | Can't apply updates/deletes | Block at onboarding; use `REPLICA IDENTITY FULL` only as a last resort |
+| Primary failover | Slot may be lost | Use failover-aware slots where supported; otherwise re-snapshot |
+
+## 10. Cost
+
+Frequent MERGEs create many small files and delete files. Schedule **compaction** and snapshot expiry. Tune merge frequency per table: hot tables every few minutes, quiet tables hourly. Kafka retention only needs to cover recovery time; bronze holds long-term history.
+
+## 11. What changes at 10×
+
+At 50k writes/s: more Kafka partitions per hot table, merge jobs split by table and partition, and maybe merge-on-read tables (deletes applied at read time, then compacted) to keep commits cheap. Cross-service rollout becomes the main problem, so build a self-serve onboarding with the contract checks built in.
+
+## Related practice
+
+<RelatedQuestions ids={["python-dedup-latest-events", "sql-build-scd2-from-change-log", "sql-transaction-status-as-of-cutoff", "modeling-customer-address-scd"]} />

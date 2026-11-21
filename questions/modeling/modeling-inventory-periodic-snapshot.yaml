@@ -1,0 +1,46 @@
+id: modeling-inventory-periodic-snapshot
+title: Inventory levels and semi-additive measures
+round: modeling
+topic: [periodic-snapshot, semi-additive-measures, fact-types]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  A retailer with 400 stores and 50,000 products wants:
+
+  - Stock on hand by store, product and day
+  - Average stock last month, and days of stock remaining
+  - Shrinkage (stock that disappears without a sale)
+
+  The source sends every stock movement (receipts, sales, transfers, adjustments). Design the facts, and explain how analysts must aggregate the stock measure.
+hints:
+  - Can you SUM stock on hand across days?
+solution:
+  answer: |
+    **Two facts.**
+
+    1. **fct_inventory_movement** is a **transaction fact**, one row per movement: `date_key`, `store_key`, `product_key`, `movement_type` (receipt, sale, transfer_in, transfer_out, adjustment), `quantity` (signed). Fully additive. Shrinkage is the sum of `adjustment` rows with a shrink reason.
+    2. **fct_inventory_daily** is a **periodic snapshot**, one row per store × product × day with `quantity_on_hand` at end of day, plus `quantity_received` and `quantity_sold` that day. It's built by cumulatively summing movements, and daily snapshots are cheap to query for "stock on 15 March".
+
+    **Semi-additive measure:** `quantity_on_hand` adds up across stores and products (total stock today) but **not across time**. Summing 30 daily snapshots gives 30× the stock. Across days, use the **average** (average stock last month), the **last** value (month-end stock) or min/max. Document this in the semantic layer so the default aggregation isn't SUM.
+
+    **Size:** 400 × 50,000 × 365 is about 7.3 billion rows a year. Common answers: snapshot only store-product pairs with any stock or movement, keep daily granularity for 13 months and monthly snapshots beyond, and partition by date.
+
+    **Days of stock remaining** = current on hand ÷ average daily sales over the last N days, computed from the snapshot.
+rubric:
+  - point: 'Pairs a movement transaction fact with a daily periodic snapshot, grains stated'
+    weight: 3
+    topic: fact-types
+  - point: 'Explains stock on hand is semi-additive (not summable over time) and the right aggregations'
+    weight: 3
+    topic: semi-additive-measures
+  - point: 'Estimates snapshot size and proposes a way to control it'
+    weight: 1
+    topic: periodic-snapshot
+  - point: 'Derives shrinkage from adjustment movements'
+    weight: 1
+    topic: fact-types
+follow_ups:
+  - A store's counts are corrected after an audit two weeks ago. How do the snapshots get fixed?
+  - How would you test that snapshots and movements stay in sync?

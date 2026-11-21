@@ -89,7 +89,59 @@ def ecommerce(r):
         for pid in r.sample(sorted(price), pick(r, [1, 2, 3, 4, 5], [35, 30, 18, 10, 7])):
             unit = price[pid] if r.random() < 0.85 else price[pid] * 9 // 10
             items.append((oid, pid, pick(r, [1, 2, 3, 4], [60, 25, 10, 5]), money(unit)))
-    return {"customers": customers, "products": products, "orders": orders, "order_items": items}
+
+    # Added later with their own random stream, so the tables above stay byte-identical.
+    r2 = random.Random(SEED + 100)
+    return {"customers": customers, "products": products, "orders": orders, "order_items": items,
+            "employees": employees(r2), "customer_addresses": address_log(r2, customers)}
+
+
+def employees(r):
+    """Company org chart: CEO -> VPs -> ... depth up to 4. Salary bands overlap between
+    depth 3 and 4, so some employees earn more than their manager."""
+    departments = ["Engineering", "Operations", "Marketing", "Finance", "Support"]
+    band = {0: 300_000, 1: 200_000, 2: 150_000, 3: 115_000, 4: 90_000}
+    rows = [(1, person(r), None, "Executive", band[0], date(2015, 3, 1))]
+    depth = {1: 0}
+    dept = {1: "Executive"}
+    for d in departments:
+        eid = len(rows) + 1
+        depth[eid], dept[eid] = 1, d
+        rows.append((eid, person(r), 1, d, band[1] + r.randint(-20_000, 20_000),
+                     day_between(r, date(2016, 1, 1), date(2019, 12, 31))))
+    while len(rows) < 120:
+        mgr = r.choice([e for e in depth if 1 <= depth[e] <= 3])
+        eid = len(rows) + 1
+        depth[eid], dept[eid] = depth[mgr] + 1, dept[mgr]
+        rows.append((eid, person(r), mgr, dept[mgr], band[depth[eid]] + r.randint(-25_000, 25_000),
+                     day_between(r, date(2018, 1, 1), date(2024, 11, 30))))
+    return rows
+
+
+def address_log(r, customers):
+    """Change log of customer country. The latest row equals customers.country. Some rows are
+    no-ops (same country re-recorded), which a correct SCD2 build must collapse."""
+    countries = ["US", "GB", "DE", "IN", "BR", "CA"]
+    rows = []
+    for cid, _, current, signup in customers:
+        moves = pick(r, [0, 1, 2], [72, 22, 6])
+        first_move = max(signup + timedelta(days=1), date(2024, 1, 15))
+        if first_move > date(2024, 12, 20):
+            moves = 0
+        dates = sorted({day_between(r, first_move, date(2024, 12, 20)) for _ in range(moves)})
+        history = [current]
+        for _ in dates:  # walk backwards: each earlier country differs from the next one
+            history.insert(0, r.choice([c for c in countries if c != history[0]]))
+        versions = list(zip([signup, *dates], history))
+        log = list(versions)
+        if r.random() < 0.08:  # no-op: re-record the country in effect, strictly between changes
+            i = r.randrange(len(versions))
+            start = versions[i][0] + timedelta(days=1)
+            end = (versions[i + 1][0] - timedelta(days=1)) if i + 1 < len(versions) else Y1
+            if start <= end:
+                log.append((day_between(r, start, end), versions[i][1]))
+        rows += [(cid, country, eff) for eff, country in sorted(log)]
+    return rows
 
 
 def rides(r):
@@ -217,6 +269,12 @@ INVARIANTS = {
         "SELECT COUNT(*) > 0 FROM orders WHERE customer_id IS NULL",
         "SELECT COUNT(*) > 0 FROM customers c WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id)",
         "SELECT COUNT(*) > 0 FROM (SELECT order_id FROM order_items GROUP BY 1 HAVING COUNT(*) > 1)",
+        "SELECT MAX(depth) >= 4 FROM (WITH RECURSIVE c AS (SELECT employee_id, 0 AS depth FROM employees WHERE manager_id IS NULL UNION ALL SELECT e.employee_id, c.depth + 1 FROM employees e JOIN c ON e.manager_id = c.employee_id) SELECT depth FROM c)",
+        "SELECT COUNT(*) > 0 FROM employees e JOIN employees m ON e.manager_id = m.employee_id WHERE e.salary > m.salary",
+        "SELECT COUNT(*) = 0 FROM (SELECT customer_id, arg_max(country, effective_date) AS latest FROM customer_addresses GROUP BY 1) a JOIN customers c USING (customer_id) WHERE a.latest <> c.country",
+        "SELECT COUNT(*) > 0 FROM (SELECT country = LAG(country) OVER (PARTITION BY customer_id ORDER BY effective_date) AS noop FROM customer_addresses) WHERE noop",
+        "SELECT COUNT(*) = 0 FROM (SELECT customer_id, effective_date FROM customer_addresses GROUP BY 1, 2 HAVING COUNT(*) > 1)",
+        "SELECT COUNT(*) > 0 FROM orders o JOIN customers c USING (customer_id) WHERE o.status = 'completed' AND c.country <> (SELECT a.country FROM customer_addresses a WHERE a.customer_id = o.customer_id AND a.effective_date <= o.order_date ORDER BY a.effective_date DESC LIMIT 1)",
     ],
     "rides": [
         "SELECT COUNT(*) < 366 FROM (SELECT DISTINCT CAST(requested_at AS DATE) FROM trips WHERE city = 'Seattle' AND status = 'completed')",

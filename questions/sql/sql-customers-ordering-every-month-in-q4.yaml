@@ -1,0 +1,36 @@
+id: sql-customers-ordering-every-month-in-q4
+title: Customers who ordered in every month of Q4
+round: sql
+topic: [relational-division, aggregation]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 10
+prompt: |
+  Table: `orders(order_id, customer_id, order_date, status)`
+
+  Return registered customers who placed at least one completed order in **each** of October, November and December 2024.
+
+  Output: `customer_id`. Order by `customer_id`.
+hints:
+  - Filter to Q4, then count the distinct months per customer.
+solution:
+  sql: |
+    SELECT customer_id
+    FROM orders
+    WHERE status = 'completed'
+      AND customer_id IS NOT NULL
+      AND order_date >= DATE '2024-10-01' AND order_date < DATE '2025-01-01'
+    GROUP BY customer_id
+    HAVING COUNT(DISTINCT DATE_TRUNC('month', order_date)) = 3
+    ORDER BY customer_id;
+  explanation: |
+    "In every one of N buckets" is **relational division**. The `GROUP BY … HAVING COUNT(DISTINCT bucket) = N` pattern is the readable way to do it. `COUNT(*) >= 3` is the usual wrong answer: three orders in October would pass.
+
+    Use a half-open date range (`>= start AND < next start`), not `BETWEEN … '2024-12-31'`. It stays correct if `order_date` ever becomes a timestamp.
+check:
+  order_matters: true
+follow_ups:
+  - Generalize to "ordered in every month since signup". What changes?
+  - Return customers who bought from every product category. Same pattern?

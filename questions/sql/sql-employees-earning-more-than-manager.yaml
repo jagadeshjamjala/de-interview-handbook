@@ -1,0 +1,31 @@
+id: sql-employees-earning-more-than-manager
+title: Employees who earn more than their manager
+round: sql
+topic: [self-joins]
+levels: [junior]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 10
+prompt: |
+  Table: `employees(employee_id, name, manager_id, department, salary, hired_date)`
+
+  Return every employee whose salary is higher than their direct manager's.
+
+  Output: `employee_id, salary, manager_id, manager_salary`. Order by `employee_id`.
+hints:
+  - 'Join the table to itself: one copy plays "employee", the other plays "manager".'
+solution:
+  sql: |
+    SELECT e.employee_id, e.salary, e.manager_id, m.salary AS manager_salary
+    FROM employees e
+    JOIN employees m ON m.employee_id = e.manager_id
+    WHERE e.salary > m.salary
+    ORDER BY e.employee_id;
+  explanation: |
+    A self-join with clear aliases. The join condition `m.employee_id = e.manager_id` reads as "m is e's manager". The inner join drops the CEO, who has no manager, which is what we want here. Say so, so the interviewer knows it's deliberate.
+check:
+  order_matters: true
+follow_ups:
+  - Include employees who earn more than *any* manager above them, not only the direct one.
+  - What index or clustering would you want if this table had 10 million rows?

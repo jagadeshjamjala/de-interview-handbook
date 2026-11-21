@@ -1,0 +1,48 @@
+id: modeling-bridge-table-joint-accounts
+title: Joint bank accounts and the many-to-many problem
+round: modeling
+topic: [bridge-tables, many-to-many, dimensional-modeling]
+levels: [senior]
+difficulty: hard
+companies: []
+time_minutes: 25
+prompt: |
+  A bank's `fct_account_balance_daily` has one row per account per day. An account can have several owners (joint accounts), and a customer can own several accounts.
+
+  The business asks two questions:
+
+  1. Total balances by customer segment
+  2. Number of customers with more than 100k in total balances
+
+  Design the model so both answers are right, and show what goes wrong with a naive join.
+hints:
+  - If an account with two owners joins to both, what happens to its balance in a SUM?
+solution:
+  answer: |
+    **The naive join double counts.** Joining the balance fact to customers through ownership gives one row per owner, so a joint account's 50k shows up as 100k in "total balances by segment".
+
+    **Use a bridge table:** `bridge_account_owner(account_key, customer_key, allocation_factor, valid_from, valid_to)`.
+
+    - **allocation_factor** splits each account across its owners so the factors per account sum to 1 (0.5 / 0.5 for two equal owners, or a legal share). For **totals** like balances by segment, multiply: `SUM(balance * allocation_factor)`. The grand total then equals the real bank total.
+    - For **"how much does this customer have access to"** (question 2), you intentionally *don't* allocate: each owner has access to the full balance. Use `SUM(balance)` per customer, and never add those numbers up across customers.
+    - **valid_from / valid_to** make the bridge SCD2, because owners are added and removed. Join on the balance date.
+
+    **Say this in the interview:** many-to-many has no single right total. The model must make the two meanings explicit (allocated vs full), name them differently in the semantic layer, and test that allocated totals reconcile to the account-level total.
+
+    A **group key** variant (`owner_group_key` on the fact pointing to a group of customers) also works and keeps the fact narrow when the same owner sets repeat often.
+rubric:
+  - point: 'Shows the double counting from a naive many-to-many join'
+    weight: 2
+    topic: many-to-many
+  - point: 'Introduces a bridge table with an allocation/weighting factor summing to 1'
+    weight: 3
+    topic: bridge-tables
+  - point: 'Distinguishes allocated totals from per-customer full-access sums'
+    weight: 2
+    topic: many-to-many
+  - point: 'Makes the bridge time-aware (owners change) and adds a reconciliation test'
+    weight: 1
+    topic: bridge-tables
+follow_ups:
+  - How would you expose both measures in a BI semantic layer so users can't add the wrong one?
+  - What other domains have this pattern (hint, patients and diagnoses, orders and promotions)?

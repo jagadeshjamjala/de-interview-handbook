@@ -1,0 +1,89 @@
+---
+title: Daily batch with backfills
+sidebar_position: 5
+description: Worked design for an idempotent daily batch pipeline with safe backfills and a quality gate before publishing.
+levels: [junior, mid, senior]
+topic: [system-design, batch, backfills, idempotency]
+---
+
+# Worked design: daily batch with backfills
+
+<LevelExpectations
+  junior="Explain logical dates and why overwriting a partition is safer than appending."
+  mid="Add raw retention for re-transforms, backfill throttling and a quality gate before publishing."
+  senior="Add lineage-driven backfills across downstream models, historical vs current dimensions, and SLA management."
+/>
+
+This is the most common design question for junior and mid candidates, and the most common source of real incidents. The goal is one property: **any day can be re-run at any time and give the same, correct result.**
+
+<QuestionEmbed id="sd-daily-batch-with-backfills" />
+
+## 1. Requirements
+
+- **Sources:** an orders API (paginated, rate-limited) and a vendor file on SFTP, both for "yesterday".
+- **Schedule:** start 02:00; dashboard reads at 07:00.
+- **Correctness:** executive revenue, so wrong is worse than late.
+- **History:** reruns of any range, from one day to a year.
+
+## 2. Data contracts
+
+The API supports filtering by `updated_at` and returns stable IDs. The vendor promises one file per day, named with the date, by 01:30. Write down what "yesterday" means (which time zone) before anything else. It's the most common silent bug in daily pipelines.
+
+## 3. Ingestion
+
+Each task takes a **logical date** `ds` as input, never "now":
+
+```
+extract_api(ds)    → raw/orders_api/dt=ds/part-*.json
+extract_vendor(ds) → raw/vendor/dt=ds/file.csv
+```
+
+Extraction pulls exactly the window for `ds` and writes it to a path that **includes** `ds`. Re-running overwrites that path.
+
+## 4. Storage and format
+
+Keep **raw extracts** for at least as long as you might backfill (for example 13 months). They're cheap, and they let you re-transform without hitting the API again. Modeled tables are partitioned by `ds`.
+
+## 5. Transform
+
+`transform(ds)` reads only `raw/*/dt=ds`, plus dimensions, and **overwrites** partition `ds` of `fct_orders` and `daily_revenue`. Never append. An append makes a re-run double the day.
+
+**Historical or current dimensions in a backfill?** It depends on the question. "Revenue by the region the customer had then" needs the dimension version valid on `ds` (SCD2). "Revenue by current region" uses today's. Decide per model and write it down.
+
+## 6. Serving
+
+The dashboard reads `daily_revenue` and shows "data as of" from a small metadata table updated at publish time.
+
+## 7. Quality: write-audit-publish
+
+1. **Write** to a staging location (`daily_revenue__staging` partition `ds`).
+2. **Audit:** row count versus the source, revenue within a band of the trailing 7-day average, no NULL keys, no duplicate order IDs, the vendor total ties to the vendor file's trailer.
+3. **Publish:** swap or overwrite the production partition only if every check passes. Otherwise alert, and keep showing yesterday's published data with a banner.
+
+## 8. Orchestration and backfill
+
+- In **Airflow** or **Dagster**, one DAG run per `ds`, with `catchup` for missed days. Tasks are idempotent, so retries are safe.
+- **Backfill** a range with the same DAG: `backfill --start 2024-03-01 --end 2024-05-31`. Put backfill runs in a **pool** with limited concurrency and lower priority than the daily run, and respect the API's rate limit. Re-transform from raw where possible.
+- Use **lineage** (dbt's graph or the orchestrator's asset graph) to find every downstream table that must be rebuilt for the backfilled range, and run them in dependency order.
+
+## 9. Failure modes
+
+| Failure | Detection | Recovery |
+|---|---|---|
+| Vendor file late | Sensor timeout at 05:00 | Alert vendor contact; publish API part with "partial" flag if agreed |
+| API returns partial data | Row-count check vs API's reported total | Retry extract for `ds` |
+| Bug found 9 days later | Someone notices | Fix, backfill 9 days from raw, downstream via lineage, done in an hour |
+| Job uses `now()` instead of `ds` | Backfilled days all get today's data | Code review rule plus a test that runs one historical `ds` |
+| Time zone mismatch | Revenue shifts between days | One agreed reporting time zone in the contract; test around midnight |
+
+## 10. Cost
+
+Re-transforming from raw is usually cheaper than re-extracting. Partition pruning keeps each daily run proportional to one day, not the whole table.
+
+## 11. What changes at 10×
+
+If one day takes too long, split `ds` into hours, or process incrementally by `updated_at` within the day with a final daily reconciliation. The idempotency rules stay the same.
+
+## Related practice
+
+<RelatedQuestions ids={["python-paginated-api-with-retries", "python-batched-csv-reader", "behavioral-production-incident", "sql-month-to-date-revenue"]} />

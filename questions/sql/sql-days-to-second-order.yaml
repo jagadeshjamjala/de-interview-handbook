@@ -1,0 +1,52 @@
+id: sql-days-to-second-order
+title: Days between a customer's first and second order
+round: sql
+topic: [window-functions, row-number]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 15
+prompt: |
+  Table: `orders(order_id, customer_id, order_date, status)`
+
+  Consider only completed orders from registered customers (`customer_id IS NOT NULL`). For every customer with at least two such orders, return the dates of their first and second order and the number of days between them. If two orders share a date, the lower `order_id` comes first.
+
+  Output: `customer_id, first_order_date, second_order_date, days_between`. Order by `customer_id`.
+hints:
+  - Number each customer's orders, then put order 1 and order 2 on the same row.
+solution:
+  sql: |
+    WITH numbered AS (
+      SELECT customer_id, order_date,
+             ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS n
+      FROM orders
+      WHERE status = 'completed' AND customer_id IS NOT NULL
+    )
+    SELECT f.customer_id,
+           f.order_date AS first_order_date,
+           s.order_date AS second_order_date,
+           DATE_DIFF('day', f.order_date, s.order_date) AS days_between
+    FROM numbered f
+    JOIN numbered s ON s.customer_id = f.customer_id AND s.n = 2
+    WHERE f.n = 1
+    ORDER BY f.customer_id;
+  explanation: |
+    `ROW_NUMBER` with a full tie-breaker (`order_date, order_id`) gives a stable "first" and "second". Then a self-join on `n = 1` and `n = 2` puts them side by side; the inner join drops customers with only one order, as asked.
+
+    `LEAD(order_date) OVER (…)` filtered to `n = 1` is an equally good answer with no self-join.
+check:
+  order_matters: true
+follow_ups:
+  - Return the median days-to-second-order per signup month. What would you watch out for with recent cohorts?
+  - Why does the tie-breaker matter for reproducible pipelines?
+dialect_notes:
+  snowflake:
+    note: '`DATEDIFF(day, first_order_date, second_order_date)`.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/datediff
+  bigquery:
+    note: '`DATE_DIFF(second_order_date, first_order_date, DAY)`. Note the argument order: end first.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_diff
+  sqlserver:
+    note: '`DATEDIFF(day, first_order_date, second_order_date)`.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/datediff-transact-sql
