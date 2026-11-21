@@ -23,6 +23,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm questions # validates every question YAML; fails on error
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

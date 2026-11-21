@@ -72,6 +72,7 @@ const config: Config = {
           position: 'left',
           label: 'Handbook',
         },
+        {to: '/questions', label: 'Questions', position: 'left'},
         {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: repoUrl,
@@ -85,7 +86,10 @@ const config: Config = {
       links: [
         {
           title: 'Handbook',
-          items: [{label: 'Start here', to: '/docs/start-here'}],
+          items: [
+            {label: 'Start here', to: '/docs/start-here'},
+            {label: 'Question bank', to: '/questions'},
+          ],
         },
         {
           title: 'Project',

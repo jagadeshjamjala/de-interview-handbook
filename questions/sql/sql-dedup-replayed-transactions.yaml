@@ -1,0 +1,48 @@
+id: sql-dedup-replayed-transactions
+title: Deduplicate replayed transactions
+round: sql
+topic: [deduplication, window-functions]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: payments
+time_minutes: 10
+prompt: |
+  Table: `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`
+
+  The ingestion job sometimes replays events, so one `txn_id` can appear several times. Each copy has a different `ingested_at`. The copy with the latest `ingested_at` is the truth, because `status` can change between copies (for example `pending` → `settled`).
+
+  Count the transactions per `status` after deduplication.
+
+  Output: `status, txn_count`. Order by `status`.
+hints:
+  - Number the copies of each `txn_id`, newest first, and keep number 1.
+solution:
+  sql: |
+    WITH latest AS (
+      SELECT *,
+             ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+      FROM transactions
+    )
+    SELECT status, COUNT(*) AS txn_count
+    FROM latest
+    WHERE rn = 1
+    GROUP BY status
+    ORDER BY status;
+  explanation: |
+    `SELECT DISTINCT` doesn't work here, because the copies differ in `status` and `ingested_at`. You need "one row per key, chosen by a rule", which is `ROW_NUMBER` partitioned by the key and ordered by the rule.
+
+    Counting `DISTINCT txn_id` per status is a common wrong answer: a transaction that went from `pending` to `settled` would be counted in both.
+check:
+  order_matters: true
+rubric:
+  - point: 'Explains why COUNT(DISTINCT txn_id) per status double-counts transactions whose status changed'
+    weight: 2
+    topic: deduplication
+follow_ups:
+  - Two copies have the same `ingested_at`. How do you make the result deterministic?
+  - How would you dedup incrementally each day instead of scanning the whole table?
+dialect_notes:
+  snowflake:
+    note: '`QUALIFY ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) = 1` removes the CTE.'
+    source: https://docs.snowflake.com/en/sql-reference/constructs/qualify

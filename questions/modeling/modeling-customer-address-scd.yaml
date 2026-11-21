@@ -1,0 +1,52 @@
+id: modeling-customer-address-scd
+title: Customer address history for finance and marketing
+round: modeling
+topic: [scd-type-2, scd-type-6, dimensional-modeling]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  Customers change their shipping address. Two teams use the same `dim_customer`:
+
+  - **Finance** reports revenue by the region the customer lived in *when they ordered*.
+  - **Marketing** targets customers by their *current* region.
+
+  The source system only keeps the current address and has an `updated_at` column.
+
+  Which slowly changing dimension type(s) do you use, and what does the table look like? How do you load it, and what goes wrong if a change arrives late?
+hints:
+  - The two teams need different answers from the same history. Can one table serve both without a self-join?
+solution:
+  answer: |
+    **SCD Type 2 for history, plus a Type 1 "current" column.** That combination is often called Type 6.
+
+    `dim_customer`: `customer_key` (surrogate), `customer_id` (natural), `region`, `address`, `current_region`, `valid_from`, `valid_to`, `is_current`.
+
+    - **Finance:** the fact table stores the `customer_key` that was valid at order time, so `fact_order → dim_customer.region` gives the region then.
+    - **Marketing:** `current_region` is overwritten on every version of the customer, so any row (or `is_current = true`) gives today's region without a self-join.
+
+    **Loading.** Because the source keeps only the current state, capture it with daily snapshots or CDC. Compare it to the current dimension row on the tracked columns (a hash of `region` + `address` is common). On a change: close the old row (`valid_to = change time`, `is_current = false`), insert a new row, and update `current_region` on all rows for that customer. Use `MERGE` in one transaction.
+
+    **Late-arriving changes.** If a change dated last week arrives today, orders loaded in between point to the wrong version. Either accept it (document that history is "as known at load time"), or insert the version at the right point in the timeline and re-key the affected fact rows. The second option is correct but expensive. Say which you'd pick and why.
+
+    **Pitfalls:** don't track noisy columns (like `last_login`) as Type 2, or the dimension explodes. Use a far-future `valid_to` (e.g. `9999-12-31`) rather than NULL, so range joins stay simple.
+rubric:
+  - point: 'Picks Type 2 for finance history and explains why Type 1 alone loses it'
+    weight: 2
+    topic: scd-type-2
+  - point: 'Serves the current region without a self-join (Type 6 / current column, or is_current view)'
+    weight: 2
+    topic: scd-type-6
+  - point: 'Fact rows carry the surrogate key valid at order time'
+    weight: 2
+    topic: scd-type-2
+  - point: 'Explains the load: detect change, close old row, insert new row, ideally in one MERGE'
+    weight: 1
+    topic: scd-type-2
+  - point: 'Addresses late-arriving changes and the re-keying trade-off'
+    weight: 2
+    topic: late-arriving-data
+follow_ups:
+  - How would you build this in dbt? What does a snapshot give you, and what doesn't it?
+  - A GDPR delete request comes in for a customer with 12 versions. What do you do?

@@ -1,0 +1,241 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/jagadeshjamjala/de-interview-handbook/schemas/question.schema.json",
+  "title": "DE Interview Handbook question",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "round",
+    "topic",
+    "levels",
+    "difficulty",
+    "companies",
+    "time_minutes",
+    "prompt",
+    "solution"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "#/definitions/slug"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "round": {
+      "enum": ["sql", "python", "modeling", "system-design", "tools", "behavioral"]
+    },
+    "topic": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/slug"
+      }
+    },
+    "levels": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["junior", "mid", "senior", "lead"]
+      }
+    },
+    "difficulty": {
+      "enum": ["easy", "medium", "hard"]
+    },
+    "companies": {
+      "description": "Only with a public source link.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "$ref": "#/definitions/url"
+          }
+        }
+      }
+    },
+    "dataset": {
+      "enum": ["ecommerce", "rides", "payments", "events"]
+    },
+    "time_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120
+    },
+    "prompt": {
+      "$ref": "#/definitions/text"
+    },
+    "hints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/text"
+      }
+    },
+    "solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sql": {
+          "$ref": "#/definitions/text"
+        },
+        "answer": {
+          "$ref": "#/definitions/text"
+        },
+        "explanation": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order_matters"],
+      "properties": {
+        "order_matters": {
+          "type": "boolean"
+        },
+        "float_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "rubric": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["point", "weight"],
+        "properties": {
+          "point": {
+            "type": "string",
+            "minLength": 3
+          },
+          "weight": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "topic": {
+            "$ref": "#/definitions/slug"
+          }
+        }
+      }
+    },
+    "follow_ups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/text"
+      }
+    },
+    "dialect_notes": {
+      "type": "object",
+      "propertyNames": {
+        "enum": ["snowflake", "bigquery", "databricks", "sqlserver", "teradata"]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["note", "source"],
+        "properties": {
+          "note": {
+            "$ref": "#/definitions/text"
+          },
+          "source": {
+            "$ref": "#/definitions/url"
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "url"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "$ref": "#/definitions/url"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "round": {
+            "const": "sql"
+          }
+        }
+      },
+      "then": {
+        "required": ["dataset", "check"],
+        "properties": {
+          "solution": {
+            "required": ["sql"],
+            "type": "object"
+          },
+          "rubric": {
+            "maxItems": 3,
+            "type": "array"
+          }
+        }
+      },
+      "else": {
+        "required": ["rubric"],
+        "not": {
+          "anyOf": [
+            {
+              "required": ["dataset"]
+            },
+            {
+              "required": ["check"]
+            }
+          ]
+        },
+        "properties": {
+          "solution": {
+            "required": ["answer"],
+            "not": {
+              "required": ["sql"],
+              "type": "object"
+            },
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https://\\S+$"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+id: modeling-ride-sharing-trips-star-schema
+title: Model trips for a ride-sharing app
+round: modeling
+topic: [grain, star-schema, dimensional-modeling]
+levels: [junior, mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 30
+prompt: |
+  You're the first data engineer at a ride-sharing app. Analysts want to answer:
+
+  - Trips and gross bookings by city per day and per hour
+  - Driver earnings per week
+  - Cancellation rate, split by who cancelled (rider or driver)
+  - Average rating given by riders to drivers, and by drivers to riders
+
+  Design the warehouse model: fact table(s), grain, dimensions and key measures. Say what you'd do about drivers who move to another city.
+hints:
+  - State the grain of each fact table in one sentence before listing any columns.
+  - Is a cancelled trip a different fact, or the same fact with a different status?
+solution:
+  answer: |
+    **Grain first.** `fact_trip`: one row per trip request, whether it ends completed or cancelled. Cancellations live in the same fact (`status`, `cancelled_by`, `cancelled_at`), so the cancellation rate is one `GROUP BY` and the denominator is right.
+
+    **fact_trip**
+    - Keys: `trip_id` (degenerate), `rider_key`, `driver_key` (NULL if no driver was assigned), `city_key`, `request_date_key`, `request_hour`
+    - Timestamps: `requested_at`, `accepted_at`, `completed_at`, `cancelled_at`, stored in UTC plus the city's local date for reporting
+    - Additive measures: `fare_amount`, `surge_amount`, `platform_fee`, `driver_payout`, `distance_km`, `duration_min`
+    - Status: `status`, `cancelled_by`
+
+    **Ratings.** Each trip can have two ratings in two directions, given at different times. Model `fact_trip_rating` at one row per trip per direction (`rated_by`: rider/driver, `score`). Putting two nullable columns on `fact_trip` also works, but then the fact row has to be updated after the trip closes.
+
+    **Dimensions:** `dim_date`, `dim_city` (timezone, country, region), `dim_rider`, `dim_driver`.
+
+    **Drivers who move:** make `dim_driver` an SCD Type 2 on `home_city` (and vehicle type), with `valid_from`, `valid_to`, `is_current`. Look up the driver key that was valid at `requested_at` when loading the fact, so history reports by the driver's city at the time.
+
+    **Driver earnings per week** come from summing `driver_payout` by `driver_key` and week, with no separate table. Add an aggregate later only if it's slow.
+rubric:
+  - point: 'States the grain of fact_trip (one row per trip request) before listing columns'
+    weight: 3
+    topic: grain
+  - point: 'Keeps cancellations in the same fact so the cancellation rate has the right denominator'
+    weight: 2
+    topic: grain
+  - point: 'Handles two-directional ratings (separate fact or two columns), with the trade-off stated'
+    weight: 1
+    topic: star-schema
+  - point: 'Uses SCD Type 2 for driver city and picks the key valid at trip time'
+    weight: 2
+    topic: scd-type-2
+  - point: 'Measures are additive money/distance/time columns; timestamps in UTC with a local reporting date'
+    weight: 1
+    topic: dimensional-modeling
+follow_ups:
+  - A trip is reassigned to a second driver mid-way. How does your grain cope?
+  - Surge pricing rules change weekly. Where does that history live?

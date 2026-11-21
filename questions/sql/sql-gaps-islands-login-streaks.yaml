@@ -1,0 +1,64 @@
+id: sql-gaps-islands-login-streaks
+title: Longest login streak per user
+round: sql
+topic: [gaps-and-islands, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: events
+time_minutes: 20
+prompt: |
+  Table: `logins(user_id, login_ts)`. A user can log in many times a day; each login is one row.
+
+  For each user who logged in at least once, return their longest streak of consecutive calendar days with at least one login.
+
+  Output: `user_id, streak_days`. Order by `user_id`.
+hints:
+  - Reduce to one row per user per day first.
+  - In a run of consecutive dates, the date minus its row number is the same value.
+solution:
+  sql: |
+    WITH login_days AS (
+      SELECT DISTINCT user_id, CAST(login_ts AS DATE) AS login_date
+      FROM logins
+    ),
+    grouped AS (
+      SELECT user_id,
+             login_date - CAST(ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY login_date) AS INTEGER) AS streak_key
+      FROM login_days
+    ),
+    streaks AS (
+      SELECT user_id, streak_key, COUNT(*) AS streak_days
+      FROM grouped
+      GROUP BY user_id, streak_key
+    )
+    SELECT user_id, MAX(streak_days) AS streak_days
+    FROM streaks
+    GROUP BY user_id
+    ORDER BY user_id;
+  explanation: |
+    This is the classic gaps-and-islands trick. Number each user's days 1, 2, 3, … in date order. Inside a streak, the date and the number both go up by 1 each step, so `date - number` stays constant. A gap in the dates changes it. That constant labels each island; count its rows and take the max.
+
+    Skipping the `DISTINCT` step is the usual bug: two logins on one day give two row numbers for one date and split the streak.
+check:
+  order_matters: true
+rubric:
+  - point: 'Reduces to one row per user per day before numbering'
+    weight: 2
+    topic: gaps-and-islands
+  - point: 'Explains why date minus row number is constant within a streak'
+    weight: 1
+    topic: gaps-and-islands
+follow_ups:
+  - How would you compute the current streak (ending today) instead of the longest?
+  - How would you maintain this incrementally in a daily pipeline?
+dialect_notes:
+  snowflake:
+    note: '`login_date - rn` works on DATE values; `DATEADD(day, -rn, login_date)` is the explicit form most teams prefer.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/dateadd
+  bigquery:
+    note: 'Use `DATE_SUB(login_date, INTERVAL rn DAY)`.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_sub
+  sqlserver:
+    note: 'Use `DATEADD(day, -rn, login_date)`; `date - int` is not valid for the `date` type.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/dateadd-transact-sql

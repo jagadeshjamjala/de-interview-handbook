@@ -1,0 +1,69 @@
+id: sql-sessionize-page-views
+title: Sessionize page views with a 30-minute timeout
+round: sql
+topic: [sessionization, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: events
+time_minutes: 20
+prompt: |
+  Table: `page_views(user_id, viewed_at, page)`
+
+  A session is a run of page views by one user where each view comes no more than 30 minutes after the previous one. A gap of **more than** 30 minutes starts a new session. Exactly 30 minutes stays in the same session.
+
+  Output: `user_id, session_count, avg_views_per_session` (rounded to 2 decimals). Order by `user_id`.
+hints:
+  - Compare each view with the previous one for the same user (`LAG`).
+  - Flag session starts with 1, then a running `SUM` of the flags numbers the sessions.
+solution:
+  sql: |
+    WITH flagged AS (
+      SELECT user_id,
+             viewed_at,
+             CASE
+               WHEN LAG(viewed_at) OVER w IS NULL THEN 1
+               WHEN viewed_at - LAG(viewed_at) OVER w > INTERVAL 30 MINUTE THEN 1
+               ELSE 0
+             END AS is_session_start
+      FROM page_views
+      WINDOW w AS (PARTITION BY user_id ORDER BY viewed_at)
+    ),
+    numbered AS (
+      SELECT user_id,
+             SUM(is_session_start) OVER (
+               PARTITION BY user_id ORDER BY viewed_at
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) AS session_no
+      FROM flagged
+    )
+    SELECT user_id,
+           COUNT(DISTINCT session_no) AS session_count,
+           ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT session_no), 2) AS avg_views_per_session
+    FROM numbered
+    GROUP BY user_id
+    ORDER BY user_id;
+  explanation: |
+    Sessionization is "flag the starts, then cumulative-sum the flags". `LAG` finds the gap to the previous view; a gap over 30 minutes, or no previous view at all, is a start. The running sum turns the flags into session numbers 1, 2, 3, ….
+
+    Watch the boundary: the prompt says *more than* 30 minutes, so use `>`, not `>=`.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Uses flag + running sum rather than a self-join to assign sessions'
+    weight: 2
+    topic: sessionization
+  - point: 'Handles the first view per user (LAG is NULL) and the exact-30-minute boundary'
+    weight: 1
+    topic: sessionization
+follow_ups:
+  - Sessions must also end at midnight UTC. What changes?
+  - How do you sessionize a stream where events arrive up to 10 minutes late?
+dialect_notes:
+  snowflake:
+    note: "`DATEDIFF('minute', a, b)` counts minute boundaries crossed, not elapsed minutes. Compare `DATEDIFF('second', a, b) > 1800` instead."
+    source: https://docs.snowflake.com/en/sql-reference/functions/datediff
+  bigquery:
+    note: 'Use `TIMESTAMP_DIFF(viewed_at, prev_viewed_at, SECOND) > 1800`.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_diff

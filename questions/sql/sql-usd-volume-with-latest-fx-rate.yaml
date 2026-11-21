@@ -1,0 +1,82 @@
+id: sql-usd-volume-with-latest-fx-rate
+title: Daily settled volume in USD using the latest FX rate
+round: sql
+topic: [as-of-joins, deduplication]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+dataset: payments
+time_minutes: 30
+prompt: |
+  Tables:
+
+  - `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`. It contains replays: keep only the copy with the latest `ingested_at` per `txn_id`.
+  - `fx_rates(rate_date, currency, usd_rate)`: 1 unit of `currency` = `usd_rate` USD. Rates are published on business days only. There is no row for USD.
+
+  For each day, return the total amount of **settled** transactions (`status = 'settled'` on the latest copy) converted to USD. Convert each transaction with the most recent rate on or before its transaction date.
+
+  Output: `txn_date, usd_volume` (rounded to 2 decimals). Order by `txn_date`.
+hints:
+  - An equi-join on `rate_date = txn_date` loses every weekend transaction.
+  - USD needs a rate of 1, not a missing join.
+solution:
+  sql: |
+    WITH latest AS (
+      SELECT *
+      FROM (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+        FROM transactions
+      ) t
+      WHERE rn = 1
+    ),
+    settled AS (
+      SELECT CAST(txn_ts AS DATE) AS txn_date, amount, currency
+      FROM latest
+      WHERE status = 'settled'
+    ),
+    priced AS (
+      SELECT s.txn_date,
+             s.amount * CASE
+               WHEN s.currency = 'USD' THEN 1
+               ELSE (
+                 SELECT f.usd_rate
+                 FROM fx_rates f
+                 WHERE f.currency = s.currency AND f.rate_date <= s.txn_date
+                 ORDER BY f.rate_date DESC
+                 LIMIT 1
+               )
+             END AS usd_amount
+      FROM settled s
+    )
+    SELECT txn_date, ROUND(SUM(usd_amount), 2) AS usd_volume
+    FROM priced
+    GROUP BY txn_date
+    ORDER BY txn_date;
+  explanation: |
+    There are three traps:
+
+    1. **Replays.** Dedup first. Otherwise a replayed transaction is summed twice, and a stale `pending` copy can hide a settlement.
+    2. **Non-business days.** Saturday's transactions need Friday's rate. That's an *as-of* lookup: the latest rate with `rate_date <= txn_date`. A correlated subquery is the portable form. Many engines also offer an `ASOF JOIN`, and a window-based alternative is to give each rate a `valid_to` with `LEAD(rate_date)` and range-join on it.
+    3. **The base currency.** USD has no rate row. An inner join would silently drop all USD volume.
+
+    At scale, precompute a daily rate table filled forward to every calendar day, then do a plain equi-join.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Uses the latest rate on or before the transaction date (handles weekends/holidays)'
+    weight: 2
+    topic: as-of-joins
+  - point: 'Dedupes replayed transactions before filtering and summing'
+    weight: 2
+    topic: deduplication
+  - point: 'Treats USD as rate 1 instead of dropping it'
+    weight: 1
+follow_ups:
+  - Finance restates a rate for last Tuesday. Which outputs must be recomputed, and how does your pipeline know?
+  - Would you store converted USD amounts in the fact table or convert at query time? Why?
+dialect_notes:
+  snowflake:
+    note: '`ASOF JOIN fx_rates f MATCH_CONDITION(s.txn_date >= f.rate_date) ON s.currency = f.currency` does the as-of lookup natively.'
+    source: https://docs.snowflake.com/en/sql-reference/constructs/asof-join
