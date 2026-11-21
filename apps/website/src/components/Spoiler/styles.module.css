@@ -22,3 +22,11 @@
 .body > :last-child {
   margin-bottom: 0;
 }
+
+.locked {
+  border: 1px dashed var(--ifm-color-emphasis-400);
+  border-radius: var(--ifm-global-radius);
+  padding: 0.5rem 0.75rem;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+}

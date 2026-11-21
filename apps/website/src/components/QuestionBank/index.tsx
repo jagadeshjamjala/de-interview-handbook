@@ -8,6 +8,7 @@ import {
   type Level,
   type Round,
 } from '@site/src/lib/questions';
+import {levelStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 
 const ALL = '';
@@ -40,7 +41,10 @@ function Filter({
 
 export default function QuestionBank(): ReactNode {
   const [round, setRound] = useState(ALL);
-  const [level, setLevel] = useState(ALL);
+  // Follows the navbar level until the reader picks a level here.
+  const [levelOverride, setLevel] = useState<string | null>(null);
+  const savedLevel = levelStore.use();
+  const level = levelOverride ?? savedLevel ?? ALL;
   const [topic, setTopic] = useState(ALL);
   const [difficulty, setDifficulty] = useState(ALL);
 

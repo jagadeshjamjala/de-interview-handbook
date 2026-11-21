@@ -38,3 +38,17 @@
     gap: 0.15rem;
   }
 }
+
+.mine {
+  background: var(--docusaurus-highlighted-code-line-bg);
+  margin: 0 -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  border-radius: var(--ifm-global-radius);
+}
+
+.you {
+  font-weight: 400;
+  color: var(--ifm-color-primary);
+  font-size: 0.85rem;
+}

@@ -24,6 +24,8 @@ Python (venv + `requirements.txt`, exact `==` pins): `python datasets/generate.p
 - **Unwritten sections are hidden.** Don't add stub pages. List them on the Roadmap page instead.
 - **localStorage** access is always wrapped in try/catch.
 - Keep the site static: no backend, no accounts, no cookie-banner analytics.
+- **DE 75** (`plans/de75.yaml`): the order is the study order. Live items are just `id` (+ optional `roles`); unwritten ones are `planned: true` with `round` and `title`. `pnpm questions` fails on unknown ids, duplicates, or per-round counts that don't match the targets. When you add a planned question, replace its planned entry with the real id.
+- **Browser state** goes through `src/lib/store.ts` (localStorage with try/catch, hydration-safe). Planner settings live in the URL so links reproduce plans; progress and level are per browser.
 
 ## Workflow
 One phase per session, then stop for review. From Phase 2 on: one branch and one PR per phase.
