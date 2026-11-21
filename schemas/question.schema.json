@@ -139,8 +139,26 @@
     },
     "follow_ups": {
       "type": "array",
+      "description": "Follow-up questions; optionally {q, a} with a short model answer (shown on flashcards).",
       "items": {
-        "$ref": "#/definitions/text"
+        "oneOf": [
+          {
+            "$ref": "#/definitions/text"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["q", "a"],
+            "properties": {
+              "q": {
+                "$ref": "#/definitions/text"
+              },
+              "a": {
+                "$ref": "#/definitions/text"
+              }
+            }
+          }
+        ]
       }
     },
     "dialect_notes": {

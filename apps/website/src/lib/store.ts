@@ -3,6 +3,7 @@
 import {useSyncExternalStore} from 'react';
 import type {Level} from './questions';
 import type {PlanInput} from './plan';
+import type {Progress} from './srs';
 
 export type Store<T> = {get: () => T; set: (v: T) => void; use: () => T};
 
@@ -41,3 +42,8 @@ export const levelStore = createStore<Level | null>('deih.level', null);
 export const mockModeStore = createStore<boolean>('deih.mockMode', false);
 export const progressStore = createStore<Record<string, true>>('deih.progress', {});
 export const plannerStore = createStore<Partial<PlanInput> | null>('deih.planner', null);
+export const flashcardStore = createStore<Progress>('deih.flashcards', {});
+export const newCardsStore = createStore<{day: string; count: number}>('deih.flashcards.new', {
+  day: '',
+  count: 0,
+});

@@ -112,9 +112,17 @@ export default function QuestionCard({
           <>
             <Heading as="h3">Follow-ups</Heading>
             <ul>
-              {q.follow_ups.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
+              {q.follow_ups.map((f) =>
+                typeof f === 'string' ? (
+                  <li key={f}>{f}</li>
+                ) : (
+                  <li key={f.q}>
+                    {f.q}
+                    <br />
+                    <span className={styles.muted}>{f.a}</span>
+                  </li>
+                ),
+              )}
             </ul>
           </>
         )}

@@ -48,8 +48,8 @@ main p a:not(.button),
   text-underline-offset: 0.15em;
 }
 
-/* Desktop navbar is crowded below 1440px: show the logo alone instead of a truncated title. */
-@media (min-width: 997px) and (max-width: 1439px) {
+/* Desktop navbar is crowded below 1180px: show the logo alone instead of a truncated title. */
+@media (min-width: 997px) and (max-width: 1179px) {
   .navbar__title {
     display: none;
   }

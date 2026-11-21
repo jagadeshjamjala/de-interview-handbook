@@ -144,3 +144,12 @@ for (const [name, files] of [
     assert.ok(run(files).errors.length > 0, 'expected an error');
   });
 }
+
+test('follow-ups can be plain strings or {q, a}', () => {
+  const ok =
+    modeling +
+    'follow_ups:\n  - Plain follow-up?\n  - q: With an answer?\n    a: Yes, like this.\n';
+  assert.deepEqual(run({'modeling/modeling-ok.yaml': ok}).errors, []);
+  const bad = modeling + 'follow_ups:\n  - q: Missing the answer?\n';
+  assert.ok(run({'modeling/modeling-ok.yaml': bad}).errors.length > 0);
+});

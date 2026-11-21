@@ -286,7 +286,7 @@ Write original content, levels-tagged, for:
 1. ✅ Remaining 20 DE 75 questions (5 Python, 5 system design with worked designs, 10 tools) → DE 75 at 75/75
 2. ✅ Tool deep-dive pages (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)
 3. ✅ Python playground (Pyodide, self-hosted)
-4. 🚧 Flashcards from `follow_ups`
+4. ✅ Flashcards from `follow_ups` (prompts now; optional `{q, a}` answers can be added per follow-up)
 
 **Deferred to future builds (decided):** incident drills, company interview loops, skill radar, pipeline design canvas, custom domain, DataEngTube/DataEngReads cross-links (waiting on links).
 
