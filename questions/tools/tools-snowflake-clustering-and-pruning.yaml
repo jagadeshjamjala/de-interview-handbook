@@ -1,0 +1,52 @@
+id: tools-snowflake-clustering-and-pruning
+title: Snowflake micro-partitions, clustering and pruning
+round: tools
+topic: [snowflake, partition-pruning, performance, cost]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A 9 TB Snowflake table `events` is loaded hourly in arrival order. Dashboards filter it by `event_date` and are fast. A new product query filters by `account_id` (about 2 million distinct values) and scans almost the whole table.
+
+  Explain micro-partitions and pruning, why the two queries behave so differently, and whether you'd add a clustering key. What would you check first, and what does clustering cost?
+hints:
+  - What metadata does Snowflake keep per micro-partition?
+  - How is the table naturally ordered?
+solution:
+  answer: |
+    **Micro-partitions.** Snowflake stores tables in immutable micro-partitions (roughly 50–500 MB of uncompressed data each) and keeps metadata per partition, including each column's **min and max**. A query with a filter skips every partition whose min/max range can't match. That's **pruning**.
+
+    **Why the queries differ.** Data is loaded hourly in arrival order, so it's **naturally clustered by time**: each partition covers a narrow range of `event_date` and pruning works well. `account_id` values are scattered across all partitions, so almost every partition's min/max range contains any given account, and nothing is pruned.
+
+    **What to check first.** In the query profile, compare *partitions scanned* with *partitions total*. Run `SYSTEM$CLUSTERING_INFORMATION('events', '(account_id)')` to see overlap and depth for that column.
+
+    **Options:**
+
+    - **Clustering key**, for example `CLUSTER BY (event_date, account_id)` or with an expression. **Automatic Clustering** then reorganizes partitions in the background. That costs **credits** continuously, especially on a table with constant inserts, and can undo the natural time ordering if you pick the wrong key order. Worth it for very large tables queried often with selective filters that don't match load order.
+    - **Search Optimization Service** suits highly selective **point lookups** (`WHERE account_id = …`) on high-cardinality columns better than clustering does, and is billed separately.
+    - A **separate table or materialized view** ordered by account, if only one workload needs it.
+    - Make sure the query actually filters on the raw column (wrapping it in a function or casting it can defeat pruning).
+
+    **Don't** cluster small tables, or tables already pruning well. Measure the credits spent against the query time saved.
+rubric:
+  - point: 'Explains micro-partitions with min/max metadata and pruning'
+    weight: 2
+    topic: partition-pruning
+  - point: 'Explains natural clustering by load order vs scattered account_id'
+    weight: 2
+    topic: snowflake
+  - point: 'Checks partitions scanned vs total and clustering information before acting'
+    weight: 2
+    topic: performance
+  - point: 'Weighs clustering keys (and their ongoing credit cost) vs search optimization for point lookups'
+    weight: 3
+    topic: cost
+follow_ups:
+  - Clustering costs are higher than expected. How do you find out which tables are responsible?
+  - How does this compare to BigQuery clustering or Delta Z-ordering?
+resources:
+  - title: Snowflake docs — Micro-partitions & data clustering
+    url: https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions
+  - title: Snowflake docs — Clustering keys & clustered tables
+    url: https://docs.snowflake.com/en/user-guide/tables-clustering-keys

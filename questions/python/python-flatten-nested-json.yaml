@@ -1,0 +1,80 @@
+id: python-flatten-nested-json
+title: Flatten nested JSON records into rows
+round: python
+topic: [parsing, recursion, json]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+time_minutes: 20
+prompt: |
+  An API returns nested JSON records. Before loading them into a warehouse table, flatten each record into a single-level dict.
+
+  Write `flatten(record, sep=".")`:
+
+  - Nested dicts become dotted keys: `{"user": {"id": 1}}` → `{"user.id": 1}`.
+  - Lists are flattened by index: `{"tags": ["a", "b"]}` → `{"tags.0": "a", "tags.1": "b"}`.
+  - Empty dicts and empty lists are kept as values (`{}` / `[]`), so the key isn't lost.
+  - If two paths produce the same key (for example `{"a.b": 1, "a": {"b": 2}}`), raise `ValueError` instead of silently overwriting.
+  - `record` must be a dict; otherwise raise `TypeError`.
+hints:
+  - A small recursive helper that carries the key prefix is enough.
+  - Check whether a key already exists before writing it.
+solution:
+  python: |
+    def flatten(record, sep="."):
+        if not isinstance(record, dict):
+            raise TypeError("record must be a dict")
+        out = {}
+
+        def walk(value, key):
+            if isinstance(value, dict) and value:
+                for k, v in value.items():
+                    walk(v, f"{key}{sep}{k}")
+            elif isinstance(value, list) and value:
+                for i, v in enumerate(value):
+                    walk(v, f"{key}{sep}{i}")
+            else:
+                if key in out:
+                    raise ValueError(f"key collision: {key!r}")
+                out[key] = value
+
+        for k, v in record.items():
+            walk(v, str(k))
+        return out
+  explanation: |
+    A recursive walk that carries the key prefix handles any depth. Two details separate a good answer from a quick one:
+
+    - **Empty containers.** Recursing into `{}` or `[]` produces no keys at all, so the field silently disappears. Keep them as values.
+    - **Collisions.** Real payloads sometimes contain keys with dots in them. Overwriting would lose data without a trace, so fail loudly and let the caller pick a different `sep`.
+
+    Python's default recursion limit (about 1,000 levels) is far beyond any real JSON nesting. Mention it, but an explicit stack isn't needed here.
+tests: |
+  assert flatten({}) == {}
+  assert flatten({"a": 1, "b": None}) == {"a": 1, "b": None}
+  assert flatten({"user": {"id": 1, "geo": {"country": "DE"}}}) == {"user.id": 1, "user.geo.country": "DE"}
+  assert flatten({"tags": ["x", {"k": 2}]}) == {"tags.0": "x", "tags.1.k": 2}
+  assert flatten({"meta": {}, "items": []}) == {"meta": {}, "items": []}
+  assert flatten({"a": {"b": 1}}, sep="__") == {"a__b": 1}
+  try:
+      flatten({"a.b": 1, "a": {"b": 2}})
+      raise AssertionError("collision not detected")
+  except ValueError:
+      pass
+  try:
+      flatten([1, 2])
+      raise AssertionError("non-dict accepted")
+  except TypeError:
+      pass
+rubric:
+  - point: 'Recursive (or stack-based) walk that handles dicts and lists at any depth'
+    weight: 2
+    topic: recursion
+  - point: 'Keeps empty dicts/lists instead of dropping the key'
+    weight: 1
+    topic: json
+  - point: 'Detects key collisions instead of silently overwriting'
+    weight: 2
+    topic: parsing
+follow_ups:
+  - The warehouse needs one row per element of `items` instead of `items.0`, `items.1`. How would you "explode" lists into rows?
+  - New keys appear every week. How does this interact with a fixed table schema?

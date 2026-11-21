@@ -1,0 +1,46 @@
+id: sd-legacy-to-cloud-migration
+title: Legacy (Teradata / Ab Initio) to cloud migration
+round: system-design
+topic: [migrations, planning, validation]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/legacy-to-cloud-migration
+prompt: |
+  A bank runs 1,800 Ab Initio graphs and 6,000 Teradata SQL scripts that feed regulatory reports, finance and 400 BI dashboards. The Teradata contract ends in 18 months. Leadership has chosen a cloud warehouse plus dbt and an orchestrator.
+
+  Plan the migration: how you scope it, what moves first, how you prove the new system produces the same numbers, how you cut over, and what can derail it.
+hints:
+  - Not everything should move. How do you find out what's actually used?
+  - 'Same numbers has to be checked automatically, every day, for weeks. How?'
+solution:
+  answer: |
+    **Inventory and cut:** collect lineage and usage from query logs, scheduler metadata and job definitions. Map every job to its consumers, and retire what nobody reads. Typically a large share of legacy jobs are dead or duplicated.
+
+    **Plan by domain, not by technology:** migrate whole data products (for example deposits → finance reports) in waves, so each wave can be validated and cut over independently. Start with a valuable but non-regulatory domain to build the patterns (ingestion templates, dbt conventions, the testing harness), then do regulatory reports when the process is proven.
+
+    **Translate, don't lift-and-shift blindly:** automated SQL dialect conversion for the bulk, hand-rewrite of complex graphs, and a catalog of semantic differences (NULL handling, date/time zones, rounding, collation, implicit casts).
+
+    **Prove parity:** run old and new in parallel. A comparison harness checks row counts, key-level diffs and aggregates within tolerances every day, with every difference triaged. Cut over a domain only after N clean days, with sign-off from the data owners and a rollback plan. Decommission jobs as they are cut over.
+
+    **Risks:** scope creep ("while we're at it…"), hidden consumers (extracts, spreadsheets), key people leaving, regulators, and the deadline. Track burn-down per domain against the contract date.
+rubric:
+  - point: 'Inventory with usage/lineage to retire unused jobs before migrating'
+    weight: 3
+    topic: migrations
+  - point: 'Sequences by business domain in waves, starting with a lower-risk domain to build patterns'
+    weight: 2
+    topic: planning
+  - point: 'Automated parallel-run comparison with tolerances and triage before each cutover'
+    weight: 3
+    topic: validation
+  - point: 'Handles dialect and semantic differences (NULLs, time zones, rounding, casts)'
+    weight: 2
+    topic: migrations
+  - point: 'Cutover with sign-off, rollback and decommissioning; risks and deadline tracking'
+    weight: 2
+    topic: planning
+follow_ups:
+  - Halfway through, the parallel run shows a 0.02% difference in a regulatory total. What do you do?
+  - How do you keep business teams from adding new jobs to the legacy system during the migration?

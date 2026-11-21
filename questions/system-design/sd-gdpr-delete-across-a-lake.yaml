@@ -1,0 +1,44 @@
+id: sd-gdpr-delete-across-a-lake
+title: GDPR delete across a data lake
+round: system-design
+topic: [privacy, data-governance, lakehouse]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/gdpr-delete-across-a-lake
+prompt: |
+  The legal team says: "When a customer asks to be forgotten, we must erase their personal data everywhere within 30 days, and be able to prove it." The data platform has raw event files in object storage (Parquet and JSON, about 2 PB), lakehouse tables (Iceberg), a warehouse, ML training snapshots and backups. About 3,000 erasure requests arrive per month.
+
+  Design how erasure works end to end.
+hints:
+  - Can you find every place one person's data lives? If not, that's the first problem.
+  - Rewriting petabytes for each request doesn't scale. What can you batch, and what can you avoid storing at all?
+solution:
+  answer: |
+    **Know where the data is:** a catalog of datasets tagged with PII columns and the subject key (customer_id, email hash). Without this inventory, erasure can't be proven.
+
+    **Reduce what needs deleting:** keep direct identifiers in a few governed tables. Elsewhere, use a **pseudonymous key**, and encrypt PII with **per-customer keys** (crypto-shredding: deleting the key makes all copies unreadable, including backups).
+
+    **Process requests in batches:** a request service records each request, then a weekly job deletes from every registered dataset. Use row-level deletes in lakehouse tables (Iceberg/Delta `DELETE`, followed by compaction and snapshot expiry so old files really disappear), `DELETE` in the warehouse, rewrite raw files partition by partition, and exclude or retrain affected ML snapshots per policy.
+
+    **Prove it:** an audit log per request (dataset, rows removed, timestamp), and verification queries that confirm zero rows remain. Retention rules for snapshots and time travel must be shorter than the legal deadline, or the deleted data stays readable in history.
+rubric:
+  - point: 'Starts with a data inventory: PII tagging and subject keys across all stores'
+    weight: 3
+    topic: data-governance
+  - point: 'Minimizes PII spread: pseudonymous keys, crypto-shredding for backups and copies'
+    weight: 2
+    topic: privacy
+  - point: 'Batched deletes with lakehouse row-level deletes plus compaction and snapshot expiry'
+    weight: 3
+    topic: lakehouse
+  - point: 'Handles time travel, backups and ML training data explicitly'
+    weight: 2
+    topic: privacy
+  - point: 'Auditable: per-request log and verification that no rows remain'
+    weight: 2
+    topic: data-governance
+follow_ups:
+  - An analyst exported a CSV of customer emails to their laptop last year. Is that your problem, and what controls would prevent it?
+  - How do you erase someone from an aggregated table (for example daily revenue by country)?

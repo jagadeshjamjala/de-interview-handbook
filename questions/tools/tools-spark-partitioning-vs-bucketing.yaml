@@ -1,0 +1,51 @@
+id: tools-spark-partitioning-vs-bucketing
+title: Spark partitioning vs bucketing for joins
+round: tools
+topic: [spark, partitioning, bucketing]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Every night a Spark job joins `transactions` (2 TB, keyed by `account_id`) with `accounts` (200 GB) and aggregates per account. Both tables are written by your team. Someone suggests `partitionBy("account_id")` on both tables to speed up the join.
+
+  Explain the difference between partitioning and bucketing on write, why the suggestion is a bad idea, and what you'd do instead.
+hints:
+  - How many directories and files does partitioning by a high-cardinality column create?
+  - What would let Spark skip the shuffle of a sort-merge join?
+solution:
+  answer: |
+    **Partitioning on write** (`df.write.partitionBy("col")`) creates **one directory per distinct value**. Queries that filter on that column skip the other directories (partition pruning). It's ideal for **low-cardinality filter columns** such as `event_date`.
+
+    **Why `partitionBy("account_id")` is bad:** with millions of accounts you get millions of directories and **tiny files**. Listing and opening them dominates the job, metadata (the metastore or table-format manifests) explodes, and the join still has to shuffle. Partitioning helps filtering, not joining.
+
+    **Bucketing** (`bucketBy(n, "account_id")` with `saveAsTable`) hashes rows into a **fixed number of buckets** per partition and records that in the table metadata. When **both** sides are bucketed (and optionally sorted) on the join key with the **same number of buckets**, Spark can join bucket *i* to bucket *i* directly: **no shuffle** for the sort-merge join, and aggregations by the key avoid an exchange too. That suits a join that repeats every night on the same key.
+
+    **Caveats:**
+
+    - Bucketing needs a metastore-backed table (`saveAsTable`) and Spark's bucket semantics. Other engines may ignore it, and table formats handle it differently (Iceberg has a `bucket` partition transform; Delta favors clustering and Z-ordering instead of Hive-style bucketing).
+    - Bucket counts must match. Changing them means rewriting the table.
+    - Writes are slower because data must be shuffled into buckets, so the saving only pays off if the table is read and joined often.
+
+    **Other options to consider first:** partition both tables by **date** and join only the new date's transactions with `accounts`; broadcast a filtered, projected `accounts` if it fits; and let AQE optimize the shuffle.
+rubric:
+  - point: 'Explains partitionBy = directory per value, good for low-cardinality filters'
+    weight: 2
+    topic: partitioning
+  - point: 'Identifies small files/metadata explosion from partitioning by a high-cardinality key'
+    weight: 2
+    topic: partitioning
+  - point: 'Explains bucketing: same key and bucket count on both sides avoids the shuffle'
+    weight: 3
+    topic: bucketing
+  - point: 'States bucketing caveats (metastore, fixed counts, write cost, engine support) and alternatives'
+    weight: 2
+    topic: spark
+follow_ups:
+  - How would you choose the number of buckets?
+  - The data moves to Iceberg. What replaces bucketing there?
+resources:
+  - title: Spark docs — Bucketing, sorting and partitioning
+    url: https://spark.apache.org/docs/latest/sql-data-sources-load-save-functions.html#bucketing-sorting-and-partitioning
+  - title: Apache Iceberg — Partitioning (bucket transform)
+    url: https://iceberg.apache.org/docs/latest/partitioning/

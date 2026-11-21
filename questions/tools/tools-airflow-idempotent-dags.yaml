@@ -1,0 +1,63 @@
+id: tools-airflow-idempotent-dags
+title: Writing idempotent, backfillable Airflow DAGs
+round: tools
+topic: [airflow, orchestration, idempotency, backfills]
+levels: [junior, mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A teammate's Airflow DAG loads "yesterday's" orders like this:
+
+  ```python
+  def load():
+      day = datetime.now().date() - timedelta(days=1)
+      rows = api.fetch(day)
+      warehouse.insert("orders", rows)
+  ```
+
+  It works every night, but rerunning a failed day or backfilling last month gives wrong data. Explain why, and how to write the DAG so any run can be retried or backfilled safely. Cover the Airflow features you'd use.
+hints:
+  - What date does this task process when you rerun last Tuesday's run today?
+  - What does running it twice do to the table?
+solution:
+  answer: |
+    **Two bugs:**
+
+    1. **It uses the wall clock.** `datetime.now()` makes the task process "yesterday relative to when it runs", not the interval the run is for. A rerun of last Tuesday loads today's yesterday. Every backfill run loads the same day.
+    2. **It appends.** `insert` on a retry or rerun duplicates the day's rows.
+
+    **The fix: pure functions of the run's interval, plus idempotent writes.**
+
+    - Use the run's **data interval**: `data_interval_start` / `data_interval_end` (or the `{{ ds }}` template / `logical_date` in the context). Every run, including backfills and retries, then processes exactly its own window.
+    - **Overwrite** that window: write to a partition for the date (or `DELETE … WHERE day = ds` + `INSERT` in one transaction, or `MERGE` on a key). Running a day twice gives the same result.
+    - Land raw extracts under a path that includes the date, so reprocessing doesn't need to hit the API again.
+
+    **Airflow features that help:**
+
+    - `catchup=True` with a `start_date` creates runs for missed intervals; `airflow dags backfill -s … -e …` (or the backfill feature in newer versions) reruns a range.
+    - `max_active_runs` and **pools** limit how many backfill runs hit the source at once.
+    - `retries` with `retry_delay` for transient failures, which is only safe because the task is idempotent.
+    - **Deferrable sensors** to wait for upstream files without holding a worker slot.
+    - Keep heavy work out of the DAG file's top level. It's parsed constantly by the scheduler.
+rubric:
+  - point: 'Identifies wall-clock time as the backfill/rerun bug and uses the data interval / logical date'
+    weight: 3
+    topic: orchestration
+  - point: 'Makes writes idempotent: overwrite the partition, delete+insert, or MERGE'
+    weight: 3
+    topic: idempotency
+  - point: 'Uses Airflow features correctly: catchup/backfill, max_active_runs or pools, retries'
+    weight: 2
+    topic: airflow
+  - point: 'Mentions keeping raw extracts per date and avoiding top-level DAG code'
+    weight: 1
+    topic: backfills
+follow_ups:
+  - The task depends on a dimension table that changes over time. In a backfill, should it read today's version or the historical one?
+  - How would you make a backfill of 90 days finish overnight without starving the daily run?
+resources:
+  - title: Airflow — Best practices
+    url: https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html
+  - title: Airflow — Templates reference (data interval, ds)
+    url: https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html

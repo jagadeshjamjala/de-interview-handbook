@@ -281,6 +281,15 @@ Write original content, levels-tagged, for:
 **Done when:** live at `https://jagadeshjamjala.github.io/de-interview-handbook/`; search works on the deployed site; Lighthouse targets met; README has screenshots + "How to contribute a question" in 5 steps.
 
 ### Phase 7 (v2 backlog — after launch)
+
+**Status (2026-11-21):** in progress, one PR per item:
+1. ✅ Remaining 20 DE 75 questions (5 Python, 5 system design with worked designs, 10 tools) → DE 75 at 75/75
+2. 🚧 Tool deep-dive pages (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)
+3. 🚧 Python playground (Pyodide, self-hosted)
+4. 🚧 Flashcards from `follow_ups`
+
+**Deferred to future builds (decided):** incident drills, company interview loops, skill radar, pipeline design canvas, custom domain, DataEngTube/DataEngReads cross-links (waiting on links).
+
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist
 - Incident drills: branching "what do you check next?" scenarios

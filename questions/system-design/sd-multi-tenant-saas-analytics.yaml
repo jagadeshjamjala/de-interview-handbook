@@ -1,0 +1,44 @@
+id: sd-multi-tenant-saas-analytics
+title: Multi-tenant SaaS analytics
+round: system-design
+topic: [multi-tenancy, serving, data-security]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/multi-tenant-saas-analytics
+prompt: |
+  A B2B SaaS product (about 4,000 customer companies, from 5-seat startups to 50,000-seat enterprises) wants an in-product analytics tab. Each customer sees dashboards about their own usage, with sub-second loads, fresh to within 15 minutes. A few enterprises want a daily export of their raw data to their own warehouse. One customer must never see another customer's data.
+
+  Design the data model, storage, serving layer and isolation.
+hints:
+  - Where is tenant isolation enforced, and what happens if one query forgets a filter?
+  - Small and large tenants have very different volumes. Does one design fit both?
+solution:
+  answer: |
+    **Ingestion and model:** product events land per tenant (`tenant_id` on every record) through the usual event pipeline. Models are built once with `tenant_id` as the leading key of every table, plus pre-aggregated tables at the grains the dashboards use (tenant × day × feature).
+
+    **Serving:** in-product dashboards need predictable sub-second latency and high concurrency, which is a poor fit for a general warehouse. Serve from a real-time OLAP store (ClickHouse, Druid, Pinot) or a cache of pre-aggregates, partitioned or sorted by `tenant_id`. An API layer between the product and the store injects the tenant from the authenticated session.
+
+    **Isolation in depth:** the tenant comes from the auth token, never from the request; the API adds the tenant filter itself; row-level security in the store enforces it again; and automated tests try cross-tenant access. Very large or regulated tenants can get dedicated tables or clusters (the "noisy neighbor" and compliance answer).
+
+    **Exports:** a per-tenant daily export to the customer's cloud storage, or warehouse data sharing, filtered by tenant, with its own audit log.
+rubric:
+  - point: 'tenant_id as a first-class key in every table and pre-aggregates at dashboard grain'
+    weight: 2
+    topic: multi-tenancy
+  - point: 'Chooses a low-latency, high-concurrency serving store (OLAP/cache) behind an API'
+    weight: 2
+    topic: serving
+  - point: 'Isolation in depth: tenant from auth, enforced by API and row-level security, tested'
+    weight: 3
+    topic: data-security
+  - point: 'Handles noisy neighbors and big tenants (dedicated resources, partitioning)'
+    weight: 2
+    topic: multi-tenancy
+  - point: 'Per-tenant exports or sharing with auditing'
+    weight: 1
+    topic: data-security
+follow_ups:
+  - The product team wants each customer to define custom metrics. What changes?
+  - How do you charge back serving cost per tenant?

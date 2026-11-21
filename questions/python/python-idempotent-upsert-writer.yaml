@@ -1,0 +1,92 @@
+id: python-idempotent-upsert-writer
+title: An idempotent batch upsert writer
+round: python
+topic: [idempotency, cdc, upserts]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  A CDC feed delivers batches of changes. Batches can be **replayed** after a crash, and changes can arrive **out of order**. Each change is a dict with `id`, `updated_at` (comparable), `op` (`"upsert"` or `"delete"`) and, for upserts, other fields.
+
+  Write `apply_batch(table, batch)` that applies a batch to `table` (a dict from `id` to row, modified in place) and returns counts `{"inserted", "updated", "deleted", "skipped"}`:
+
+  - A change applies only if its `updated_at` is **newer** than what the table already has for that id. Equal or older changes are skipped.
+  - Deletes must not be undone by an older upsert that arrives later.
+  - Applying the same batch twice changes nothing the second time (everything is `skipped`).
+
+  Also write `live_rows(table)` returning the non-deleted rows sorted by `id`.
+hints:
+  - To reject a late, older upsert after a delete, the table has to remember the delete.
+solution:
+  python: |
+    def apply_batch(table, batch):
+        counts = {"inserted": 0, "updated": 0, "deleted": 0, "skipped": 0}
+        for change in batch:
+            key, ts = change["id"], change["updated_at"]
+            current = table.get(key)
+            if current is not None and ts <= current["updated_at"]:
+                counts["skipped"] += 1
+                continue
+            if change["op"] == "delete":
+                # Tombstone: remembers the delete so older upserts can't resurrect the row.
+                table[key] = {"id": key, "updated_at": ts, "_deleted": True}
+                counts["deleted"] += 1
+            else:
+                row = {k: v for k, v in change.items() if k != "op"}
+                counts["inserted" if current is None else "updated"] += 1
+                table[key] = row
+        return counts
+
+    def live_rows(table):
+        return [r for _, r in sorted(table.items()) if not r.get("_deleted")]
+  explanation: |
+    Idempotency comes from one rule: **apply a change only if it's newer than what you have**, with `<=` meaning skip. Replays are then harmless, and out-of-order arrival resolves to the same final state no matter the order.
+
+    The subtle part is deletes. If a delete just removes the key, a late upsert with an older timestamp looks brand new and brings the row back. A **tombstone** (the id, its delete time and a deleted flag) keeps the timestamp around so the late upsert is skipped. Tombstones are later purged after a safe window, the same idea as Delta/Iceberg deletion vectors and Kafka compaction tombstones.
+
+    Counting a resurrected row (a newer upsert after a delete) as "updated" is a choice. Say it out loud.
+tests: |
+  t = {}
+  b1 = [
+      {"id": 1, "updated_at": 1, "op": "upsert", "v": "a"},
+      {"id": 2, "updated_at": 1, "op": "upsert", "v": "b"},
+      {"id": 1, "updated_at": 2, "op": "upsert", "v": "a2"},
+  ]
+  assert apply_batch(t, b1) == {"inserted": 2, "updated": 1, "deleted": 0, "skipped": 0}
+  assert apply_batch(t, b1) == {"inserted": 0, "updated": 0, "deleted": 0, "skipped": 3}  # replay
+  assert [r["v"] for r in live_rows(t)] == ["a2", "b"]
+  # out of order: older update arrives late
+  assert apply_batch(t, [{"id": 1, "updated_at": 1, "op": "upsert", "v": "stale"}])["skipped"] == 1
+  assert live_rows(t)[0]["v"] == "a2"
+  # delete, then a late older upsert must not resurrect it
+  assert apply_batch(t, [{"id": 2, "updated_at": 5, "op": "delete"}])["deleted"] == 1
+  assert apply_batch(t, [{"id": 2, "updated_at": 3, "op": "upsert", "v": "zombie"}])["skipped"] == 1
+  assert [r["id"] for r in live_rows(t)] == [1]
+  # a newer upsert after the delete brings it back
+  assert apply_batch(t, [{"id": 2, "updated_at": 9, "op": "upsert", "v": "back"}])["updated"] == 1
+  assert [r["v"] for r in live_rows(t)] == ["a2", "back"]
+  assert "op" not in live_rows(t)[0]
+  # same final state regardless of order
+  import itertools
+  changes = [{"id": 7, "updated_at": i, "op": op, "v": i} for i, op in [(1, "upsert"), (2, "delete"), (3, "upsert"), (4, "delete")]]
+  for perm in itertools.permutations(changes):
+      t2 = {}
+      apply_batch(t2, list(perm))
+      assert live_rows(t2) == [] and t2[7]["updated_at"] == 4
+rubric:
+  - point: 'Applies a change only if newer than the current version (equal = skip)'
+    weight: 3
+    topic: idempotency
+  - point: 'Keeps tombstones so late older upserts cannot resurrect deleted rows'
+    weight: 3
+    topic: cdc
+  - point: 'Shows the result is order-independent and replay-safe'
+    weight: 1
+    topic: idempotency
+  - point: 'Mentions purging tombstones after a safe window'
+    weight: 1
+    topic: upserts
+follow_ups:
+  - Two changes for the same id have the same `updated_at`. How do you break the tie deterministically?
+  - How does this map to a `MERGE` statement in a warehouse?

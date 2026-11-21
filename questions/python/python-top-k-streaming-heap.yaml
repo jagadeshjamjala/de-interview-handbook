@@ -1,0 +1,69 @@
+id: python-top-k-streaming-heap
+title: Top-k items from a stream with a heap
+round: python
+topic: [heaps, streaming, algorithms]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A stream yields `(id, value)` pairs, where `id` is an int. It's too large to hold in memory. Write `top_k(stream, k)` that returns the `k` pairs with the largest values, sorted by value descending.
+
+  - Ties on value: the **smaller id** ranks higher.
+  - Use O(k) memory, not O(n).
+  - `k == 0` returns `[]`; a negative `k` raises `ValueError`; fewer than `k` items returns all of them.
+hints:
+  - A min-heap of size k keeps the k best seen so far; its root is the one to evict.
+  - What should the heap's ordering be so that, among equal values, the larger id is evicted first?
+solution:
+  python: |
+    import heapq
+
+    def top_k(stream, k):
+        if k < 0:
+            raise ValueError("k must be >= 0")
+        if k == 0:
+            return []
+        heap = []  # (value, -id): the root is the worst kept item
+        for id_, value in stream:
+            item = (value, -id_)
+            if len(heap) < k:
+                heapq.heappush(heap, item)
+            elif item > heap[0]:
+                heapq.heapreplace(heap, item)
+        return [(-neg_id, value) for value, neg_id in sorted(heap, reverse=True)]
+  explanation: |
+    Keep a **min-heap of size k**. The root is the weakest of the current top k, so each new item only has to beat the root: O(log k) per item, O(n log k) total, O(k) memory.
+
+    The tie rule is the trap. With `(value, id)` in the heap, Python compares ids on equal values and evicts the **smaller** id first, which is the opposite of what's asked. Storing `-id` flips it: among equal values the larger id is smaller, so it becomes the root and is evicted first.
+
+    `heapq.nlargest(k, stream, key=…)` is fine in production. In the interview, show you know what it does underneath.
+tests: |
+  import random
+  assert top_k([], 3) == []
+  assert top_k([(1, 5)], 0) == []
+  assert top_k([(1, 5), (2, 9)], 5) == [(2, 9), (1, 5)]
+  assert top_k([(5, 10), (3, 10), (9, 10), (1, 2)], 2) == [(3, 10), (5, 10)]  # ties: smaller id first
+  try:
+      top_k([], -1)
+      raise AssertionError("negative k accepted")
+  except ValueError:
+      pass
+  rng = random.Random(7)
+  data = [(i, rng.randint(0, 50)) for i in range(5000)]
+  expected = sorted(data, key=lambda p: (-p[1], p[0]))[:25]
+  assert top_k(iter(data), 25) == expected
+  assert top_k((p for p in data), 25) == expected  # works on a one-pass generator
+rubric:
+  - point: 'Uses a size-k min-heap: O(n log k) time, O(k) memory'
+    weight: 3
+    topic: heaps
+  - point: 'Handles the tie rule correctly (smaller id wins)'
+    weight: 2
+    topic: algorithms
+  - point: 'Handles k = 0, negative k and fewer than k items'
+    weight: 1
+    topic: streaming
+follow_ups:
+  - The stream is split across 50 workers. How do you get the global top k?
+  - Now the stream yields word occurrences and you need the top-k most frequent words. What changes, and what if the vocabulary doesn't fit in memory?

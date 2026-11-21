@@ -1,0 +1,89 @@
+id: python-schema-drift-detector
+title: Detect schema drift between two batches of records
+round: python
+topic: [data-quality, schema-evolution]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  Before loading a new batch of records (a list of dicts), compare its shape with yesterday's batch so the pipeline can stop on breaking changes.
+
+  Write `drift(old_rows, new_rows)` that returns a dict:
+
+  - `added`: columns present in the new batch but not the old one (sorted list)
+  - `removed`: columns present in the old batch but not the new one (sorted list)
+  - `type_changes`: `{column: (old_types, new_types)}` for columns in both batches whose set of non-null value types differs, each as a sorted list of type names (`"int"`, `"str"`, `"bool"`, …)
+  - `became_nullable`: columns in both batches that never had a null in the old batch but have one in the new batch (sorted list)
+
+  A column missing from a row counts as null for that row. `bool` is its own type, not `int`.
+hints:
+  - Profile each batch once (types seen, null seen, per column), then compare the two profiles.
+  - What's the type name of `True`?
+solution:
+  python: |
+    def profile(rows):
+        cols = {}
+        for row in rows:
+            for col in row:
+                cols.setdefault(col, {"types": set(), "nullable": False})
+        for row in rows:
+            for col, info in cols.items():
+                value = row.get(col)
+                if value is None:
+                    info["nullable"] = True
+                else:
+                    info["types"].add(type(value).__name__)
+        return cols
+
+    def drift(old_rows, new_rows):
+        old, new = profile(old_rows), profile(new_rows)
+        both = old.keys() & new.keys()
+        return {
+            "added": sorted(new.keys() - old.keys()),
+            "removed": sorted(old.keys() - new.keys()),
+            "type_changes": {
+                c: (sorted(old[c]["types"]), sorted(new[c]["types"]))
+                for c in sorted(both)
+                if old[c]["types"] != new[c]["types"]
+            },
+            "became_nullable": sorted(
+                c for c in both if not old[c]["nullable"] and new[c]["nullable"]
+            ),
+        }
+  explanation: |
+    Profile, then diff. One pass collects every column name (so a column that appears in only some rows still counts), and a second pass records the types seen and whether a null or missing value appeared.
+
+    Two traps:
+
+    - **Missing keys are nulls.** If you only look at keys that are present, a column that disappears from half the rows never shows up as nullable.
+    - **`bool` vs `int`.** `isinstance(True, int)` is `True`. Using `type(v).__name__` keeps them apart, which matters when a producer starts sending `1`/`0` instead of `true`/`false`.
+
+    In a pipeline you'd treat `added` as safe (additive), and `removed`, `type_changes` and `became_nullable` on a non-null column as breaking: fail the load and alert the producer.
+tests: |
+  old = [{"id": 1, "amount": 10, "paid": True}, {"id": 2, "amount": 20, "paid": False}]
+  new = [{"id": 3, "amount": "30", "paid": 1, "currency": "EUR"}, {"id": 4, "amount": "40", "currency": None}]
+  d = drift(old, new)
+  assert d["added"] == ["currency"]
+  assert d["removed"] == []
+  assert d["type_changes"] == {"amount": (["int"], ["str"]), "paid": (["bool"], ["int"])}
+  assert d["became_nullable"] == ["paid"]  # missing in the second new row
+  assert drift(old, old) == {"added": [], "removed": [], "type_changes": {}, "became_nullable": []}
+  assert drift([{"a": 1}], [{"b": 1}])["removed"] == ["a"]
+  assert drift([], []) == {"added": [], "removed": [], "type_changes": {}, "became_nullable": []}
+rubric:
+  - point: 'Profiles each batch once, then compares profiles'
+    weight: 2
+    topic: data-quality
+  - point: 'Treats missing keys as nulls when checking nullability'
+    weight: 2
+    topic: data-quality
+  - point: 'Keeps bool and int distinct'
+    weight: 1
+    topic: schema-evolution
+  - point: 'Says which changes are breaking vs safe and what the pipeline should do'
+    weight: 2
+    topic: schema-evolution
+follow_ups:
+  - The batches have 50 million rows each. What would you sample, and what could sampling miss?
+  - Where should this check live, in the producer's CI, at ingestion or in the warehouse?

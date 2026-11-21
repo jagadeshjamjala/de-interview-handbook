@@ -1,0 +1,42 @@
+id: sd-real-time-fraud-features
+title: Real-time fraud features
+round: system-design
+topic: [stream-processing, feature-engineering, ml-data]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/real-time-fraud-features
+prompt: |
+  A payments company scores every card transaction for fraud before approving it. The model needs features such as "number of transactions on this card in the last 10 minutes", "amount spent on this card in the last 24 hours", "distinct merchants in the last hour" and "is this device new for this account?".
+
+  Scoring must take under 50 ms at p99, at 5,000 transactions per second at peak. Data scientists also need the same features, computed exactly the same way, for training on two years of history. Design the feature pipeline.
+hints:
+  - The feature has to be ready before the transaction it describes is scored. What does that mean for the current transaction?
+  - How do you guarantee training sees what the online model would have seen?
+solution:
+  answer: |
+    **Two paths, one definition:** transactions flow through Kafka into a stream processor (Flink) that maintains sliding or hopping window aggregates per card, device and account in state, and writes the latest values to a **low-latency online store** (Redis, DynamoDB, Cassandra or a feature store's online tier). The scoring service reads features by key in a few milliseconds, combines them with request-time features computed from the current transaction itself, and calls the model.
+
+    **Offline:** the same feature definitions compute history over the event log for training, with **point-in-time joins** so each training example only sees feature values as of its timestamp. A feature store (Feast, Tecton, Databricks) or one shared code path for both paths prevents training/serving skew. Log the served feature vector with each score to train on what was actually served.
+
+    **Key decisions:** whether the current transaction is included in its own windows (decide explicitly; usually computed at request time); event time with a small watermark; exactly-once or idempotent state updates; TTLs on keys; fallbacks when features are missing or stale (the model must still answer within 50 ms).
+rubric:
+  - point: 'Separates online (low-latency store) and offline (training) paths from one feature definition'
+    weight: 3
+    topic: feature-engineering
+  - point: 'Streaming window aggregates in a stateful processor keyed by card/device/account'
+    weight: 2
+    topic: stream-processing
+  - point: 'Point-in-time correct training data and logging of served features to avoid skew'
+    weight: 3
+    topic: ml-data
+  - point: 'Latency budget: request-time features, online store reads, fallbacks for missing/stale values'
+    weight: 2
+    topic: stream-processing
+  - point: 'Addresses event time, late events and state size/TTL'
+    weight: 1
+    topic: stream-processing
+follow_ups:
+  - A new feature needs 90-day history. How do you backfill it into the online store without downtime?
+  - How would you detect that an online feature has drifted from its offline definition?
