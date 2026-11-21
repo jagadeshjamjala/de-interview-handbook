@@ -1,0 +1,9 @@
+node_modules/
+.docusaurus/
+build/
+.cache-loader/
+.venv/
+__pycache__/
+.DS_Store
+.env*
+*.log

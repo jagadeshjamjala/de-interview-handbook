@@ -1,0 +1,27 @@
+{
+  "name": "de-interview-handbook",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=20.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @deih/website start",
+    "build": "pnpm --filter @deih/website build",
+    "serve": "pnpm --filter @deih/website serve",
+    "typecheck": "pnpm --filter @deih/website typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.15.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.14.0",
+    "prettier": "3.10.1",
+    "typescript-eslint": "8.73.0"
+  }
+}
