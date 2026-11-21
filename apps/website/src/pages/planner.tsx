@@ -16,7 +16,9 @@ export default function PlannerPage(): ReactNode {
           Set your level, role and time, and get a week-by-week plan from 75 curated questions.
           Progress is saved in this browser. The link reproduces the same plan anywhere.
         </p>
-        <BrowserOnly fallback={<p>Loading planner…</p>}>{() => <Planner />}</BrowserOnly>
+        <div className="client-only">
+          <BrowserOnly fallback={<p>Loading planner…</p>}>{() => <Planner />}</BrowserOnly>
+        </div>
       </main>
     </Layout>
   );
