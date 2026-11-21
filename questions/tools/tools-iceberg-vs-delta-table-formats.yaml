@@ -1,0 +1,53 @@
+id: tools-iceberg-vs-delta-table-formats
+title: Iceberg vs Delta Lake vs Hudi
+round: tools
+topic: [table-formats, lakehouse, architecture]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 25
+prompt: |
+  Your company is building a lakehouse on object storage. Data engineers use Spark; analysts use Trino today, and the CFO wants the option to query the same tables from Snowflake later. One team does heavy upserts from CDC.
+
+  What problem do open table formats solve, what do Apache Iceberg, Delta Lake and Apache Hudi have in common, how do they differ, and which would you choose here?
+hints:
+  - What goes wrong if two jobs write Parquet files into the same folder at once?
+  - The deciding factor is often the engines and catalog, not the file layout.
+solution:
+  answer: |
+    **The problem.** A folder of Parquet files has no transactions. Concurrent writers corrupt each other, readers see half-written data, there's no reliable schema evolution, and updates mean rewriting folders by hand. **Table formats** add a metadata layer on top of the data files that defines exactly which files make up each version of a table.
+
+    **What all three give you:** ACID commits on object storage, **snapshots and time travel**, schema evolution, row-level updates and deletes (via copy-on-write or merge-on-read with delete files), and statistics for pruning.
+
+    **How they differ (in broad strokes; all three move fast):**
+
+    - **Apache Iceberg:** metadata tree of snapshots, manifest lists and manifests. **Hidden partitioning** with transforms (`days(ts)`, `bucket(n, id)`) and **partition evolution** without rewriting data. Very **broad engine support** (Spark, Flink, Trino, plus many warehouses including Snowflake and BigQuery) and a standard **REST catalog**. Built for multi-engine use.
+    - **Delta Lake:** transaction log (`_delta_log`) of JSON commits plus checkpoints. **Deepest integration with Spark and Databricks** (OPTIMIZE, liquid clustering, change data feed). **UniForm** can expose Delta tables with Iceberg metadata for other engines.
+    - **Apache Hudi:** designed first for **upserts and incremental processing**: record-level indexes, copy-on-write vs merge-on-read tables, and incremental queries ("give me what changed since commit X"). Strong for CDC-heavy ingestion.
+
+    **Recommendation here: Iceberg** as the default format. Spark, Trino and a future Snowflake all read and write it natively, and a REST catalog keeps engines from fighting over metadata. The CDC team's upserts work with Iceberg's merge-on-read deletes plus regular **compaction**. If that team's write volume proves Iceberg's MERGE costs too high, Hudi (or Delta) for that one ingestion layer is a defensible exception.
+
+    **Things that matter more than the format:** the **catalog** choice, a compaction and snapshot-expiry schedule (small files and orphaned files are where lakehouses rot), and access control.
+rubric:
+  - point: 'Explains the problem table formats solve (transactions/metadata over files)'
+    weight: 2
+    topic: table-formats
+  - point: 'Lists shared capabilities: ACID, snapshots/time travel, schema evolution, row-level changes'
+    weight: 2
+    topic: lakehouse
+  - point: 'Differentiates them accurately (Iceberg hidden partitioning/multi-engine, Delta log/Spark, Hudi upserts/incremental)'
+    weight: 3
+    topic: table-formats
+  - point: 'Makes a recommendation driven by engines and catalog, and covers compaction/maintenance'
+    weight: 3
+    topic: architecture
+follow_ups:
+  - Two writers commit to the same Iceberg table at the same moment. What happens?
+  - What maintenance jobs does a lakehouse table need, and what happens if you skip them?
+resources:
+  - title: Apache Iceberg documentation
+    url: https://iceberg.apache.org/docs/latest/
+  - title: Delta Lake documentation
+    url: https://docs.delta.io/latest/index.html
+  - title: Apache Hudi — Overview
+    url: https://hudi.apache.org/docs/overview

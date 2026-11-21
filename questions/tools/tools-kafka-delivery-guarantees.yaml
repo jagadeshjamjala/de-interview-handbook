@@ -1,0 +1,57 @@
+id: tools-kafka-delivery-guarantees
+title: Kafka delivery guarantees, idempotent producers and exactly-once
+round: tools
+topic: [kafka, delivery-semantics, idempotency]
+levels: [mid, senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 25
+prompt: |
+  A payments team asks you: "Does Kafka guarantee exactly-once delivery? We consume `payments`, enrich each event and write it to `payments_enriched`, and a separate consumer writes `payments_enriched` into Postgres."
+
+  Explain at-most-once, at-least-once and exactly-once in Kafka, the producer and consumer settings involved, what exactly-once really covers, and how you'd make the Postgres write safe.
+hints:
+  - When does a consumer commit its offset relative to processing?
+  - Exactly-once inside Kafka is not the same as exactly-once into an external database.
+solution:
+  answer: |
+    **The three semantics:**
+
+    - **At-most-once:** the consumer commits the offset *before* processing. A crash loses messages, but none are duplicated.
+    - **At-least-once:** commit *after* processing. A crash between processing and commit reprocesses messages, so duplicates are possible. This is the common default.
+    - **Exactly-once:** each message affects the output once, even with retries and crashes.
+
+    **Producer side:**
+
+    - `acks=all` waits for all in-sync replicas. With `min.insync.replicas=2` on the topic and replication factor 3, an acknowledged write survives a broker failure.
+    - `enable.idempotence=true` (the default in recent Kafka versions) gives each producer an ID and sequence numbers, so **retries don't create duplicates** and per-partition order is kept.
+
+    **Exactly-once inside Kafka (read → process → write):** the enrichment job uses **transactions** (`transactional.id`). It writes output records **and** commits its consumer offsets in one atomic transaction. Downstream consumers set `isolation.level=read_committed` so they never see aborted writes. Kafka Streams turns this on with `processing.guarantee=exactly_once_v2`. So `payments` → `payments_enriched` can be exactly-once.
+
+    **Into Postgres it's a different problem.** Kafka transactions don't cover an external database. Options:
+
+    1. **Idempotent writes:** at-least-once consumption plus an upsert keyed on `payment_id` (`INSERT … ON CONFLICT (payment_id) DO UPDATE` or `DO NOTHING`). A reprocessed message changes nothing. This is the usual answer.
+    2. **Store offsets in Postgres** in the same database transaction as the data, and on startup seek to the stored offsets. That gives an atomic data-plus-offset commit.
+
+    **Bottom line:** exactly-once is a property of the whole pipeline. Use Kafka transactions between Kafka topics, and idempotency or transactional offset storage at the edges.
+rubric:
+  - point: 'Correctly ties at-most/at-least-once to commit-before vs commit-after processing'
+    weight: 2
+    topic: delivery-semantics
+  - point: 'Producer durability and dedup: acks=all, min.insync.replicas, enable.idempotence'
+    weight: 2
+    topic: kafka
+  - point: 'Explains transactions + read_committed for read-process-write exactly-once within Kafka'
+    weight: 3
+    topic: kafka
+  - point: 'States that external sinks need idempotent upserts or transactional offset storage'
+    weight: 3
+    topic: idempotency
+follow_ups:
+  - What does exactly-once cost in latency and throughput, and when would you not use it?
+  - A consumer is stuck in a rebalance loop and keeps reprocessing the same batch. What settings would you look at?
+resources:
+  - title: Kafka documentation — Message delivery semantics
+    url: https://kafka.apache.org/documentation/#semantics
+  - title: Kafka documentation — Producer configs
+    url: https://kafka.apache.org/documentation/#producerconfigs

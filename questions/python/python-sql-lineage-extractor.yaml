@@ -1,0 +1,131 @@
+id: python-sql-lineage-extractor
+title: Extract table lineage from SQL statements
+round: python
+topic: [parsing, lineage, sql]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 35
+prompt: |
+  To build a lineage graph, you need the target and source tables of each SQL statement in a repo. Write `lineage(sql)` that returns `(target, sources)` for one statement:
+
+  - `target`: the table written by `INSERT INTO`, `INSERT OVERWRITE [TABLE]`, `CREATE [OR REPLACE] [TEMP|TEMPORARY|TRANSIENT] TABLE [IF NOT EXISTS] … AS`, or `MERGE INTO`; `None` for a plain `SELECT`.
+  - `sources`: sorted list of tables read via `FROM`, `JOIN` or `MERGE … USING`.
+
+  Names are lowercased, schema qualification is kept (`analytics.orders`), and double quotes are removed. It must not be fooled by:
+
+  - CTE names (they're not tables)
+  - subqueries (`FROM (SELECT …)`)
+  - `FROM` inside functions, like `EXTRACT(YEAR FROM ts)` or `TRIM(BOTH ' ' FROM s)`
+  - comments (`-- …`, `/* … */`) and string literals
+  - the target itself (a `MERGE` target isn't a source)
+
+  A full SQL parser isn't needed. Explain the limits of your approach.
+hints:
+  - Strip comments and string literals first, then tokenize.
+  - Track parentheses. A `(` followed by `SELECT` or `WITH` opens a query; any other `(` is an expression, where `FROM` isn't a table.
+solution:
+  python: |
+    import re
+
+    IDENT = r'(?:"[^"]+"|[A-Za-z_][\w$]*)(?:\.(?:"[^"]+"|[A-Za-z_][\w$]*))*'
+    TOKEN = re.compile(IDENT + r"|\(|\)|,|\S")
+
+    def _name(tok):
+        return tok.replace('"', "").lower()
+
+    def _is_ident(tok):
+        return re.fullmatch(IDENT, tok) is not None
+
+    def lineage(sql):
+        s = re.sub(r"--[^\n]*", " ", sql)
+        s = re.sub(r"/\*.*?\*/", " ", s, flags=re.S)
+        s = re.sub(r"'(?:[^']|'')*'", "''", s)
+        toks = TOKEN.findall(s)
+        up = [t.upper() for t in toks]
+
+        target, i = None, 0
+        if up[:2] in (["INSERT", "INTO"], ["MERGE", "INTO"]):
+            i = 2
+        elif up[:2] == ["INSERT", "OVERWRITE"]:
+            i = 3 if up[2:3] == ["TABLE"] else 2
+        elif up[:1] == ["CREATE"]:
+            i = 1
+            while i < len(up) and up[i] in ("OR", "REPLACE", "TEMP", "TEMPORARY", "TRANSIENT"):
+                i += 1
+            if up[i : i + 1] == ["TABLE"]:
+                i += 1
+                if up[i : i + 3] == ["IF", "NOT", "EXISTS"]:
+                    i += 3
+            else:
+                i = 0
+        if i and i < len(toks) and _is_ident(toks[i]):
+            target = _name(toks[i])
+
+        ctes, sources, stack = set(), set(), []
+        for j, t in enumerate(toks):
+            u = up[j]
+            if t == "(":
+                stack.append("query" if up[j + 1 : j + 2] in (["SELECT"], ["WITH"]) else "expr")
+            elif t == ")":
+                if stack:
+                    stack.pop()
+            elif (
+                _is_ident(t)
+                and up[j + 1 : j + 3] == ["AS", "("]
+                and j > 0
+                and up[j - 1] in ("WITH", "RECURSIVE", ",")
+                and (not stack or stack[-1] == "query")
+            ):
+                ctes.add(_name(t))
+            elif u in ("FROM", "JOIN", "USING") and (not stack or stack[-1] == "query"):
+                nxt = toks[j + 1] if j + 1 < len(toks) else ""
+                if nxt != "(" and _is_ident(nxt) and nxt.upper() not in ("SELECT", "LATERAL", "UNNEST"):
+                    sources.add(_name(nxt))
+        return target, sorted(sources - ctes - {target})
+  explanation: |
+    The approach is **clean, tokenize, then walk with a parenthesis stack**:
+
+    1. Remove comments and string literals first, so `-- FROM fake` and `'FROM x'` can't match.
+    2. Tokenize into identifiers (including dotted and quoted parts), parentheses and punctuation.
+    3. Each `(` pushes a context: **query** if the next token is `SELECT` or `WITH`, otherwise **expr**. A `FROM`/`JOIN` only names a table in a query context, which is how `EXTRACT(YEAR FROM ts)` is ignored while subquery sources are still found.
+    4. CTE names are identifiers followed by `AS (` right after `WITH` or a comma. Collect them and subtract them, along with the target.
+
+    **Limits:** comma joins (`FROM a, b`) find only `a`; table functions, dynamic SQL and dialect quirks (backticks, bracket quoting) aren't handled. For production lineage, use a real parser such as `sqlglot`, or the warehouse's own query logs (Snowflake `ACCESS_HISTORY`, BigQuery `INFORMATION_SCHEMA.JOBS`), which see what really ran.
+tests: |
+  sql = """
+  -- nightly load; FROM fake_table in a comment
+  INSERT INTO analytics.daily_revenue
+  WITH paid AS (
+    SELECT o.order_id, EXTRACT(YEAR FROM o.order_ts) AS y
+    FROM raw.orders o
+    JOIN raw.payments p ON p.order_id = o.order_id
+  ), recent AS (SELECT * FROM paid WHERE y = 2024)
+  SELECT r.*, TRIM(BOTH ' ' FROM c.name) AS name, 'FROM not_a_table' AS note
+  FROM recent r
+  LEFT JOIN "Raw"."Customers" c ON c.id = r.order_id
+  WHERE r.order_id IN (SELECT order_id FROM staging.allowlist)
+  """
+  assert lineage(sql) == ("analytics.daily_revenue", ["raw.customers", "raw.orders", "raw.payments", "staging.allowlist"])
+  assert lineage("select * from a.b join c using (id)") == (None, ["a.b", "c"])
+  assert lineage("CREATE OR REPLACE TEMP TABLE t AS SELECT x FROM (SELECT x FROM src) s") == ("t", ["src"])
+  assert lineage("CREATE TABLE IF NOT EXISTS mart.x AS /* FROM nope */ SELECT 1 FROM base") == ("mart.x", ["base"])
+  assert lineage("MERGE INTO dim.customer d USING stg.customer s ON d.id = s.id WHEN MATCHED THEN UPDATE SET name = s.name") == ("dim.customer", ["stg.customer"])
+  assert lineage("INSERT OVERWRITE TABLE lake.events SELECT * FROM lake.events_raw") == ("lake.events", ["lake.events_raw"])
+  assert lineage("SELECT SUBSTRING(s FROM 2) FROM t") == (None, ["t"])
+rubric:
+  - point: 'Removes comments and string literals before matching'
+    weight: 2
+    topic: parsing
+  - point: 'Distinguishes query parentheses from expression parentheses (EXTRACT/TRIM ... FROM)'
+    weight: 3
+    topic: parsing
+  - point: 'Excludes CTE names and the target from sources'
+    weight: 2
+    topic: lineage
+  - point: 'States the limits and suggests a real parser or query-log lineage for production'
+    weight: 2
+    topic: lineage
+follow_ups:
+  - Extend it to column-level lineage. Why is that much harder?
+  - The repo has 4,000 SQL files using Jinja templates (dbt). How would you get lineage then?

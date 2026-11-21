@@ -1,0 +1,61 @@
+id: tools-bigquery-partitioning-and-cost
+title: BigQuery partitioning, clustering and query cost
+round: tools
+topic: [bigquery, partition-pruning, cost]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  On BigQuery's on-demand pricing, an analyst's dashboard query costs far more than expected:
+
+  ```sql
+  SELECT * FROM analytics.events
+  WHERE DATE(event_ts) >= '2024-06-01' AND customer_id = 'C-42'
+  LIMIT 100;
+  ```
+
+  `events` is 30 TB, partitioned by `DATE(event_ts)`, not clustered. Explain how BigQuery bills this query, why it's expensive, and how you'd fix both the query and the table.
+hints:
+  - On-demand pricing charges for what, exactly?
+  - Does `LIMIT` reduce the bytes read?
+solution:
+  answer: |
+    **Billing.** With on-demand pricing BigQuery charges for **bytes processed**, meaning the data in the columns read across the partitions scanned. Not rows returned, not runtime. (Capacity pricing, billed in slots, is the alternative for steady heavy workloads.)
+
+    **Why it's expensive:**
+
+    - `SELECT *` reads **every column**. BigQuery is columnar, so selecting only the 4 columns you need can cut cost by 10× or more.
+    - `LIMIT 100` **doesn't reduce bytes scanned**. The filter and scan happen first.
+    - The date filter does prune partitions, but from June to today that may still be months of data. `customer_id` gives no pruning at all, because the table isn't clustered.
+
+    **Fixes:**
+
+    1. **Query:** select only the needed columns, and filter on the partitioning expression with a tight range.
+    2. **Cluster the table** by the columns most often filtered (for example `customer_id`, then `event_name`; up to 4 columns). Within each partition, BigQuery can then skip blocks that can't match, which helps selective filters like one customer a lot.
+    3. **Require partition filters** (`require_partition_filter = true`) so nobody scans 30 TB by accident.
+    4. For dashboards, build a **pre-aggregated table** or materialized view at the grain the dashboard needs, instead of querying raw events.
+    5. **Guardrails:** set maximum bytes billed per query, and review the most expensive queries in `INFORMATION_SCHEMA.JOBS` regularly.
+rubric:
+  - point: 'Explains on-demand billing by bytes processed (columns × partitions), not rows'
+    weight: 3
+    topic: cost
+  - point: 'Calls out SELECT * and that LIMIT does not reduce cost'
+    weight: 2
+    topic: bigquery
+  - point: 'Proposes clustering by filtered columns and partition-filter enforcement'
+    weight: 2
+    topic: partition-pruning
+  - point: 'Adds structural fixes: pre-aggregated tables and cost guardrails'
+    weight: 2
+    topic: cost
+follow_ups:
+  - When would you switch from on-demand to capacity (slot) pricing?
+  - Partition by ingestion time or by event time? What changes for late events?
+resources:
+  - title: BigQuery docs — Partitioned tables
+    url: https://cloud.google.com/bigquery/docs/partitioned-tables
+  - title: BigQuery docs — Clustered tables
+    url: https://cloud.google.com/bigquery/docs/clustered-tables
+  - title: BigQuery docs — Best practices for controlling costs
+    url: https://cloud.google.com/bigquery/docs/best-practices-costs

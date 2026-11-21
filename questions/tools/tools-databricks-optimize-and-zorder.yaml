@@ -1,0 +1,55 @@
+id: tools-databricks-optimize-and-zorder
+title: Delta OPTIMIZE, Z-ordering and small files on Databricks
+round: tools
+topic: [databricks, delta-lake, small-files, performance]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A streaming job appends to a Delta table every minute. After three months, queries filtering on `device_id` and `event_date` are slow, and listing the table takes a long time. The table has 1.8 million files, most under 1 MB.
+
+  Explain why, and how `OPTIMIZE`, Z-ordering, liquid clustering and `VACUUM` help, including what each costs or risks.
+hints:
+  - How many files does a streaming job create per day if each micro-batch writes a few?
+  - What does a reader need from file statistics to skip files?
+solution:
+  answer: |
+    **Why it's slow: the small-files problem.** Every micro-batch commits new small files. Readers pay per file (opening it, reading the footer, tracking it in the transaction log), so a million tiny files make queries and metadata operations slow, even when the total data is modest.
+
+    **`OPTIMIZE`** compacts small files into larger ones (bin-packing). It's a regular maintenance job (for example nightly, or per partition), and it costs compute.
+
+    **Data skipping and Z-ordering.** Delta keeps per-file **min/max statistics** (on the first 32 columns by default) and skips files that can't match a filter. That only works if values are **co-located**. `OPTIMIZE … ZORDER BY (device_id)` rewrites files so rows with similar values of one or more columns sit together, which makes the min/max ranges narrow and skipping effective. It's a full rewrite of the affected data, and its benefit drops with every additional column.
+
+    **Liquid clustering** (`CLUSTER BY`) is the newer approach Databricks recommends for new tables. It replaces Hive-style partitioning and Z-ordering, clusters incrementally, and lets you change clustering keys without rewriting the table. For this table, cluster by `event_date, device_id` (or drop the date partitioning in favor of clustering).
+
+    **At write time:** *optimized writes* and *auto compaction* (or predictive optimization) reduce the number of small files a streaming job creates in the first place. Larger trigger intervals help too.
+
+    **`VACUUM`** deletes data files no longer referenced by the table (older than the retention period, 7 days by default). It saves storage, but **removes time travel** to versions older than that, and a too-short retention can break long-running readers. Don't lower it casually.
+
+    **Order of work:** turn on write-side compaction → schedule `OPTIMIZE` with clustering → `VACUUM` on a schedule with the default retention.
+rubric:
+  - point: 'Explains the small-files problem from frequent streaming commits'
+    weight: 2
+    topic: small-files
+  - point: 'OPTIMIZE compaction plus data skipping via min/max stats; Z-order co-locates values'
+    weight: 3
+    topic: performance
+  - point: 'Mentions liquid clustering as the modern alternative and write-side optimizations'
+    weight: 2
+    topic: databricks
+  - point: 'Explains VACUUM retention and its effect on time travel and readers'
+    weight: 2
+    topic: delta-lake
+follow_ups:
+  - How would you decide which columns to cluster by?
+  - What does this look like for an Iceberg table instead?
+resources:
+  - title: Databricks docs — Optimize data file layout
+    url: https://docs.databricks.com/en/delta/optimize.html
+  - title: Databricks docs — Data skipping and Z-order
+    url: https://docs.databricks.com/en/delta/data-skipping.html
+  - title: Databricks docs — Liquid clustering
+    url: https://docs.databricks.com/en/delta/clustering.html
+  - title: Databricks docs — VACUUM
+    url: https://docs.databricks.com/en/delta/vacuum.html

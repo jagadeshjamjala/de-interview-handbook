@@ -1,0 +1,47 @@
+id: sd-cut-runaway-warehouse-cost
+title: Cut a runaway warehouse bill
+round: system-design
+topic: [cost, finops, performance]
+levels: [mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/cut-runaway-warehouse-cost
+prompt: |
+  The company's cloud warehouse bill went from $40k to $150k a month in a year. Leadership wants it back under $80k within a quarter, without breaking the dashboards and models people rely on. You have read access to the warehouse's query history and billing views.
+
+  How do you find where the money goes, what do you change first, and how do you keep it from creeping back?
+hints:
+  - Don't optimize anything until you can attribute cost to teams, warehouses, models and queries.
+  - The biggest wins are usually things that shouldn't run at all, or run far more often than anyone needs.
+solution:
+  answer: |
+    **Measure first:** attribute spend by compute cluster or warehouse, user/role, tool, dbt model and query pattern, using the warehouse's metering and query-history views. Tag queries (query tags, labels) so cost maps to an owner. Usually a short list of things explains most of the bill.
+
+    **Then fix in order of return:** stop what nobody uses (dead dashboards and models, duplicate pipelines); reduce frequency to what consumers need (hourly → daily); right-size compute (auto-suspend, smaller warehouses, separate workloads, concurrency settings); make the expensive queries cheaper (incremental models instead of full rebuilds, partition/cluster pruning, no `SELECT *`, pre-aggregations for dashboards); and set storage retention (time travel, staging tables).
+
+    **Keep it down:** budgets and alerts per team, cost dashboards with owners, guardrails (statement timeouts, maximum bytes billed, resource monitors), cost checks in code review for new models, and a monthly review of the top 20 queries.
+
+    The full walkthrough is in the worked design.
+rubric:
+  - point: 'Builds cost attribution (by warehouse, team, model, query) before changing anything'
+    weight: 3
+    topic: finops
+  - point: 'Removes unused or over-frequent workloads first (biggest, cheapest wins)'
+    weight: 2
+    topic: cost
+  - point: 'Right-sizes compute: auto-suspend, sizing, workload isolation'
+    weight: 2
+    topic: cost
+  - point: 'Makes expensive queries cheaper: incremental models, pruning, pre-aggregation'
+    weight: 2
+    topic: performance
+  - point: 'Adds guardrails and ownership so cost does not creep back'
+    weight: 2
+    topic: finops
+  - point: 'Protects consumers: changes validated, stakeholders told, rollback possible'
+    weight: 1
+    topic: cost
+follow_ups:
+  - The finance team wants per-customer cost for your multi-tenant product. How would you allocate shared compute?
+  - One team says their model "must" refresh every 5 minutes. How do you decide?

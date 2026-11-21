@@ -1,0 +1,91 @@
+---
+title: Legacy to cloud migration
+sidebar_position: 11
+description: Worked design for migrating Teradata and Ab Initio workloads to a cloud warehouse with dbt, with automated parity checks.
+levels: [senior, lead]
+topic: [system-design, migrations, validation]
+---
+
+import QuestionEmbed from '@site/src/components/QuestionEmbed';
+
+# Worked design: legacy (Teradata / Ab Initio) to cloud migration
+
+<LevelExpectations
+  senior="Plan the waves, the translation approach and the automated parity harness; know the semantic differences that bite."
+  lead="Own scope, sequencing, staffing, stakeholder sign-off and the deadline; decide what not to migrate and get agreement on it."
+/>
+
+Pair this with the behavioral side: [telling a migration story](../../resume/migration-story.mdx).
+
+<QuestionEmbed id="sd-legacy-to-cloud-migration" />
+
+## 1. Requirements
+
+- **Scope:** 1,800 ETL graphs, 6,000 SQL scripts, regulatory reports, finance, 400 dashboards.
+- **Deadline:** 18 months (the contract end), with a buffer for regulatory sign-off.
+- **Target:** a cloud warehouse, dbt for transformations and an orchestrator.
+- **Non-negotiable:** regulatory numbers must match, or every difference must be explained and approved.
+
+## 2. Data contracts
+
+Each migrated data product gets an **owner and a contract**: outputs, freshness and the reconciliation rules that define "the same". The definition of done for a domain is agreed **before** work starts.
+
+## 3. Ingestion
+
+Source systems (core banking, cards and so on) are re-pointed to land in the cloud: CDC or batch extracts into a raw zone. During the parallel run, **both platforms receive the same inputs**. Otherwise differences can't be attributed.
+
+## 4. Storage and format
+
+Raw → staging → modeled layers in the warehouse, built with dbt. Keep the legacy table names available as **compatibility views** during transition, so BI tools and extracts can switch over with minimal change.
+
+## 5. Transform: translate, don't copy blindly
+
+1. **Inventory:** parse job definitions, scheduler metadata and query logs to build lineage and **usage**. Expect a large share of jobs to be dead (no readers), duplicated or superseded. Retiring them is the cheapest migration.
+2. **Automated SQL translation** for the bulk (dialect converters handle syntax). Rewrite complex ETL graphs by hand as dbt models, simplifying where the original logic grew by accretion.
+3. **A catalog of semantic differences**, tested explicitly:
+   - NULL handling and empty strings
+   - date/time types and time zones
+   - decimal precision and rounding
+   - string collation and case sensitivity
+   - implicit casts and integer division
+
+## 6. Serving
+
+Dashboards move in waves after their sources are validated. Communicate with each consumer group: what changes for them, when, and who to call.
+
+## 7. Quality: the parity harness
+
+The core of the plan. For every migrated output, a daily automated comparison during a **parallel-run period**:
+
+- row counts per partition
+- **key-level diffs** (rows only on one side; rows with different values)
+- aggregates of key measures within agreed tolerances (exact for regulatory totals)
+- a triage queue: each difference is fixed, or explained and accepted by the data owner
+
+Cut over a domain only after **N consecutive clean days** and owner sign-off.
+
+## 8. Orchestration and backfill
+
+The orchestrator runs the new pipelines in parallel with legacy schedules. History is migrated once (bulk export/import) and reconciled with the same harness. **Freeze the legacy system** for new development early, or the target keeps moving.
+
+## 9. Failure modes
+
+| Risk | Mitigation |
+|---|---|
+| Hidden consumers (extracts, spreadsheets, partner feeds) | Query-log usage analysis; compatibility views; announcements |
+| Scope creep ("redesign while we're at it") | Separate migration from improvement; improvements after cutover |
+| Unexplained small differences in regulatory numbers | Exact-match rules for regulatory outputs; triage with owners; never "close enough" |
+| Key legacy experts leave | Document as you go; pair them with the migration team early |
+| Deadline slip | Burn-down per domain; cut scope (retire) before cutting validation |
+
+## 10. Cost
+
+Two platforms run in parallel for months, so shorten the overlap per domain by cutting over in waves and decommissioning as you go. Cloud cost during the parallel run is predictable; plan it in the budget.
+
+## 11. What changes at 10×
+
+With ten times the jobs, the plan becomes a **factory**: automated inventory, translation, test generation and the parity harness as shared tooling, with several teams migrating domains in parallel under one standard.
+
+## Related practice
+
+<RelatedQuestions ids={["behavioral-migration-you-led", "sd-cdc-postgres-to-lakehouse", "sd-daily-batch-with-backfills", "tools-dbt-incremental-models"]} />

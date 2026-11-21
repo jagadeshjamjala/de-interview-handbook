@@ -1,0 +1,88 @@
+---
+title: Real-time fraud features
+sidebar_position: 8
+description: Worked design for low-latency streaming features for fraud scoring, with point-in-time correct training data.
+levels: [senior, lead]
+topic: [system-design, stream-processing, ml-data]
+---
+
+import QuestionEmbed from '@site/src/components/QuestionEmbed';
+
+# Worked design: real-time fraud features
+
+<LevelExpectations
+  senior="Design the streaming aggregates, the online store and the latency budget, and keep training and serving consistent."
+  lead="Add ownership between data and ML teams, feature reuse across models, and how you would roll this out safely."
+/>
+
+<QuestionEmbed id="sd-real-time-fraud-features" />
+
+## 1. Requirements
+
+- **Throughput:** 5,000 transactions/s at peak.
+- **Latency:** the whole scoring call under 50 ms p99, so the feature lookup must take a few milliseconds.
+- **Features:** counts, sums and distinct counts over sliding windows (10 min, 1 h, 24 h) per card, account, device and merchant, plus "first time seen" flags.
+- **Training:** two years of history, computed **exactly** like online.
+- **Correctness:** approximate is acceptable for some features (distinct counts), but they must be the same approximation offline and online.
+
+## 2. Data contracts
+
+Transactions carry a unique `txn_id`, `event_ts`, card, account, device and merchant IDs. The authorization service is the producer, and it publishes to Kafka **before** calling the scorer, so the stream sees every transaction even if scoring times out.
+
+## 3. Ingestion
+
+```
+auth service → Kafka (transactions, keyed by card_id) → Flink feature jobs → online store
+                                     ↘ lake (raw, append-only) → offline feature computation
+```
+
+Keying by `card_id` keeps each card's events ordered within a partition. Features keyed by other entities (device, merchant) are computed in separate jobs that re-key the stream.
+
+## 4. Storage and format
+
+- **Online store:** a key-value store (Redis, DynamoDB, Cassandra, or a feature store's online tier) holding the latest feature values per entity key, with TTLs.
+- **Offline store:** feature history in the lakehouse, with `entity_id`, `feature_ts` and values, for point-in-time joins.
+
+## 5. Transform: the streaming features
+
+- **Sliding windows** in Flink keyed state. For "last 10 minutes", use either exact event lists with eviction (accurate, more state) or small buckets (for example 1-minute buckets summed over the last 10; cheaper, with a one-minute error bound). Pick per feature and document it.
+- **Distinct counts** (merchants in the last hour) with exact sets for small cardinalities, or HyperLogLog sketches.
+- **"New device for this account"** as a keyed state set of devices, with a TTL.
+- **Event time** with a short watermark (seconds). Late events update state, but a decision already made can't be revisited.
+
+**Does a transaction count in its own features?** The online feature is read *before* the current transaction has been processed by the stream, so it describes the past. Compute anything involving the current transaction (its amount compared with the 24 h average) **at request time** in the scorer. Training must follow exactly the same rule.
+
+## 6. Serving
+
+The scorer reads all features for the card, account and device in **one batched read** (a few ms), adds the request-time features, and calls the model. Within the latency budget there's a **fallback** for missing or stale features: default values, plus a flag the model was trained with, rather than timing out.
+
+## 7. Quality
+
+- **Freshness:** lag between event time and the online store's update, alerted above a threshold.
+- **Online/offline parity:** sample served feature vectors (logged at scoring time) and recompute them offline. Alert on differences.
+- **Distribution drift** per feature, compared with training.
+
+## 8. Orchestration and backfill
+
+Offline features are computed by batch jobs over the raw log using the **same definitions** (a feature store, or shared transformation code that both Flink and Spark run). For a new feature, backfill history offline, then **bootstrap the online state** from the offline values at a known timestamp and replay the stream from that point.
+
+## 9. Failure modes
+
+| Failure | Mitigation |
+|---|---|
+| Flink job lags (bursty traffic) | Autoscale; features flagged stale; model trained with a staleness flag |
+| Online store outage | Fallback values; model still scores; alert |
+| Training/serving skew | One definition, logged served vectors, parity checks |
+| Hot key (a merchant with huge volume) | Pre-aggregation, sharded state, approximate counts |
+
+## 10. Cost
+
+State size is about the number of keys × the windows held, so it's driven by the longest window and the cardinality. Bucketed windows and sketches keep it bounded. Online store cost scales with keys and reads; TTLs remove dormant cards.
+
+## 11. What changes at 10×
+
+At 50k transactions/s: more Kafka partitions and Flink parallelism, sharded state, more pre-aggregation, and a strict per-feature latency budget. Most important: a shared feature platform, so each new model reuses features instead of building its own pipeline.
+
+## Related practice
+
+<RelatedQuestions ids={["modeling-point-in-time-training-data", "sd-late-and-out-of-order-events", "tools-kafka-partitions-and-ordering", "tools-kafka-delivery-guarantees"]} />

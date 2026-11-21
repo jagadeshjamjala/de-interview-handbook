@@ -1,0 +1,87 @@
+---
+title: GDPR delete across a data lake
+sidebar_position: 9
+description: Worked design for erasing a person's data across raw files, lakehouse tables, warehouse, ML data and backups, provably.
+levels: [senior, lead]
+topic: [system-design, privacy, data-governance]
+---
+
+import QuestionEmbed from '@site/src/components/QuestionEmbed';
+
+# Worked design: GDPR delete across a data lake
+
+<LevelExpectations
+  senior="Design the inventory, the batched delete process and the lakehouse mechanics (row deletes, compaction, snapshot expiry)."
+  lead="Own the policy with legal: what counts as erased, retention rules, crypto-shredding, and how compliance is proven."
+/>
+
+This page describes engineering patterns, not legal advice. Confirm requirements with your legal and privacy teams.
+
+<QuestionEmbed id="sd-gdpr-delete-across-a-lake" />
+
+## 1. Requirements
+
+- **Deadline:** erase within 30 days of a request; about 3,000 requests a month.
+- **Scope:** raw files (about 2 PB), Iceberg tables, the warehouse, ML training snapshots, backups.
+- **Proof:** an audit trail per request.
+- **Ask legal:** does aggregated or truly anonymized data count? (Usually not personal data, if it can't be re-identified.) Which retention exceptions apply (fraud, accounting)?
+
+## 2. Data contracts
+
+Every dataset registered in the **catalog** declares whether it contains personal data, **which columns**, and the **subject key** that identifies the person (`customer_id`, or a hashed email for pre-signup events). No registration, no production deployment: that's the contract that makes erasure provable.
+
+## 3. Ingestion: minimize at the edge
+
+- Drop or hash what isn't needed (raw IP → truncated IP or region) at the collector.
+- Replace direct identifiers with a **pseudonymous ID** in analytical datasets; keep the mapping in one governed table.
+- **Encrypt PII columns with per-customer keys** in a key store. Deleting a customer's key (**crypto-shredding**) makes every copy unreadable, including backups and old snapshots that can't practically be rewritten.
+
+## 4. Storage and format
+
+- **Lakehouse tables (Iceberg or Delta)** support row-level `DELETE`. With merge-on-read, a delete first writes a delete file and the data file still holds the row. The row is only physically gone after **compaction** rewrites the files **and snapshot expiry** removes old snapshots. Time travel otherwise keeps it readable.
+- **Raw files** (plain Parquet/JSON) have no row-level delete. Rewrite the affected partitions, or better, keep raw retention short and personal data encrypted.
+
+## 5. Transform: the erasure pipeline
+
+1. A **request service** records each request (subject key, received date, deadline).
+2. A **weekly batch job** builds the list of subject keys due, then for each registered dataset runs the right action: `DELETE WHERE subject_key IN (…)` for tables, partition rewrites for raw files, key deletion in the key store.
+3. **Downstream rebuilds:** derived tables built from erased rows are rebuilt for the affected partitions, or the delete is propagated (dbt models with incremental deletes).
+4. **ML:** affected training snapshots are flagged. Policy decides between retraining on the next cycle and excluding those rows from future training.
+
+Batching matters: one rewrite per partition per week instead of one per request.
+
+## 6. Serving
+
+Dashboards and BI read modeled tables that are already cleaned. Aggregates without personal data don't need changes. Extracts shared with third parties must have their own erasure process, or not contain personal data at all.
+
+## 7. Quality: prove it
+
+- **Audit log** per request: datasets touched, rows deleted, timestamp, job run ID.
+- **Verification queries** after each run: zero rows remain for the subject key in every registered dataset (including checking that snapshot expiry ran).
+- An alert when a request is close to its deadline and not yet complete.
+
+## 8. Orchestration and backfill
+
+The erasure job is idempotent: deleting an already-deleted key is a no-op, so it can be re-run safely. **Backfills must not resurrect erased data.** Reprocessing raw history has to exclude erased subjects (keep a list of erased keys and filter on it during any rebuild).
+
+## 9. Failure modes
+
+| Failure | Mitigation |
+|---|---|
+| Dataset not in the catalog | Deployment gate: no registration, no production |
+| Time travel / old snapshots still hold the row | Snapshot expiry and retention shorter than the deadline |
+| Backups | Crypto-shredding, or backup retention within the deadline |
+| A backfill reintroduces erased rows | Erased-keys exclusion list applied in rebuilds |
+| Copies outside the platform (exports, laptops) | Access controls, export logging, minimization |
+
+## 10. Cost
+
+Rewriting data is the cost driver, so batch the work and minimize where personal data lives. Crypto-shredding avoids rewriting backups entirely. Compaction is needed anyway for performance, so align erasure with the compaction schedule.
+
+## 11. What changes at 10×
+
+At 30,000 requests a month, per-request work must disappear: crypto-shredding as the default, personal data concentrated in a few tables, and erasure built into every pipeline template rather than added afterwards.
+
+## Related practice
+
+<RelatedQuestions ids={["tools-iceberg-vs-delta-table-formats", "tools-databricks-optimize-and-zorder", "modeling-customer-address-scd", "sd-cdc-postgres-to-lakehouse"]} />

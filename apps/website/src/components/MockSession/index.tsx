@@ -21,7 +21,15 @@ import {levelStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 
 type RoundChoice = Round | 'mixed';
-const ROUNDS: RoundChoice[] = ['mixed', 'sql', 'python', 'modeling', 'system-design', 'behavioral'];
+const ROUNDS: RoundChoice[] = [
+  'mixed',
+  'sql',
+  'python',
+  'modeling',
+  'system-design',
+  'tools',
+  'behavioral',
+];
 const LENGTHS = [30, 45, 60];
 const MARKS: Mark[] = ['strong', 'partial', 'missed'];
 

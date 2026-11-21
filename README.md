@@ -4,7 +4,7 @@ A free, open-source **practice** handbook for data engineering interviews, with 
 
 **→ [jagadeshjamjala.github.io/de-interview-handbook](https://jagadeshjamjala.github.io/de-interview-handbook/)**
 
-- **55 practice questions:** 30 SQL, 10 data modeling, 5 Python, 5 pipeline system design, 5 behavioral. Each has hints, a model answer and a weighted rubric.
+- **75 practice questions:** 30 SQL, 10 data modeling, 10 Python, 10 pipeline system design (with worked designs), 10 tools, 5 behavioral. Each has hints, a model answer and a weighted rubric.
 - **SQL playground:** solve SQL questions in your browser on realistic datasets (DuckDB-WASM) and get an instant ✅/❌ against the reference answer. Nothing leaves your browser.
 - **DE 75 study planner:** a week-by-week plan for your level, role type and time, with progress tracking, a shareable link and a calendar export.
 - **Mock interviews:** timed, spoiler-free sessions with rubric self-scoring. The debrief feeds your weak topics back into the planner.

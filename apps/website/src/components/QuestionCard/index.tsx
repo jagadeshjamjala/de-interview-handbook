@@ -129,6 +129,20 @@ export default function QuestionCard({
             </ul>
           </>
         )}
+        {q.resources && q.resources.length > 0 && (
+          <>
+            <Heading as="h3">Further reading</Heading>
+            <ul>
+              {q.resources.map((r) => (
+                <li key={r.url}>
+                  <a href={r.url} target="_blank" rel="noopener noreferrer">
+                    {r.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </Spoiler>
     </article>
   );

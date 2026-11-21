@@ -1,0 +1,86 @@
+---
+title: Multi-tenant SaaS analytics
+sidebar_position: 10
+description: Worked design for in-product, per-customer analytics with strict tenant isolation and sub-second dashboards.
+levels: [senior, lead]
+topic: [system-design, multi-tenancy, serving]
+---
+
+import QuestionEmbed from '@site/src/components/QuestionEmbed';
+
+# Worked design: multi-tenant SaaS analytics
+
+<LevelExpectations
+  senior="Design the model, the serving store and isolation in depth; handle large tenants and freshness."
+  lead="Add the product and business side: per-tenant cost, tiered offerings (shared vs dedicated), and the security review."
+/>
+
+<QuestionEmbed id="sd-multi-tenant-saas-analytics" />
+
+## 1. Requirements
+
+- **Tenants:** about 4,000, with sizes spanning four orders of magnitude.
+- **Experience:** dashboards load in under 1 second, data under 15 minutes old.
+- **Concurrency:** many tenants' users at once. This is product traffic, not internal analysts.
+- **Isolation:** zero tolerance for cross-tenant leaks.
+- **Exports:** daily raw data to some enterprise customers' warehouses.
+
+## 2. Data contracts
+
+Every event and every row carries **`tenant_id`**, set by the product backend from the authenticated session, never from client input. Schemas are versioned, because customer-facing metrics must not change meaning silently.
+
+## 3. Ingestion
+
+Product events go through the standard event pipeline (Kafka → raw lake), and application database tables arrive via CDC. Micro-batches every few minutes keep the 15-minute freshness target.
+
+## 4. Storage and format
+
+- **Modeled layer (lakehouse or warehouse):** facts and dimensions with `tenant_id` as the **leading key** in partitioning or clustering, so per-tenant reads are cheap.
+- **Serving layer:** pre-aggregated tables at the dashboard grains (tenant × day × feature, tenant × user × week) loaded into a **real-time OLAP store** (ClickHouse, Apache Druid or Apache Pinot), sorted or partitioned by `tenant_id` then time.
+
+Why not query the warehouse directly? Warehouses are optimized for large scans by few users. In-product analytics needs **predictable latency at high concurrency**, which is what OLAP serving stores and caches are built for.
+
+## 5. Transform
+
+dbt models build the per-tenant aggregates incrementally. Metric definitions live in one place (a semantic layer or shared SQL), because customers compare these numbers with their own records and will notice inconsistencies.
+
+## 6. Serving
+
+```
+product UI → analytics API (auth → tenant_id) → OLAP store (row policy: tenant_id = ?)
+```
+
+- The **API** derives `tenant_id` from the auth token and adds it to every query. Clients never send it.
+- The **store** enforces it again with row-level security or per-tenant views, so a bug in one query can't leak data.
+- **Caching** per tenant and query for hot dashboards.
+
+## 7. Quality and security
+
+- Automated **cross-tenant tests**: a test tenant tries to read another tenant's data through every endpoint.
+- Audit logs for queries and exports.
+- Reconciliation of key metrics against the application database per tenant (counts of users, projects).
+
+## 8. Orchestration and backfill
+
+Per-tenant backfills (for example after a bug for one customer) must be possible, so partitioning by tenant and date makes targeted rebuilds cheap. Exports run per tenant on a schedule, writing to the customer's storage (or through warehouse data sharing) with their own credentials and an audit record.
+
+## 9. Failure modes
+
+| Failure | Mitigation |
+|---|---|
+| Missing tenant filter in a new query | Enforced in the API and again by row-level security; cross-tenant tests in CI |
+| Noisy neighbor (huge tenant slows others) | Quotas, query limits, dedicated tables/cluster for the largest tenants |
+| Stale dashboards | Freshness shown in the UI; alerts on pipeline lag |
+| Export sent to the wrong destination | Per-tenant destination config, verification, audit log |
+
+## 10. Cost
+
+Serving cost scales with concurrency and data per tenant. Pre-aggregation keeps it small. Measure cost per tenant (storage, queries, exports). It informs pricing tiers, and the largest tenants may justify a premium "dedicated" tier.
+
+## 11. What changes at 10×
+
+With 40,000 tenants or much larger ones, the "pool" model (shared tables) remains the default, with a "silo" tier (dedicated tables or clusters) for the biggest and regulated customers. Adding self-serve custom metrics would need a governed semantic layer and query cost limits per tenant.
+
+## Related practice
+
+<RelatedQuestions ids={["sd-clickstream-to-warehouse", "modeling-one-big-table-tradeoffs", "sql-rolling-28-day-active-users", "sd-cut-runaway-warehouse-cost"]} />

@@ -1,0 +1,48 @@
+id: tools-spark-shuffle-and-skew
+title: Spark shuffles, data skew and how to fix them
+round: tools
+topic: [spark, performance, data-skew]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  A Spark job joins `events` (3 TB) to `users` (40 GB) on `user_id`, then aggregates by `country`. In the Spark UI, 199 of 200 tasks in the join stage finish in 2 minutes; one task runs for 70 minutes and spills to disk.
+
+  What is happening, why, and what would you try, in order?
+hints:
+  - What is special about the key that one task is processing?
+  - Which side of the join is small enough to avoid a shuffle?
+solution:
+  answer: |
+    **What's happening:** the join and the aggregation are **wide transformations**, so Spark **shuffles** rows by key across `spark.sql.shuffle.partitions` partitions (200 by default). One partition got far more rows than the others: **data skew**. Typical causes are a hot key (a bot user, a default `user_id = 0`, or many `NULL` keys) that all hash to the same partition. That single task does most of the work and spills because its data doesn't fit in memory.
+
+    **Fixes, roughly in order:**
+
+    1. **Look at the key distribution** (`groupBy(user_id).count()`, ordered descending). Often the hot key is junk: filter `NULL` or sentinel keys before the join.
+    2. **Adaptive Query Execution (AQE).** `spark.sql.adaptive.enabled` (on by default in recent Spark) with `spark.sql.adaptive.skewJoin.enabled` splits skewed partitions into smaller tasks automatically, and coalesces tiny shuffle partitions.
+    3. **Broadcast the small side** if it fits: a broadcast hash join sends `users` to every executor and **removes the shuffle of `events` entirely**. 40 GB is too big to broadcast, but if you only need a few columns, or only active users, the projected or filtered side may fit (`spark.sql.autoBroadcastJoinThreshold`, or a `broadcast()` hint).
+    4. **Salting** for a genuine hot key: add a random salt `0..N-1` to the skewed key on the big side, replicate the matching rows on the small side N times, join on `(key, salt)`, then aggregate.
+    5. **Handle hot keys separately**: join the few hot keys with a broadcast and the rest normally, then union.
+    6. Tune `spark.sql.shuffle.partitions` to the data size (AQE can do it). It helps overall spread, but not a single hot key.
+
+    **Also check:** that skew isn't coming from the aggregation instead (use a two-stage aggregation), and that executors have enough memory to avoid spills on normal partitions.
+rubric:
+  - point: 'Explains shuffle for wide transformations and identifies one oversized partition as skew'
+    weight: 2
+    topic: spark
+  - point: 'Checks the key distribution and filters junk/null hot keys first'
+    weight: 2
+    topic: data-skew
+  - point: 'Uses AQE skew join handling and/or broadcast join, with conditions'
+    weight: 3
+    topic: performance
+  - point: 'Explains salting (or isolating hot keys) for genuine skew'
+    weight: 2
+    topic: data-skew
+follow_ups:
+  - After salting, the job is faster but produces more rows than before. What did you forget?
+  - How would you spot skew automatically in production jobs?
+resources:
+  - title: Spark docs — Performance tuning (AQE, skew join, broadcast)
+    url: https://spark.apache.org/docs/latest/sql-performance-tuning.html

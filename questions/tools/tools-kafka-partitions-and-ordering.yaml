@@ -1,0 +1,52 @@
+id: tools-kafka-partitions-and-ordering
+title: Kafka partitions, keys and ordering guarantees
+round: tools
+topic: [kafka, ordering, partitioning]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  An `orders` topic has 6 partitions. Events for one order (`created`, `paid`, `shipped`) must be processed in order. Consumers in one group are falling behind, and someone proposes going to 24 partitions and 24 consumers.
+
+  Explain Kafka's ordering guarantees, how keys map to partitions, how consumer groups use partitions, and what can go wrong with the proposal.
+hints:
+  - Ordering is guaranteed within what, exactly?
+  - What happens to the key-to-partition mapping when the partition count changes?
+solution:
+  answer: |
+    **Ordering.** Kafka guarantees order **only within a partition**. Across partitions there's no global order.
+
+    **Keys → partitions.** The default partitioner hashes the record **key** and takes it modulo the partition count, so the same key always lands in the same partition, *as long as the partition count doesn't change*. To keep an order's events in sequence, **use `order_id` as the key**. Records without a key are spread across partitions, so their order is lost.
+
+    **Consumer groups.** Each partition is assigned to **one** consumer in a group at a time. Maximum parallelism equals the number of partitions: a 7th consumer on 6 partitions sits idle. Within a consumer, processing one partition sequentially preserves order. Handing records to a thread pool breaks it unless you parallelize by key.
+
+    **Producer side.** Retries can reorder writes. The idempotent producer (`enable.idempotence=true`) keeps per-partition order even with retries and several in-flight requests.
+
+    **Problems with going 6 → 24 partitions:**
+
+    1. **Remapping.** `hash(key) % 24` differs from `% 6`, so new events for an existing order may go to a different partition than its earlier events. During the switch, two consumers can process events of the same order concurrently and out of order. Mitigations: do it at a quiet time and drain lag first, or create a new topic with 24 partitions and migrate consumers, or make processing tolerant (version checks and idempotent state).
+    2. **Hot keys don't spread.** One very busy key stays on one partition however many you add.
+    3. **The real bottleneck** may be the consumer (slow database writes, per-record commits), not the partition count. Check lag per partition and processing time first.
+    4. More partitions mean more open files, longer leader elections and more rebalancing, so don't over-provision.
+rubric:
+  - point: 'States ordering is per partition only, and keys by order_id to keep an entity ordered'
+    weight: 3
+    topic: ordering
+  - point: 'Explains hash(key) mod partitions and one-partition-per-consumer parallelism'
+    weight: 2
+    topic: partitioning
+  - point: 'Identifies the remapping risk when the partition count changes, with a mitigation'
+    weight: 3
+    topic: partitioning
+  - point: 'Checks whether the consumer itself is the bottleneck, and notes hot keys'
+    weight: 1
+    topic: kafka
+follow_ups:
+  - A consumer processes records with a thread pool for speed. How do you keep per-order ordering?
+  - How would you design keys for an event where both customer-level and order-level ordering matter?
+resources:
+  - title: Kafka documentation — Introduction (topics, partitions, ordering)
+    url: https://kafka.apache.org/documentation/#intro_concepts_and_terms
+  - title: Kafka documentation — Producer configs
+    url: https://kafka.apache.org/documentation/#producerconfigs

@@ -1,0 +1,98 @@
+---
+title: Cut a runaway warehouse bill
+sidebar_position: 7
+description: Worked design for finding and cutting cloud data warehouse cost without breaking consumers.
+levels: [mid, senior, lead]
+topic: [system-design, cost, finops]
+---
+
+import QuestionEmbed from '@site/src/components/QuestionEmbed';
+
+# Worked design: cut a runaway warehouse bill
+
+<LevelExpectations
+  mid="Find the expensive queries and models and make them cheaper: incremental builds, pruning, right-sized compute."
+  senior="Build attribution first, prioritize by return, and add guardrails so cost stays down."
+  lead="Own the operating model: budgets per team, chargeback, cost reviews, and the trade-off conversations with stakeholders."
+/>
+
+This is a "design" question about an existing system. Interviewers want a method, not a list of tips.
+
+<QuestionEmbed id="sd-cut-runaway-warehouse-cost" />
+
+## 1. Requirements
+
+- **Goal:** about −45% in one quarter ($150k → under $80k a month).
+- **Constraint:** no broken dashboards or models. Changes must be safe and reversible.
+- **Unknowns to ask about:** pricing model (on-demand per bytes, credits per warehouse-hour, or reserved capacity), the biggest consumers, any commitments already bought.
+
+## 2. Data contracts
+
+Consumers implicitly rely on **freshness and availability**. Write them down before you change anything: "Finance dashboard by 07:00 daily" is a contract; "refreshes every 5 minutes because nobody changed the default" is not.
+
+## 3. Ingestion: get the cost data
+
+Every major warehouse exposes metering and query history (for example Snowflake's account usage views, BigQuery's `INFORMATION_SCHEMA.JOBS`, Databricks system tables). Build a small **cost model**:
+
+```
+cost_by_query  = query → warehouse/slots used × duration (or bytes billed) → $
+cost_by_owner  = join query tags / users / service accounts → team, dbt model, dashboard
+```
+
+**Tag everything:** dbt can set a query tag per model, BI tools use dedicated service accounts, and orchestrators label jobs. Untagged spend is the first thing to fix.
+
+## 4. Storage and format: find the waste
+
+Typical findings, roughly in order of size:
+
+1. **Things nobody uses:** dashboards with no viewers in 90 days, models with no downstream readers, duplicate pipelines from two teams.
+2. **Frequency nobody needs:** hourly or 5-minute refreshes for data looked at once a day.
+3. **Idle or oversized compute:** warehouses that never suspend, one big warehouse for every workload, BI tools keeping clusters warm.
+4. **Expensive patterns:** full-table rebuilds of large models, `SELECT *` on wide tables, filters that defeat pruning, dashboards querying raw events.
+5. **Storage:** long time-travel retention on churny tables, forgotten staging and backup copies.
+
+## 5. Transform: fix in order of return
+
+| Fix | Typical effort | Risk |
+|---|---|---|
+| Delete unused models and dashboards (after notifying owners) | Low | Low, with a deprecation period |
+| Reduce refresh frequency to the real need | Low | Low, if the freshness contract is agreed |
+| Auto-suspend, right-size, separate warehouses per workload | Low | Low |
+| Incremental models instead of full rebuilds | Medium | Medium: validate against a full rebuild |
+| Pruning: partition/cluster keys, fix non-sargable filters | Medium | Low |
+| Pre-aggregated tables for dashboards | Medium | Low |
+| Commitments / reserved capacity once usage is stable | Low | Financial, not technical |
+
+## 6. Serving
+
+Point dashboards at **pre-aggregated, partitioned tables** instead of raw facts, and use the BI tool's caching. Separate interactive BI compute from batch transformation, so neither slows the other down and each can be sized correctly.
+
+## 7. Quality
+
+Every optimization is a change to production logic. For incremental conversions and refactors, **compare results** with the old version (row counts, key metrics) before switching. Announce frequency changes to the consumers.
+
+## 8. Orchestration and backfill
+
+Schedule by consumer need: group models into "hourly", "daily" and "weekly" tiers. Only rebuild what changed (dbt's state-based selection). Avoid backfills on the expensive interactive warehouse.
+
+## 9. Failure modes
+
+| Failure | Mitigation |
+|---|---|
+| Removing a "dead" model breaks a hidden consumer | Deprecation period, query-log check for readers, quick restore |
+| Smaller warehouse makes a critical job miss its SLA | Change one workload at a time, watch runtimes |
+| Savings creep back in 3 months | Budgets, alerts, ownership, monthly review |
+
+## 10. Cost: keep it down
+
+- **Guardrails:** statement timeouts, maximum bytes billed per query, resource monitors or quotas per team.
+- **Visibility:** a cost dashboard per team and per model, sent to the owners.
+- **Process:** cost impact noted in PRs for new models; a monthly "top 20 most expensive queries" review.
+
+## 11. What changes at 10×
+
+At 10× usage, per-query optimization doesn't scale with people. The answer becomes platform-level: chargeback per team, default incremental patterns, automated detection of unused assets, and capacity commitments negotiated from real usage data.
+
+## Related practice
+
+<RelatedQuestions ids={["tools-snowflake-clustering-and-pruning", "tools-bigquery-partitioning-and-cost", "tools-dbt-incremental-models", "modeling-one-big-table-tradeoffs"]} />

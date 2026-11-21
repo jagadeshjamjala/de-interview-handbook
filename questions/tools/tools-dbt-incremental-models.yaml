@@ -1,0 +1,63 @@
+id: tools-dbt-incremental-models
+title: How dbt incremental models work, and when they go wrong
+round: tools
+topic: [dbt, incremental-models, late-arriving-data]
+levels: [junior, mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your `fct_orders` dbt model takes 40 minutes as a full table rebuild. You switch it to `materialized='incremental'`.
+
+  Explain how an incremental model works, what `is_incremental()` and `unique_key` do, which incremental strategies exist, and the ways an incremental model silently drifts from what a full refresh would produce.
+hints:
+  - What does the model's SQL look like on the first run versus later runs?
+  - What happens to an order updated 3 days after it was first loaded?
+solution:
+  answer: |
+    **Mechanics.** On the first run (or with `--full-refresh`), dbt builds the whole table. On later runs, `is_incremental()` is true and the model selects only new or changed rows, usually filtered against the existing table:
+
+    ```sql
+    {% if is_incremental() %}
+    where updated_at > (select max(updated_at) from {{ this }})
+    {% endif %}
+    ```
+
+    dbt then writes those rows into the existing table using an **incremental strategy**:
+
+    - `append`: insert only. Fast, but duplicates rows if a key is reprocessed.
+    - `merge`: upsert on `unique_key`. The common default on Snowflake, BigQuery and Databricks.
+    - `delete+insert`: delete matching keys, then insert.
+    - `insert_overwrite`: replace whole partitions (BigQuery, Spark). Great for date-partitioned facts.
+    - `microbatch` (newer dbt versions): processes time-based batches and makes backfills by date range easy.
+
+    **How it drifts from a full refresh:**
+
+    1. **Late-arriving or updated rows.** `updated_at > max(updated_at)` misses rows that arrive with older timestamps. Use a **lookback window** (`updated_at > max - interval 3 days`) together with `merge` / `unique_key` so reprocessing is idempotent.
+    2. **No `unique_key` with append**: reprocessed rows are duplicated.
+    3. **Logic changes.** Changing the SQL only affects new rows; old rows keep the old logic until a `--full-refresh`.
+    4. **Schema changes.** New columns are ignored by default; set `on_schema_change` (`append_new_columns`, `sync_all_columns` or `fail`).
+    5. **Deletes in the source** never reach an incremental model unless you handle them (soft-delete flags, or periodic full refreshes).
+
+    **Good practice:** test uniqueness on the key, compare row counts and key metrics against a periodic full refresh, and schedule a full refresh (for example weekly) for models whose logic can change.
+rubric:
+  - point: 'Explains first run vs incremental runs and the is_incremental() filter against {{ this }}'
+    weight: 2
+    topic: dbt
+  - point: 'Names the strategies (append, merge, delete+insert, insert_overwrite) and when each fits'
+    weight: 2
+    topic: incremental-models
+  - point: 'Handles late-arriving/updated rows with a lookback window plus unique_key'
+    weight: 3
+    topic: late-arriving-data
+  - point: 'Mentions drift from logic/schema changes and deletes, and periodic full refresh or reconciliation'
+    weight: 2
+    topic: incremental-models
+follow_ups:
+  - The model is partitioned by order date and 2% of updates touch orders older than 30 days. Which strategy, and what lookback?
+  - How would you backfill 2 years of this model without one giant query?
+resources:
+  - title: dbt docs — Incremental models
+    url: https://docs.getdbt.com/docs/build/incremental-models
+  - title: dbt docs — Incremental strategies
+    url: https://docs.getdbt.com/docs/build/incremental-strategy

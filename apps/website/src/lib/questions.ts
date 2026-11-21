@@ -23,6 +23,7 @@ export type Question = {
   rubric?: {point: string; weight: number; topic?: string}[];
   follow_ups?: string[];
   dialect_notes?: Record<string, {note: string; source: string}>;
+  resources?: {title: string; url: string}[];
   html: {prompt: string; hints: string[]; answer?: string; explanation?: string};
 };
 
