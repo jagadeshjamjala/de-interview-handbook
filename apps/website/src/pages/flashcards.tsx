@@ -17,7 +17,9 @@ export default function FlashcardsPage(): ReactNode {
           bank, scheduled with spaced repetition: answer out loud, reveal, then rate yourself. Cards
           you find hard come back sooner. Progress is saved in this browser.
         </p>
-        <BrowserOnly fallback={<p>Loading flashcards…</p>}>{() => <Flashcards />}</BrowserOnly>
+        <div className="client-only">
+          <BrowserOnly fallback={<p>Loading flashcards…</p>}>{() => <Flashcards />}</BrowserOnly>
+        </div>
       </main>
     </Layout>
   );

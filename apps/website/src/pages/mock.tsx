@@ -17,7 +17,9 @@ export default function MockPage(): ReactNode {
           end you see the model answers and score yourself on the same rubric an interviewer would
           use.
         </p>
-        <BrowserOnly fallback={<p>Loading…</p>}>{() => <MockSession />}</BrowserOnly>
+        <div className="client-only">
+          <BrowserOnly fallback={<p>Loading…</p>}>{() => <MockSession />}</BrowserOnly>
+        </div>
       </main>
     </Layout>
   );

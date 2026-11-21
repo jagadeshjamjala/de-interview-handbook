@@ -128,8 +128,13 @@ export default function Planner(): ReactNode {
         <strong>
           {plan.live} / {plan.total}
         </strong>{' '}
-        DE 75 questions live. The rest are on the <Link to="/docs/start-here/roadmap">roadmap</Link>
-        .
+        DE 75 questions live.
+        {plan.live < plan.total && (
+          <>
+            {' '}
+            The rest are on the <Link to="/docs/start-here/roadmap">roadmap</Link>.
+          </>
+        )}
       </p>
 
       <form className={styles.form} onSubmit={(e) => e.preventDefault()} aria-label="Plan settings">

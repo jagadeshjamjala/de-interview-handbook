@@ -35,6 +35,12 @@
   opacity: 0.6;
 }
 
+/* Browser-only page content (planner, mock, flashcards) renders after hydration. Reserving a
+   viewport of height keeps the footer below the fold, so it can't visibly jump (CLS). */
+.client-only {
+  min-height: 100vh;
+}
+
 /* Accessibility (axe, WCAG AA) */
 [data-theme='dark'] .badge--primary {
   color: #0b1416; /* white on light teal is 1.9:1 */
