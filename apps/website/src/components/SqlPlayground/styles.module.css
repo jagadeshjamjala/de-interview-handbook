@@ -1,0 +1,133 @@
+.playground {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .playground {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.schema {
+  font-size: 0.875rem;
+}
+
+.dataset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.dataset select {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-400);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+}
+
+.table {
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  padding: 0.35rem 0;
+}
+
+.table summary {
+  cursor: pointer;
+}
+
+.table ul {
+  list-style: none;
+  padding-left: 0.75rem;
+  margin: 0.35rem 0;
+}
+
+.main {
+  min-width: 0;
+}
+
+.editor {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.editor :global(.cm-editor) {
+  min-height: 10rem;
+  max-height: 24rem;
+}
+
+.editor :global(.cm-scroller) {
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.muted {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.85rem;
+}
+
+.ok,
+.bad {
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--ifm-global-radius);
+}
+
+.ok {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-contrast-foreground);
+}
+
+.bad {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-contrast-foreground);
+}
+
+.error {
+  white-space: pre-wrap;
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-contrast-foreground);
+}
+
+.grid {
+  overflow: auto;
+  max-height: 24rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+}
+
+.grid table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.grid th {
+  position: sticky;
+  top: 0;
+  background: var(--ifm-background-surface-color);
+  text-align: left;
+}
+
+.grid th,
+.grid td {
+  white-space: nowrap;
+  padding: 0.3rem 0.6rem;
+}

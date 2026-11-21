@@ -73,6 +73,7 @@ const config: Config = {
           label: 'Handbook',
         },
         {to: '/questions', label: 'Questions', position: 'left'},
+        {to: '/playground', label: 'Playground', position: 'left'},
         {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: repoUrl,
@@ -89,6 +90,7 @@ const config: Config = {
           items: [
             {label: 'Start here', to: '/docs/start-here'},
             {label: 'Question bank', to: '/questions'},
+            {label: 'SQL playground', to: '/playground'},
           ],
         },
         {

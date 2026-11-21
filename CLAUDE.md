@@ -8,7 +8,9 @@ Data Engineering Interview Handbook. A Docusaurus v3 site plus a YAML question b
 - `datasets/`, `scripts/`, `schemas/`, `plans/`: see PLAN.md §3.
 
 ## Commands
-`pnpm dev` · `pnpm build` · `pnpm typecheck` · `pnpm lint` · `pnpm format:check`. Python tooling: venv + `requirements.txt` (exact `==` pins).
+`pnpm dev` · `pnpm build` · `pnpm test` · `pnpm typecheck` · `pnpm lint` · `pnpm format:check`.
+Python (venv + `requirements.txt`, exact `==` pins): `python datasets/generate.py` (regenerate Parquet + checksums), `python scripts/verify_sql.py` (compare every SQL solution to its golden CSV; `--update-golden` rewrites them, so review the diff).
+- Python `duckdb` must match the engine inside `@duckdb/duckdb-wasm` (1.32.0 = DuckDB v1.4.3). Bump both together, plus the vendored Parquet extension in `vendor/duckdb-extensions/`.
 
 ## Conventions (must follow)
 - **No copied content.** Never copy text from the Tech Interview Handbook or any paid/copyrighted question bank. Write original material.

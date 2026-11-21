@@ -4,3 +4,5 @@ build
 pnpm-lock.yaml
 *.md
 *.mdx
+.venv
+apps/website/static/datasets

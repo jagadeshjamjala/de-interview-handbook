@@ -22,6 +22,17 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Datasets are reproducible
+        run: |
+          python datasets/generate.py
+          git diff --exit-code -- datasets/checksums.sha256 apps/website/static/datasets
+      - name: SQL solutions match golden results
+        run: python scripts/verify_sql.py
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm questions # validates every question YAML; fails on error
