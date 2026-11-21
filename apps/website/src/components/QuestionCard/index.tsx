@@ -15,7 +15,14 @@ function Html({html}: {html: string}): ReactNode {
   return <div className={styles.md} dangerouslySetInnerHTML={{__html: html}} />;
 }
 
-export default function QuestionCard({q}: {q: Question}): ReactNode {
+export default function QuestionCard({
+  q,
+  showGuide = true,
+}: {
+  q: Question;
+  /** False when the card is embedded on its own worked-design page. */
+  showGuide?: boolean;
+}): ReactNode {
   const [trying, setTrying] = useState(false);
   const mock = mockModeStore.use();
   useBrokenLinks().collectAnchor(q.id); // lets the build verify /questions#id links
@@ -50,7 +57,7 @@ export default function QuestionCard({q}: {q: Question}): ReactNode {
         </details>
       )}
 
-      {q.guide && (
+      {q.guide && showGuide && (
         <p>
           <Link to={q.guide}>Read the full worked design →</Link>
         </p>

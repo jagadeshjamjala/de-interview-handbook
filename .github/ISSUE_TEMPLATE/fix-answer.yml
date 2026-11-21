@@ -1,0 +1,28 @@
+name: Fix an answer
+description: Report a wrong solution, rubric point, explanation or dialect note.
+title: '[Fix] '
+labels: [fix-answer]
+body:
+  - type: input
+    id: question
+    attributes:
+      label: Question id or page URL
+      placeholder: sql-gaps-islands-login-streaks
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong?
+      description: For SQL, include a query or a case where the reference answer is wrong if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+  - type: input
+    id: source
+    attributes:
+      label: Source (for dialect or tool facts)
+      description: A link to official vendor documentation.

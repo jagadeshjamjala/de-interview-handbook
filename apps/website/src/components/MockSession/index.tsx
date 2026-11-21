@@ -5,15 +5,8 @@ import CodeBlock from '@theme/CodeBlock';
 import SqlPlayground from '@site/src/components/SqlPlayground';
 import {formatClock} from '@site/src/components/CardTimer';
 import {plannerBase} from '@site/src/components/Planner';
-import {
-  LEVELS,
-  ROUND_LABELS,
-  questions,
-  questionsById,
-  type Level,
-  type Question,
-  type Round,
-} from '@site/src/lib/questions';
+import {LEVELS, ROUND_LABELS, type Level, type Question, type Round} from '@site/src/lib/questions';
+import {questions, questionsById} from '@site/src/lib/questionBank';
 import {
   buildMockPrompt,
   pickQuestions,

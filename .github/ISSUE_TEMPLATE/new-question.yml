@@ -1,0 +1,42 @@
+name: New question
+description: Suggest a new practice question (SQL, Python, modeling, system design, tools or behavioral).
+title: '[Question] '
+labels: [new-question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Please make sure the question is **original** or from a public source you can link. Don't paste questions from paid question banks or company-internal material.
+  - type: dropdown
+    id: round
+    attributes:
+      label: Round
+      options: [SQL, Python, Data modeling, System design, Tools, Behavioral]
+    validations:
+      required: true
+  - type: checkboxes
+    id: levels
+    attributes:
+      label: Levels it fits
+      options:
+        - label: Junior
+        - label: Mid
+        - label: Senior
+        - label: Lead / Staff / EM
+  - type: textarea
+    id: prompt
+    attributes:
+      label: The question
+      description: What would the interviewer say? For SQL, name the tables and the expected output columns.
+    validations:
+      required: true
+  - type: textarea
+    id: answer
+    attributes:
+      label: Your answer or the key points (optional)
+      description: A solution, or what a strong answer covers.
+  - type: input
+    id: source
+    attributes:
+      label: Public source (if it came from a real interview)
+      description: Company tags need a public link (blog post, forum thread). Leave empty if you wrote it yourself.

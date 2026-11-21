@@ -86,5 +86,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   mkdirSync(dirname(out), {recursive: true});
   writeFileSync(out, JSON.stringify(questions, null, 2) + '\n');
+  const fields = ['id', 'title', 'round', 'topic', 'levels', 'difficulty', 'time_minutes'];
+  const index = questions.map((q) => Object.fromEntries(fields.map((f) => [f, q[f]])));
+  writeFileSync(join(dirname(out), 'questions-index.json'), JSON.stringify(index) + '\n');
   console.log(`✓ ${questions.length} questions → ${relative(root, out)}`);
 }

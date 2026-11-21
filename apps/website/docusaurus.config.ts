@@ -33,6 +33,22 @@ const config: Config = {
 
   plugins: [docLevels],
 
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: true,
+        indexPages: true, // the question bank is a page; spoilers are excluded below
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        ignoreCssSelectors: ['.deih-spoiler'],
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
@@ -60,6 +76,7 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: 'img/og/default.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
@@ -79,10 +96,9 @@ const config: Config = {
         {to: '/questions', label: 'Questions', position: 'left'},
         {to: '/playground', label: 'Playground', position: 'left'},
         {to: '/planner', label: 'Planner', position: 'left'},
-        {to: '/mock', label: 'Mock interview', position: 'left'},
+        {to: '/mock', label: 'Mock', position: 'left'},
         {type: 'custom-levelSwitcher', position: 'right'},
         {type: 'custom-mockToggle', position: 'right'},
-        {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: repoUrl,
           label: 'GitHub',
