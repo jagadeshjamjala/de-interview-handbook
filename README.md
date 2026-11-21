@@ -8,6 +8,7 @@ A free, open-source **practice** handbook for data engineering interviews, with 
 - **SQL and Python playgrounds:** solve SQL questions on realistic datasets (DuckDB-WASM) and Python questions against their tests (Pyodide), with instant ✅/❌, all inside your browser.
 - **DE 75 study planner:** a week-by-week plan for your level, role type and time, with progress tracking, a shareable link and a calendar export.
 - **Mock interviews:** timed, spoiler-free sessions with rubric self-scoring. The debrief feeds your weak topics back into the planner.
+- **Flashcards:** spaced repetition over about 150 follow-up questions.
 - **Level tracks everywhere:** pick your level and every page highlights what's expected from you.
 
 | Solve SQL in the browser | Plan your weeks | Worked designs, by level |

@@ -121,10 +121,18 @@ const config: Config = {
           position: 'left',
           label: 'Handbook',
         },
-        {to: '/questions', label: 'Questions', position: 'left'},
-        {to: '/playground', label: 'Playground', position: 'left'},
-        {to: '/planner', label: 'Planner', position: 'left'},
-        {to: '/mock', label: 'Mock', position: 'left'},
+        {
+          type: 'dropdown',
+          label: 'Practice',
+          position: 'left',
+          items: [
+            {to: '/questions', label: 'Question bank'},
+            {to: '/playground', label: 'SQL playground'},
+            {to: '/planner', label: 'DE 75 planner'},
+            {to: '/mock', label: 'Mock interview'},
+            {to: '/flashcards', label: 'Flashcards'},
+          ],
+        },
         {type: 'custom-levelSwitcher', position: 'right'},
         {type: 'custom-mockToggle', position: 'right'},
         {
@@ -145,6 +153,7 @@ const config: Config = {
             {label: 'SQL playground', to: '/playground'},
             {label: 'DE 75 planner', to: '/planner'},
             {label: 'Mock interview', to: '/mock'},
+            {label: 'Flashcards', to: '/flashcards'},
           ],
         },
         {

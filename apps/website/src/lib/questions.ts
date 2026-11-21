@@ -21,7 +21,7 @@ export type Question = {
   guide?: string;
   check?: {order_matters: boolean; float_tolerance?: number};
   rubric?: {point: string; weight: number; topic?: string}[];
-  follow_ups?: string[];
+  follow_ups?: (string | {q: string; a: string})[];
   dialect_notes?: Record<string, {note: string; source: string}>;
   resources?: {title: string; url: string}[];
   html: {prompt: string; hints: string[]; answer?: string; explanation?: string};
