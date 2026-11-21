@@ -1,0 +1,80 @@
+id: sql-7-day-moving-average-trips
+title: 7-day moving average of completed trips per city
+round: sql
+topic: [moving-averages, date-spine, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: rides
+time_minutes: 20
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  For every city and **every calendar day** between the first and last `requested_at` date in the whole table, return:
+
+  - `trips`: completed trips (`status = 'completed'`) requested that day. Days with none count as 0.
+  - `trips_7d_avg`: the average of `trips` over that day and the 6 days before it, rounded to 2 decimals. For the first 6 days, average over the days available.
+
+  Output: `city, trip_date, trips, trips_7d_avg`. Order by `city, trip_date`.
+hints:
+  - A window over only the days that have trips silently skips the quiet days. Build the full list of days first.
+  - Cross join cities with days, then left join the daily counts.
+solution:
+  sql: |
+    WITH bounds AS (
+      SELECT MIN(CAST(requested_at AS DATE)) AS first_day,
+             MAX(CAST(requested_at AS DATE)) AS last_day
+      FROM trips
+    ),
+    days AS (
+      SELECT CAST(UNNEST(GENERATE_SERIES(first_day, last_day, INTERVAL 1 DAY)) AS DATE) AS trip_date
+      FROM bounds
+    ),
+    cities AS (
+      SELECT DISTINCT city FROM trips
+    ),
+    daily AS (
+      SELECT city, CAST(requested_at AS DATE) AS trip_date, COUNT(*) AS trips
+      FROM trips
+      WHERE status = 'completed'
+      GROUP BY city, CAST(requested_at AS DATE)
+    ),
+    filled AS (
+      SELECT c.city, d.trip_date, COALESCE(x.trips, 0) AS trips
+      FROM cities c
+      CROSS JOIN days d
+      LEFT JOIN daily x ON x.city = c.city AND x.trip_date = d.trip_date
+    )
+    SELECT city,
+           trip_date,
+           trips,
+           ROUND(AVG(trips) OVER (
+             PARTITION BY city ORDER BY trip_date
+             ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+           ), 2) AS trips_7d_avg
+    FROM filled
+    ORDER BY city, trip_date;
+  explanation: |
+    The trap is missing days. `ROWS BETWEEN 6 PRECEDING` counts rows, not days. If a city has no trips on Tuesday, the window reaches back 8 calendar days and the average is wrong. A date spine (one row per day) cross-joined with cities fixes it.
+
+    `COALESCE(..., 0)` matters too: `AVG` ignores NULLs, so leaving the gaps as NULL would inflate the average.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Spots that a ROWS window over sparse data skips calendar days, and builds a date spine'
+    weight: 2
+    topic: date-spine
+  - point: 'Fills missing days with 0, not NULL, and explains the effect on AVG'
+    weight: 1
+    topic: null-traps
+follow_ups:
+  - Could you use a RANGE frame with an INTERVAL instead of a spine? What would it still get wrong?
+  - In a production pipeline, where would the date spine come from?
+dialect_notes:
+  snowflake:
+    note: 'No GENERATE_SERIES. Build the spine with `TABLE(GENERATOR(ROWCOUNT => n))` and `DATEADD(day, SEQ4(), first_day)`, or join a calendar table.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/generator
+  bigquery:
+    note: '`UNNEST(GENERATE_DATE_ARRAY(first_day, last_day))` returns dates directly.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/array_functions#generate_date_array

@@ -1,0 +1,58 @@
+id: modeling-saas-subscription-mrr
+title: Model subscriptions so finance can report MRR movements
+round: modeling
+topic: [periodic-snapshot, fact-types, dimensional-modeling]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+prompt: |
+  A B2B SaaS company sells monthly and annual plans in several currencies. Customers upgrade, downgrade, pause, cancel and come back.
+
+  Finance wants a monthly report of **MRR** and its movements: new, expansion, contraction, churn and reactivation. They also want to drill into which accounts caused each number.
+
+  Design the model. Cover the fact tables and their grain, how you'd compute the movements, and what makes these numbers hard to keep stable.
+hints:
+  - You need both what changed (events) and what is true at month end (state). Those are different fact types.
+  - How does an annual plan paid upfront show up in *monthly* recurring revenue?
+solution:
+  answer: |
+    **Two fact tables, because there are two questions:**
+
+    1. `fact_subscription_change` is a **transaction fact**: one row per change to a subscription (`created`, `plan_changed`, `paused`, `cancelled`, `reactivated`), with `mrr_before` and `mrr_after`. It answers "what happened and why".
+    2. `fact_account_mrr_monthly` is a **periodic snapshot**: one row per account per month, with the MRR at month end and the movement class. It answers "what is MRR and how did it move".
+
+    **Normalizing MRR:** annual price / 12, in a reporting currency, at a fixed rate policy (for example the rate at contract start, so FX moves don't show up as expansion). Exclude trials and one-time fees. Discounts reduce MRR; taxes don't count.
+
+    **Classifying movements** compares an account's month-end MRR with the previous month's:
+    - prev = 0, curr > 0: **new** if it's the first time ever, otherwise **reactivation**
+    - prev > 0, curr = 0: **churn**
+    - curr > prev: **expansion**; curr < prev: **contraction**
+
+    This needs a row for every account that has ever been active, including months at zero (a spine of account × month). Otherwise churn has nowhere to land.
+
+    **Dimensions:** `dim_account` (segment, owner; SCD Type 2 if finance slices by segment at the time), `dim_plan` (price history), `dim_date`.
+
+    **What makes it hard:**
+    - **Backdated changes** (a cancellation keyed in late) change closed months. Decide with finance: restate history, or book the change in the current month. Keep the snapshot rebuildable from the change fact either way.
+    - **Mid-month changes:** month-end state is the usual convention. Agree it in writing.
+    - **Reconciliation:** start MRR + movements must equal end MRR every month. Make it a data test.
+rubric:
+  - point: 'Separates a change/transaction fact from a monthly snapshot fact, with each grain stated'
+    weight: 3
+    topic: fact-types
+  - point: 'Normalizes annual plans and currencies into MRR with a stated FX policy'
+    weight: 2
+    topic: dimensional-modeling
+  - point: 'Classifies movements by comparing to the prior month, including zero months for churn'
+    weight: 2
+    topic: periodic-snapshot
+  - point: 'Addresses backdated changes and restatement policy with finance'
+    weight: 2
+    topic: late-arriving-data
+  - point: 'Adds a reconciliation check: start + movements = end'
+    weight: 1
+    topic: data-quality
+follow_ups:
+  - The CFO wants daily MRR. What does that do to your snapshot's size and how would you control it?
+  - Sales says expansion is understated because seat add-ons are billed separately. How do you model add-ons?

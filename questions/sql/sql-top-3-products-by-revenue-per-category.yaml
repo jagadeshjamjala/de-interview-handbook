@@ -1,0 +1,66 @@
+id: sql-top-3-products-by-revenue-per-category
+title: Top 3 products by revenue in each category
+round: sql
+topic: [top-n-per-group, window-functions]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 15
+prompt: |
+  Tables:
+
+  - `products(product_id, name, category, price)`
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  Revenue for a line item is `quantity * unit_price`. Count only orders with `status = 'completed'`.
+
+  For each category, return the 3 products with the highest revenue. If two products tie, the lower `product_id` ranks higher.
+
+  Output: `category, product_id, revenue, revenue_rank`. Order by `category`, then `revenue_rank`.
+hints:
+  - Aggregate revenue per product first, then rank inside each category.
+  - Which ranking function gives exactly 3 rows per category even when there are ties?
+solution:
+  sql: |
+    WITH product_revenue AS (
+      SELECT p.category, p.product_id, SUM(oi.quantity * oi.unit_price) AS revenue
+      FROM order_items oi
+      JOIN orders o   ON o.order_id = oi.order_id
+      JOIN products p ON p.product_id = oi.product_id
+      WHERE o.status = 'completed'
+      GROUP BY p.category, p.product_id
+    ),
+    ranked AS (
+      SELECT category, product_id, revenue,
+             ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC, product_id) AS revenue_rank
+      FROM product_revenue
+    )
+    SELECT category, product_id, revenue, revenue_rank
+    FROM ranked
+    WHERE revenue_rank <= 3
+    ORDER BY category, revenue_rank;
+  explanation: |
+    Aggregate first, rank second. Ranking raw line items would rank rows, not products.
+
+    `ROW_NUMBER` with `product_id` as a tie-breaker gives exactly three rows per category and the same result every run. `RANK` would return more than three rows on ties, and `DENSE_RANK` could return many more. Pick one on purpose and say why in the interview.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+follow_ups:
+  - The business now wants ties included, even if that means 4 rows. What changes?
+  - How would you get the same result without a window function?
+dialect_notes:
+  snowflake:
+    note: 'Use `QUALIFY revenue_rank <= 3` to filter on the window result without the extra CTE.'
+    source: https://docs.snowflake.com/en/sql-reference/constructs/qualify
+  bigquery:
+    note: '`QUALIFY` is supported; it must be used with a `WHERE`, `GROUP BY` or `HAVING` clause in the same query.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#qualify_clause
+  databricks:
+    note: '`QUALIFY` is supported in Databricks SQL.'
+    source: https://docs.databricks.com/en/sql/language-manual/sql-ref-syntax-qry-select-qualify.html
+  sqlserver:
+    note: 'No `QUALIFY`. Keep the ranking in a CTE or subquery and filter in the outer query, as above.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/row-number-transact-sql

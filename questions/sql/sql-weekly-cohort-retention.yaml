@@ -1,0 +1,64 @@
+id: sql-weekly-cohort-retention
+title: Week-1 retention by weekly signup cohort
+round: sql
+topic: [retention-cohorts, date-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: events
+time_minutes: 25
+prompt: |
+  Tables:
+
+  - `users(user_id, signup_date, country, plan)`
+  - `logins(user_id, login_ts)`
+
+  A user's cohort is the week of their `signup_date` (weeks start on Monday). A user is **retained** if they logged in at least once between 7 and 13 days after `signup_date`, inclusive.
+
+  Output: `cohort_week, cohort_size, retained_users, retention_rate`, where `retention_rate = retained_users / cohort_size` rounded to 4 decimals. Include cohorts with zero retained users. Order by `cohort_week`.
+hints:
+  - Decide retained yes/no per user first, then aggregate per cohort.
+  - Starting from `logins` drops users who never logged in. Start from `users`.
+solution:
+  sql: |
+    WITH per_user AS (
+      SELECT u.user_id,
+             CAST(DATE_TRUNC('week', u.signup_date) AS DATE) AS cohort_week,
+             EXISTS (
+               SELECT 1 FROM logins l
+               WHERE l.user_id = u.user_id
+                 AND CAST(l.login_ts AS DATE) BETWEEN u.signup_date + 7 AND u.signup_date + 13
+             ) AS retained
+      FROM users u
+    )
+    SELECT cohort_week,
+           COUNT(*) AS cohort_size,
+           SUM(CASE WHEN retained THEN 1 ELSE 0 END) AS retained_users,
+           ROUND(AVG(CASE WHEN retained THEN 1.0 ELSE 0.0 END), 4) AS retention_rate
+    FROM per_user
+    GROUP BY cohort_week
+    ORDER BY cohort_week;
+  explanation: |
+    Pin the definition down before writing SQL: cohort = signup week, retained = any login on days 7–13. Most wrong answers come from a fuzzy definition, not from the SQL.
+
+    Start from `users`, not `logins`. Users who never came back still belong to the cohort size. Joining logins first and counting would drop them and inflate retention.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+rubric:
+  - point: 'States the retention window precisely (days 7–13 after signup) before writing SQL'
+    weight: 2
+    topic: retention-cohorts
+  - point: 'Keeps users with no logins in the cohort size'
+    weight: 1
+    topic: retention-cohorts
+follow_ups:
+  - The newest cohorts haven't had 13 days yet. How do you keep them from looking like churn?
+  - Turn this into a full retention triangle (week 0 to week 8). What's the shape of the output?
+dialect_notes:
+  bigquery:
+    note: '`DATE_TRUNC(signup_date, WEEK)` starts weeks on **Sunday**. Use `WEEK(MONDAY)` or `ISOWEEK` to match this question.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc
+  snowflake:
+    note: "The first day of the week for `DATE_TRUNC('week', …)` depends on the `WEEK_START` session parameter; set it, or don't rely on the default."
+    source: https://docs.snowflake.com/en/sql-reference/parameters#week-start

@@ -1,0 +1,43 @@
+id: sql-customers-who-never-ordered
+title: Customers who never placed an order
+round: sql
+topic: [anti-joins, null-traps]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 10
+prompt: |
+  Tables:
+
+  - `customers(customer_id, name, country, signup_date)`
+  - `orders(order_id, customer_id, order_date, status)`
+
+  Guest checkouts are stored with `customer_id = NULL`.
+
+  Return every customer who has no orders at all, in any status.
+
+  Output: `customer_id`. Order by `customer_id`.
+hints:
+  - Try `WHERE customer_id NOT IN (SELECT customer_id FROM orders)` and look at the row count. Why?
+solution:
+  sql: |
+    SELECT c.customer_id
+    FROM customers c
+    WHERE NOT EXISTS (
+      SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id
+    )
+    ORDER BY c.customer_id;
+  explanation: |
+    `NOT IN` returns **zero rows** here. `x NOT IN (1, 2, NULL)` means `x <> 1 AND x <> 2 AND x <> NULL`, and `x <> NULL` is unknown, so the whole condition is never true. The guest orders put a NULL in the list.
+
+    `NOT EXISTS` (or `LEFT JOIN … WHERE o.order_id IS NULL`) has no such trap. Prefer it by default.
+check:
+  order_matters: true
+rubric:
+  - point: 'Explains why NOT IN returns no rows when the subquery contains a NULL'
+    weight: 2
+    topic: null-traps
+follow_ups:
+  - Rewrite it as a LEFT JOIN. Which column must you test for NULL, and why that one?
+  - Which form is faster on your warehouse, and how would you check?

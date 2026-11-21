@@ -1,0 +1,56 @@
+id: sql-month-to-date-revenue
+title: Daily revenue with a month-to-date running total
+round: sql
+topic: [running-totals, window-functions]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 15
+prompt: |
+  Tables:
+
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  For every day that has at least one completed order (`status = 'completed'`), return that day's revenue (`quantity * unit_price`) and a running total that resets on the first day of each month.
+
+  Output: `order_date, revenue, month_to_date_revenue`. Order by `order_date`.
+hints:
+  - Build daily revenue first; then a window `SUM` over it.
+  - What do you partition by so the total resets each month?
+solution:
+  sql: |
+    WITH daily AS (
+      SELECT o.order_date, SUM(oi.quantity * oi.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.order_id
+      WHERE o.status = 'completed'
+      GROUP BY o.order_date
+    )
+    SELECT order_date,
+           revenue,
+           SUM(revenue) OVER (
+             PARTITION BY DATE_TRUNC('month', order_date)
+             ORDER BY order_date
+             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+           ) AS month_to_date_revenue
+    FROM daily
+    ORDER BY order_date;
+  explanation: |
+    Partition by month to reset the total and order by date to accumulate it.
+
+    Write the frame explicitly. With `ORDER BY` and no frame, most engines default to `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`, which treats rows with equal sort keys as one peer group. Here dates are unique after the aggregation, so both give the same answer, but on raw rows with duplicate dates they don't.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+follow_ups:
+  - The business wants every calendar day listed, including days with zero revenue. What do you add?
+  - What's the difference between ROWS and RANGE frames, and when does it change the result?
+dialect_notes:
+  bigquery:
+    note: 'Argument order is reversed: `DATE_TRUNC(order_date, MONTH)`.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions#date_trunc
+  sqlserver:
+    note: '`DATETRUNC(month, order_date)` exists from SQL Server 2022. On older versions use `DATEFROMPARTS(YEAR(order_date), MONTH(order_date), 1)`.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/datetrunc-transact-sql

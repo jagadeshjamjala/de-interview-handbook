@@ -1,0 +1,68 @@
+id: sql-fix-fan-out-order-count
+title: Fix the inflated order count
+round: sql
+topic: [fan-out-joins, aggregation]
+levels: [junior, mid]
+difficulty: medium
+companies: []
+dataset: ecommerce
+time_minutes: 15
+prompt: |
+  Tables:
+
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  A teammate wrote this report of the top 10 customers by completed-order revenue. Revenue looks right, but `order_count` is too high:
+
+  ```sql
+  SELECT o.customer_id,
+         COUNT(o.order_id) AS order_count,
+         SUM(oi.quantity * oi.unit_price) AS revenue
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status = 'completed'
+  GROUP BY o.customer_id
+  ORDER BY revenue DESC
+  LIMIT 10;
+  ```
+
+  Explain the bug and write a correct version. Ignore guest orders (`customer_id IS NULL`). Break revenue ties by lower `customer_id`.
+
+  Output: `customer_id, order_count, revenue`. Order by `revenue` descending, then `customer_id`.
+hints:
+  - How many rows does one order with 3 line items become after the join?
+solution:
+  sql: |
+    WITH order_revenue AS (
+      SELECT order_id, SUM(quantity * unit_price) AS revenue
+      FROM order_items
+      GROUP BY order_id
+    )
+    SELECT o.customer_id,
+           COUNT(*) AS order_count,
+           SUM(r.revenue) AS revenue
+    FROM orders o
+    JOIN order_revenue r ON r.order_id = o.order_id
+    WHERE o.status = 'completed'
+      AND o.customer_id IS NOT NULL
+    GROUP BY o.customer_id
+    ORDER BY revenue DESC, o.customer_id
+    LIMIT 10;
+  explanation: |
+    This is a **fan-out**. Joining an order to its line items turns one order into one row per item, so `COUNT(o.order_id)` counts items, not orders. The revenue sum survives only because each item's revenue appears exactly once.
+
+    `COUNT(DISTINCT o.order_id)` fixes this query, but the more robust habit is to **aggregate the child table to the parent's grain before joining**. That keeps every later measure safe, including ones that live on the order itself (like shipping fee), which would be multiplied by the item count.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Names the cause: the join multiplies each order by its number of line items'
+    weight: 2
+    topic: fan-out-joins
+  - point: 'Explains why COUNT(DISTINCT) works here but breaks for order-level measures like shipping fee'
+    weight: 1
+    topic: fan-out-joins
+follow_ups:
+  - Add an `order_discount` column from `orders` to the report. Which version stays correct?
+  - How would you catch fan-out bugs automatically in a dbt project?

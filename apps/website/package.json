@@ -3,12 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "docusaurus start",
-    "build": "docusaurus build",
+    "questions": "node ../../scripts/build-questions.ts",
+    "start": "pnpm questions && docusaurus start",
+    "build": "pnpm questions && docusaurus build",
     "serve": "docusaurus serve",
     "clear": "docusaurus clear",
     "swizzle": "docusaurus swizzle",
-    "typecheck": "tsc"
+    "typecheck": "pnpm questions && tsc"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",
