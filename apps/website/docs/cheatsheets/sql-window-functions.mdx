@@ -1,0 +1,84 @@
+---
+title: SQL window functions
+sidebar_position: 1
+description: Window function syntax, ranking functions, frames, LAG/LEAD and the common gotchas, on one page.
+levels: [junior, mid, senior, lead]
+topic: [sql, window-functions, cheatsheet]
+---
+
+# SQL window functions cheatsheet
+
+<LevelExpectations
+  junior="Know ROW_NUMBER, RANK, DENSE_RANK, LAG/LEAD and SUM OVER, and when each is used."
+  mid="Write explicit frames, explain ROWS vs RANGE, and use the gotchas below without hints."
+  senior="Know the cost (sorts, partitions) and how to replace window queries with incremental logic at scale."
+  lead="Same as senior."
+/>
+
+## Anatomy
+
+```sql
+function(args) OVER (
+  PARTITION BY a, b          -- restart for each group (optional)
+  ORDER BY c DESC, d         -- order inside the group
+  ROWS BETWEEN 6 PRECEDING AND CURRENT ROW   -- the frame (optional)
+)
+```
+
+Window functions run **after** `WHERE`, `GROUP BY` and `HAVING`, and **before** `ORDER BY` and `LIMIT`. So you can window over aggregates (`SUM(SUM(x)) OVER ()`), but you can't filter on a window result in `WHERE`. Use a CTE or `QUALIFY`.
+
+## Ranking
+
+| Function | Ties | Values for scores 90, 80, 80, 70 |
+|---|---|---|
+| `ROW_NUMBER()` | Arbitrary unless the ORDER BY is unique | 1, 2, 3, 4 |
+| `RANK()` | Same rank, then a gap | 1, 2, 2, 4 |
+| `DENSE_RANK()` | Same rank, no gap | 1, 2, 2, 3 |
+| `NTILE(n)` | Splits rows into n buckets | for n=2: 1, 1, 2, 2 |
+| `PERCENT_RANK()` | (rank − 1) / (rows − 1) | 0, 0.33, 0.33, 1 |
+
+**Always add a tie-breaker** to `ROW_NUMBER` (`ORDER BY score DESC, id`), or results change between runs.
+
+## Offsets
+
+| Function | Returns |
+|---|---|
+| `LAG(x, n, default)` | Value n rows before (default 1) |
+| `LEAD(x, n, default)` | Value n rows after |
+| `FIRST_VALUE(x)` | First value in the frame |
+| `LAST_VALUE(x)` | Last value in the **frame**. See the gotcha below |
+| `NTH_VALUE(x, n)` | nth value in the frame |
+
+## Frames
+
+- `ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`: physical rows. A 7-row window.
+- `RANGE BETWEEN INTERVAL 6 DAY PRECEDING AND CURRENT ROW`: by value of the ORDER BY column (support varies by engine).
+- `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`: running total.
+- `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`: the whole partition.
+
+**Default frame:** with `ORDER BY` and no frame, most engines use `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`. Rows with equal ORDER BY values are peers and get the same running total. Without `ORDER BY`, the frame is the whole partition.
+
+## Gotchas
+
+1. **`LAST_VALUE` returns the current row** with the default frame, because the frame ends at the current row. Use `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`, or `FIRST_VALUE` with the order reversed.
+2. **`ROWS` counts rows, not days.** A 7-row average over sparse daily data spans more than 7 days. Build a date spine first.
+3. **`COUNT(DISTINCT x) OVER (…)`** isn't supported in most engines. Use a self-join to a spine, or approximate sketches.
+4. **`AVG` ignores NULLs.** Filled gaps should be 0, not NULL, if they mean "nothing happened".
+5. **Filtering on a window result** needs a CTE/subquery, or `QUALIFY` where supported (Snowflake, BigQuery, Databricks, DuckDB, Teradata).
+
+## Patterns in one line each
+
+| Goal | Pattern |
+|---|---|
+| Latest row per key | `ROW_NUMBER() OVER (PARTITION BY key ORDER BY ts DESC) = 1` |
+| Top N per group | `ROW_NUMBER() … <= N` |
+| Running total | `SUM(x) OVER (ORDER BY d ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)` |
+| Change vs previous | `x - LAG(x) OVER (ORDER BY d)` |
+| Share of total | `x / SUM(x) OVER ()` |
+| Islands of consecutive dates | `d - ROW_NUMBER() OVER (PARTITION BY k ORDER BY d)` |
+| Session starts | `CASE WHEN ts - LAG(ts) OVER w > gap THEN 1 END`, then a running `SUM` |
+| Fill forward | `LAST_VALUE(x IGNORE NULLS) OVER (ORDER BY d ROWS UNBOUNDED PRECEDING)` |
+
+## Practice
+
+<RelatedQuestions topic="window-functions" />

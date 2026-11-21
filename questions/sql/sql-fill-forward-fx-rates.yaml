@@ -1,0 +1,66 @@
+id: sql-fill-forward-fx-rates
+title: Daily EUR rate for January, filled forward over weekends
+round: sql
+topic: [date-spine, fill-forward, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: payments
+time_minutes: 20
+prompt: |
+  Table: `fx_rates(rate_date, currency, usd_rate)`. Rates are published on business days only; weekends and holidays have no row.
+
+  Build a row for **every** calendar day from 2024-01-01 to 2024-01-31 with the EUR rate in effect that day, which is the latest published rate on or before it. Flag days whose rate was carried forward.
+
+  Output: `rate_date, usd_rate, is_carried_forward`. Order by `rate_date`.
+hints:
+  - 2024-01-01 is a holiday. Where does its rate come from?
+  - '`LAST_VALUE(x IGNORE NULLS)` over a date spine carries the last known value forward.'
+solution:
+  sql: |
+    WITH days AS (
+      -- start the spine before January so 1 January can inherit December's last rate
+      SELECT CAST(UNNEST(GENERATE_SERIES(DATE '2023-12-01', DATE '2024-01-31', INTERVAL 1 DAY)) AS DATE) AS d
+    ),
+    eur AS (
+      SELECT rate_date, usd_rate FROM fx_rates WHERE currency = 'EUR'
+    ),
+    filled AS (
+      SELECT days.d,
+             LAST_VALUE(eur.usd_rate IGNORE NULLS) OVER (
+               ORDER BY days.d ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) AS usd_rate,
+             eur.rate_date IS NULL AS is_carried_forward
+      FROM days
+      LEFT JOIN eur ON eur.rate_date = days.d
+    )
+    SELECT d AS rate_date, usd_rate, is_carried_forward
+    FROM filled
+    WHERE d >= DATE '2024-01-01'
+    ORDER BY d;
+  explanation: |
+    A date spine plus `LAST_VALUE … IGNORE NULLS` fills gaps with the last known value.
+
+    The trap is the **first** day. If the spine starts on 1 January, a holiday, there is nothing before it inside the window and the rate is NULL. Start the spine early enough to include the last rate before the range, then filter. A correlated "latest rate on or before" lookup avoids the issue entirely, at a higher cost per row.
+
+    A filled-forward daily rate table like this is what you'd materialize once, so every downstream conversion becomes a plain equi-join.
+check:
+  order_matters: true
+  float_tolerance: 0.000001
+rubric:
+  - point: 'Handles the first day of the range (spine starts earlier or as-of lookup)'
+    weight: 2
+    topic: fill-forward
+follow_ups:
+  - Materialize this for every currency and every day since 2010. How do you keep it updated daily?
+  - Finance restates a rate. Which downstream tables must be rebuilt?
+dialect_notes:
+  snowflake:
+    note: '`LAST_VALUE(usd_rate) IGNORE NULLS OVER (…)`; the IGNORE NULLS goes after the parentheses.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/last_value
+  bigquery:
+    note: '`LAST_VALUE(usd_rate IGNORE NULLS) OVER (…)`.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#last_value
+  sqlserver:
+    note: '`IGNORE NULLS` for `LAST_VALUE` exists from SQL Server 2022 only.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/last-value-transact-sql

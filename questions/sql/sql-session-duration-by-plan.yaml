@@ -1,0 +1,49 @@
+id: sql-session-duration-by-plan
+title: Average session length by plan
+round: sql
+topic: [aggregation, date-functions]
+levels: [junior]
+difficulty: easy
+companies: []
+dataset: events
+time_minutes: 10
+prompt: |
+  Tables:
+
+  - `users(user_id, signup_date, country, plan)`
+  - `sessions(session_id, user_id, started_at, ended_at, device)`
+
+  For each plan, return the number of sessions and the average session length in minutes (rounded to 2 decimals).
+
+  Output: `plan, sessions, avg_minutes`. Order by `plan`.
+hints:
+  - Turn each session into a number of seconds, then average and divide by 60.
+solution:
+  sql: |
+    SELECT u.plan,
+           COUNT(*) AS sessions,
+           ROUND(AVG(EPOCH(s.ended_at) - EPOCH(s.started_at)) / 60, 2) AS avg_minutes
+    FROM sessions s
+    JOIN users u ON u.user_id = s.user_id
+    GROUP BY u.plan
+    ORDER BY u.plan;
+  explanation: |
+    Convert the duration to seconds before averaging, then to minutes. Averaging whole minutes (`DATEDIFF(minute, …)`) would throw away up to 59 seconds per session, and in some engines it counts minute **boundaries crossed**, not elapsed time.
+
+    The join is safe from fan-out because each session has exactly one user.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+follow_ups:
+  - Some sessions have ended_at before started_at because of clock skew. How do you detect and handle them?
+  - Would you report mean or median session length to a product manager? Why?
+dialect_notes:
+  snowflake:
+    note: "`DATEDIFF('second', started_at, ended_at)`; avoid the 'minute' part, which counts boundaries crossed."
+    source: https://docs.snowflake.com/en/sql-reference/functions/datediff
+  bigquery:
+    note: '`TIMESTAMP_DIFF(ended_at, started_at, SECOND)`.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#timestamp_diff
+  sqlserver:
+    note: '`DATEDIFF(second, started_at, ended_at)`; it also counts boundaries crossed, so use seconds, not minutes.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/datediff-transact-sql

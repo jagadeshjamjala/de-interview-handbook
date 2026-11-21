@@ -56,7 +56,7 @@ dialect_notes:
     note: 'Use `QUALIFY revenue_rank <= 3` to filter on the window result without the extra CTE.'
     source: https://docs.snowflake.com/en/sql-reference/constructs/qualify
   bigquery:
-    note: '`QUALIFY` is supported; it must be used with a `WHERE`, `GROUP BY` or `HAVING` clause in the same query.'
+    note: '`QUALIFY revenue_rank <= 3` works; it filters on window results, which run after GROUP BY and HAVING.'
     source: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#qualify_clause
   databricks:
     note: '`QUALIFY` is supported in Databricks SQL.'

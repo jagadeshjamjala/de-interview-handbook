@@ -1,0 +1,46 @@
+id: modeling-orders-returns-fulfillment
+title: Orders, partial returns and fulfillment status
+round: modeling
+topic: [grain, fact-types, accumulating-snapshot]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 30
+prompt: |
+  An online store needs:
+
+  - Net revenue by product and day (gross sales minus returns and refunds)
+  - Return rate by category, where one order can return **some** of its items, sometimes weeks later
+  - How long orders take from placed → paid → shipped → delivered, and where they get stuck
+
+  Design the fact tables. Be explicit about grain and about how each one changes over time.
+hints:
+  - Net revenue and "how long did each stage take" are different fact types.
+  - Is a return a negative sale, or its own fact?
+solution:
+  answer: |
+    **fct_order_line** is a **transaction fact**, one row per order line at purchase. Keys: `order_id`, `order_line_id`, `product_key`, `customer_key`, `order_date_key`. Measures: `quantity`, `gross_amount`, `discount_amount`, `tax_amount`. Inserted once and never updated.
+
+    **fct_return_line** is another **transaction fact**, one row per returned line item event, keyed back to `order_line_id`, with `return_date_key`, `returned_quantity`, `refund_amount` and `reason`. Returns get their own fact because they happen on a different date, at a different grain (partial quantities), with their own attributes. Net revenue by day is `SUM(gross) - SUM(refunds)`, each on its own date. "Return rate for products sold in March" joins returns back to the original lines.
+
+    **fct_order_fulfillment** is an **accumulating snapshot**, one row per order, **updated** as milestones happen: `placed_at`, `paid_at`, `shipped_at`, `delivered_at`, `cancelled_at`, plus lag measures (`hours_to_ship`, `hours_to_deliver`) and a `current_stage`. This is the one fact table that's meant to be updated in place, and it makes "stuck orders" a simple filter.
+
+    **Why not one table?** Putting returns as negative rows in the order fact works for net revenue but breaks the return rate and the timing analysis. Updating order rows in place for returns would destroy what was originally sold.
+
+    **Conformed dimensions** (`dim_product`, `dim_customer`, `dim_date`) are shared, so revenue, returns and fulfillment can sit on one dashboard.
+rubric:
+  - point: 'Order line grain for sales; separate return fact at returned-line grain'
+    weight: 3
+    topic: grain
+  - point: 'Uses an accumulating snapshot (one row per order, updated per milestone) for fulfillment timing'
+    weight: 3
+    topic: accumulating-snapshot
+  - point: 'Explains date attribution: sales on order date, refunds on return date'
+    weight: 2
+    topic: fact-types
+  - point: 'Uses conformed dimensions across the facts'
+    weight: 1
+    topic: dimensional-modeling
+follow_ups:
+  - An order ships in three parcels on different days. What happens to the accumulating snapshot's grain?
+  - Finance wants revenue recognized at delivery, not at order. What changes?

@@ -1,0 +1,43 @@
+id: sql-category-share-of-revenue
+title: Each category's share of total revenue
+round: sql
+topic: [window-functions, percent-of-total]
+levels: [junior]
+difficulty: easy
+companies: []
+dataset: ecommerce
+time_minutes: 10
+prompt: |
+  Tables:
+
+  - `products(product_id, name, category, price)`
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  For completed orders, return each category's revenue and its share of total revenue (rounded to 4 decimals).
+
+  Output: `category, revenue, pct_of_total`. Order by `revenue` descending.
+hints:
+  - A window function with an empty `OVER ()` sees every row of the grouped result.
+solution:
+  sql: |
+    SELECT p.category,
+           SUM(oi.quantity * oi.unit_price) AS revenue,
+           ROUND(SUM(oi.quantity * oi.unit_price) * 1.0
+                 / SUM(SUM(oi.quantity * oi.unit_price)) OVER (), 4) AS pct_of_total
+    FROM order_items oi
+    JOIN orders o   ON o.order_id = oi.order_id
+    JOIN products p ON p.product_id = oi.product_id
+    WHERE o.status = 'completed'
+    GROUP BY p.category
+    ORDER BY revenue DESC;
+  explanation: |
+    `SUM(SUM(x)) OVER ()` looks odd but is standard. The inner `SUM` is the `GROUP BY` aggregate per category; the outer windowed `SUM` adds those up across all groups. Window functions run **after** `GROUP BY`, which is why this works.
+
+    The alternative is a CTE for category revenue and a cross join to its total. It's fine too, and easier for some readers.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+follow_ups:
+  - Show each category's share within each month instead. What goes in OVER ()?
+  - Why do window functions run after GROUP BY and before ORDER BY?

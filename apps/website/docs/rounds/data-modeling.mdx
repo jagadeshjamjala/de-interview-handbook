@@ -1,0 +1,57 @@
+---
+title: Data modeling round
+sidebar_position: 3
+description: A step-by-step method for data modeling interviews, the fact table types, SCDs, Data Vault and OBT, with 10 practice questions.
+levels: [junior, mid, senior, lead]
+topic: [data-modeling]
+---
+
+# Data modeling round
+
+The prompt is usually short and vague: "Model a ride-sharing app", "Design tables for subscriptions". The interviewer is watching **how you turn a business process into tables**, and whether your model gives the right numbers when the data changes.
+
+<LevelExpectations
+  junior="Know facts vs dimensions and state a grain. Draw a simple star schema and explain what each table holds."
+  mid="Pick grain and fact types confidently, choose SCD types for history, and walk a query through the model."
+  senior="Design for change and scale: late data, multiple consumers, many-to-many relationships, semi-additive measures, cost."
+  lead="Tie the model to ownership and process: contracts with source teams, governance, which layer serves whom, how it evolves."
+/>
+
+## The method
+
+1. **Clarify the business process and the questions.** "What decisions will this support? Give me three questions an analyst will ask on day one." Write them down. You'll test your model against them at the end.
+2. **Declare the grain** of each fact table, in one sentence, before listing any columns. "One row per trip request." Most modeling mistakes are grain mistakes.
+3. **Pick the fact type:**
+   - **Transaction:** one row per event (an order line, a payment). Insert-only, fully additive.
+   - **Periodic snapshot:** one row per entity per period (account balance per day). Measures are often semi-additive.
+   - **Accumulating snapshot:** one row per process instance, updated as milestones happen (order placed → shipped → delivered).
+   - **Factless fact:** an event with no measures (attendance, eligibility).
+4. **Identify dimensions** (who, what, where, when) and their keys. Use surrogate keys when history matters.
+5. **Decide how history works.** For each dimension attribute that can change, which SCD type? See the [SCD cheatsheet](../cheatsheets/scd-types.mdx).
+6. **List measures,** and say which are additive, semi-additive (balances, stock) or non-additive (ratios: store the parts and compute the ratio).
+7. **Walk the questions back through the model.** Write the SQL in your head for each question from step 1. If one needs a hack, the model is wrong.
+8. **Cover change and failure:** late-arriving facts and dimensions, corrections, deletes (GDPR), schema changes, size and partitioning.
+
+## Choosing an approach
+
+- **Kimball star schemas:** the default for analytics. Easy to query, well understood by BI tools.
+- **Data Vault:** an integration layer for many changing sources and strict audit needs, with stars built on top. See the question below for when it's worth it.
+- **One Big Table (OBT):** a wide, pre-joined serving table. Great for BI on columnar warehouses, but built *from* the star, not instead of it.
+- **Event modeling:** for clickstream and logs, keep raw events append-only and derive sessions and user-day tables.
+
+## Common traps
+
+- Listing columns before stating the grain.
+- Mixing grains in one table (an order-level fee on an order-line row gets summed many times).
+- Summing a semi-additive measure over time.
+- Flattening SCD2 history without saying which version each row uses.
+- Many-to-many joins without a bridge table, which double count.
+- Using current-state tables to build ML training data (leakage).
+
+## Practice
+
+<RelatedQuestions round="modeling" />
+
+SQL questions that exercise modeling ideas:
+
+<RelatedQuestions ids={["sql-build-scd2-from-change-log", "sql-revenue-by-country-at-order-time", "sql-fix-fan-out-order-count"]} />

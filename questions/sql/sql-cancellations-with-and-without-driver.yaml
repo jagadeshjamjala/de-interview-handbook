@@ -1,0 +1,38 @@
+id: sql-cancellations-with-and-without-driver
+title: Cancellation rate, with and without a driver assigned
+round: sql
+topic: [null-traps, aggregation, rates]
+levels: [junior]
+difficulty: easy
+companies: []
+dataset: rides
+time_minutes: 10
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`. A cancelled trip has `driver_id = NULL` if it was cancelled before a driver was assigned.
+
+  Per city, return: all trip requests, cancelled requests, the cancellation rate (rounded to 4 decimals), and how many cancellations happened **before** a driver was assigned.
+
+  Output: `city, requests, cancelled, cancel_rate, cancelled_before_assignment`. Order by `city`.
+hints:
+  - '`COUNT(*)`, `COUNT(column)` and `SUM(CASE …)` each count something different.'
+solution:
+  sql: |
+    SELECT city,
+           COUNT(*) AS requests,
+           SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled,
+           ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0.0 END), 4) AS cancel_rate,
+           SUM(CASE WHEN status = 'cancelled' AND driver_id IS NULL THEN 1 ELSE 0 END)
+             AS cancelled_before_assignment
+    FROM trips
+    GROUP BY city
+    ORDER BY city;
+  explanation: |
+    `COUNT(*)` counts rows, while `COUNT(driver_id)` counts non-NULL values. So `COUNT(*) - COUNT(driver_id)` would also give "requests with no driver", but that silently mixes in any future status where the driver is NULL. Spelling out the condition is clearer.
+
+    `AVG(CASE … THEN 1.0 ELSE 0.0 END)` is a compact way to get a rate, and it avoids integer division.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+follow_ups:
+  - Split cancellations by who cancelled. What column would you ask the source team for?
+  - Where should "cancellation rate" be defined so every dashboard uses the same formula?

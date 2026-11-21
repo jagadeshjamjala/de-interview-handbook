@@ -1,0 +1,57 @@
+id: sql-org-chart-depth-and-path
+title: Reporting depth and management path for every employee
+round: sql
+topic: [recursive-ctes, hierarchies]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: ecommerce
+time_minutes: 20
+prompt: |
+  Table: `employees(employee_id, name, manager_id, department, salary, hired_date)`. The CEO has `manager_id = NULL`.
+
+  For every employee, return their depth in the org chart (CEO = 0) and the path of employee IDs from the CEO down to them, joined with `>` (for example `1>4>17`).
+
+  Output: `employee_id, depth, path`. Order by `employee_id`.
+hints:
+  - Start from the CEO (the anchor), then repeatedly join employees whose manager is already in the result.
+solution:
+  sql: |
+    WITH RECURSIVE chain AS (
+      SELECT employee_id, 0 AS depth, CAST(employee_id AS VARCHAR) AS path
+      FROM employees
+      WHERE manager_id IS NULL
+      UNION ALL
+      SELECT e.employee_id, c.depth + 1, c.path || '>' || CAST(e.employee_id AS VARCHAR)
+      FROM employees e
+      JOIN chain c ON e.manager_id = c.employee_id
+    )
+    SELECT employee_id, depth, path
+    FROM chain
+    ORDER BY employee_id;
+  explanation: |
+    A recursive CTE has an **anchor** (the CEO) and a **recursive step** that joins the next level onto rows already found. It stops when a step adds no rows.
+
+    Two things to mention: cast the path to a string type wide enough to grow (some engines fix the column type from the anchor), and guard against cycles in dirty HR data, for example with a depth limit or by checking that the path doesn't already contain the ID.
+check:
+  order_matters: true
+rubric:
+  - point: 'Names the anchor and recursive members and the stop condition'
+    weight: 2
+    topic: recursive-ctes
+  - point: 'Mentions cycle protection for bad data (depth limit or path check)'
+    weight: 1
+    topic: hierarchies
+follow_ups:
+  - Return, for each manager, the total headcount under them (all levels). How?
+  - How would you store this hierarchy so the dashboard doesn't recurse on every query?
+dialect_notes:
+  sqlserver:
+    note: 'Write `WITH chain AS (…)` without the `RECURSIVE` keyword; recursion is implied. Default max recursion is 100 (`OPTION (MAXRECURSION n)`).'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/queries/with-common-table-expression-transact-sql
+  snowflake:
+    note: '`WITH RECURSIVE` works; `CONNECT BY` is an alternative syntax for hierarchies.'
+    source: https://docs.snowflake.com/en/sql-reference/constructs/connect-by
+  bigquery:
+    note: 'Needs `WITH RECURSIVE` explicitly.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#recursive_keyword

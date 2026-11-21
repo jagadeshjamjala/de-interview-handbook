@@ -1,5 +1,7 @@
 import {useState, type ReactNode} from 'react';
 import CodeBlock from '@theme/CodeBlock';
+import Link from '@docusaurus/Link';
+import useBrokenLinks from '@docusaurus/useBrokenLinks';
 import Heading from '@theme/Heading';
 import Spoiler from '@site/src/components/Spoiler';
 import SqlPlayground from '@site/src/components/SqlPlayground';
@@ -13,6 +15,7 @@ function Html({html}: {html: string}): ReactNode {
 
 export default function QuestionCard({q}: {q: Question}): ReactNode {
   const [trying, setTrying] = useState(false);
+  useBrokenLinks().collectAnchor(q.id); // lets the build verify /questions#id links
   return (
     <article className={styles.card} id={q.id}>
       <Heading as="h2" className={styles.title}>
@@ -35,6 +38,19 @@ export default function QuestionCard({q}: {q: Question}): ReactNode {
 
       <Html html={q.html.prompt} />
 
+      {q.tests && (
+        <details className={styles.examples}>
+          <summary>Example tests</summary>
+          <CodeBlock language="python">{q.tests.trimEnd()}</CodeBlock>
+        </details>
+      )}
+
+      {q.guide && (
+        <p>
+          <Link to={q.guide}>Read the full worked design →</Link>
+        </p>
+      )}
+
       {q.round === 'sql' &&
         (trying ? (
           <SqlPlayground question={q} />
@@ -56,6 +72,9 @@ export default function QuestionCard({q}: {q: Question}): ReactNode {
 
       <Spoiler>
         {q.solution.sql && <CodeBlock language="sql">{q.solution.sql.trimEnd()}</CodeBlock>}
+        {q.solution.python && (
+          <CodeBlock language="python">{q.solution.python.trimEnd()}</CodeBlock>
+        )}
         {q.html.answer && <Html html={q.html.answer} />}
         {q.html.explanation && <Html html={q.html.explanation} />}
 

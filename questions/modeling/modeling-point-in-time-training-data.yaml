@@ -1,0 +1,48 @@
+id: modeling-point-in-time-training-data
+title: Point-in-time correct training data for a churn model
+round: modeling
+topic: [point-in-time-joins, feature-engineering, ml-data]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 30
+prompt: |
+  Data scientists train a churn model. Each training example is `(customer_id, prediction_date, label)`, where the label means "churned within 30 days after prediction_date". Features include number of support tickets in the last 30 days, current plan, days since last login, and lifetime spend.
+
+  Their first model scored great offline and badly in production. Design the data model and pipeline for training data so offline matches online, and explain what probably went wrong.
+hints:
+  - What did the feature values look like *on* the prediction date, as opposed to today?
+solution:
+  answer: |
+    **What went wrong: label leakage through features.** Features were probably computed from *current* tables, such as today's plan, today's lifetime spend, or tickets including ones after the prediction date. The model learned from the future. In production that information doesn't exist yet, so performance collapses.
+
+    **Model:**
+    - **Feature history**, not current state. Keep features as time-stamped rows: `feature_customer_daily(customer_id, as_of_date, tickets_30d, plan, days_since_login, lifetime_spend)`, or as event logs with `event_ts` from which features can be recomputed. Plan comes from an SCD2 dimension.
+    - **Spine:** `training_spine(customer_id, prediction_date, label)`, with the label computed from events strictly **after** `prediction_date` (within 30 days).
+    - **Point-in-time join:** for each spine row, take each feature's latest value with `as_of_date <= prediction_date`. Use `<`, not `<=`, if the feature is computed at end of day and predictions run in the morning. Feature stores (Feast, Tecton, Databricks) do exactly this join; in SQL it's an as-of join.
+
+    **Making offline equal online:**
+    - Compute features **once**, with the same code for training and serving, from the same definitions.
+    - Log the feature vector actually served at prediction time, and train on logged features when you can.
+    - Account for **data latency**: if tickets land in the warehouse 6 hours late, the training join must also only see tickets that would have been available at prediction time.
+
+    **Also check:** customers who churned can't appear after their churn date in the spine; split train and test **by time**, not randomly, or the test set leaks too.
+rubric:
+  - point: 'Identifies leakage from using current-state features'
+    weight: 3
+    topic: ml-data
+  - point: 'Keeps time-stamped feature history (or SCD2) instead of current snapshots'
+    weight: 2
+    topic: feature-engineering
+  - point: 'Builds a label spine and joins features as of the prediction date (strict inequality reasoned)'
+    weight: 3
+    topic: point-in-time-joins
+  - point: 'Addresses training/serving skew: shared definitions, logged features, data latency'
+    weight: 2
+    topic: ml-data
+  - point: 'Uses a time-based train/test split'
+    weight: 1
+    topic: ml-data
+follow_ups:
+  - Backfilling two years of daily features for 50 million customers is expensive. How do you make it tractable?
+  - Where would you put data quality checks for features, and what would they test?

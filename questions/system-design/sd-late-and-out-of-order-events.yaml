@@ -1,0 +1,42 @@
+id: sd-late-and-out-of-order-events
+title: Real-time metrics with late and out-of-order events
+round: system-design
+topic: [stream-processing, watermarks, late-arriving-data]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/late-and-out-of-order-events
+prompt: |
+  A delivery company computes "orders delivered per city per 5 minutes" for an operations wall and for courier bonuses. Courier phones buffer events when offline: 95% of events arrive within 30 seconds, 99.9% within 2 hours, and a few arrive the next day. Events from one courier can arrive out of order.
+
+  Design the streaming computation. The ops wall wants speed; bonuses must be exact.
+hints:
+  - One pipeline can't be both instantly final and exactly right. What gives?
+  - What does a watermark promise, and what happens to events behind it?
+solution:
+  answer: |
+    Use **event-time** windows (5-minute tumbling, keyed by city) in **Flink / Spark Structured Streaming**, with a **watermark** of max event time minus 2 minutes. Each window emits an early result for the ops wall when the watermark passes, then updates (allowed lateness up to 2 hours) as late events arrive. The sink is an upsert keyed by (city, window_start), so corrections overwrite rather than duplicate.
+
+    Events later than allowed lateness go to a **side output** (late table), not to /dev/null. Bonuses don't come from the stream at all. A daily **batch** job recomputes the previous days exactly from the raw event log (including the late table), which is the source of truth. Ops reads the stream; payroll reads the batch.
+
+    State size grows with keys × windows × allowed lateness. That's the cost dial. Dedup on event_id inside the window, because offline phones resend.
+rubric:
+  - point: 'Uses event time (not processing time) windows and explains why'
+    weight: 3
+    topic: stream-processing
+  - point: 'Explains watermarks and allowed lateness, and the speed/completeness trade-off'
+    weight: 3
+    topic: watermarks
+  - point: 'Upsert/retraction sink so updated windows correct earlier results'
+    weight: 2
+    topic: stream-processing
+  - point: 'Side output for too-late events plus a batch recompute as the source of truth for money'
+    weight: 3
+    topic: late-arriving-data
+  - point: 'Dedup of resent events, and state size as a cost driver'
+    weight: 1
+    topic: idempotency
+follow_ups:
+  - The ops wall flickers because numbers change after they're shown. How do you present provisional data?
+  - A city has almost no traffic at night, so its watermark stalls. What happens, and how do you fix it?

@@ -1,0 +1,64 @@
+id: sql-chargeback-rate-by-month
+title: Monthly chargeback rate on settled payments
+round: sql
+topic: [deduplication, left-joins, rates]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: payments
+time_minutes: 20
+prompt: |
+  Tables:
+
+  - `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`: contains replays; the copy with the latest `ingested_at` per `txn_id` is the truth.
+  - `chargebacks(chargeback_id, txn_id, filed_date, amount, reason)`
+
+  For each month of `txn_ts`, count settled payments (`txn_type = 'payment'` and latest `status = 'settled'`), count how many of them have a chargeback, and compute `chargeback_rate = chargebacks / payments` rounded to 4 decimals. Attribute a chargeback to the month of its **transaction**, not the month it was filed.
+
+  Output: `month` (first day of month), `payments, chargebacks, chargeback_rate`. Order by `month`.
+hints:
+  - Dedup first, then LEFT JOIN chargebacks so payments without one still count in the denominator.
+solution:
+  sql: |
+    WITH latest AS (
+      SELECT *
+      FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+        FROM transactions
+      ) t
+      WHERE rn = 1
+    ),
+    settled AS (
+      SELECT txn_id, CAST(DATE_TRUNC('month', txn_ts) AS DATE) AS month
+      FROM latest
+      WHERE txn_type = 'payment' AND status = 'settled'
+    )
+    SELECT s.month,
+           COUNT(*) AS payments,
+           COUNT(DISTINCT c.txn_id) AS chargebacks,
+           ROUND(COUNT(DISTINCT c.txn_id) * 1.0 / COUNT(*), 4) AS chargeback_rate
+    FROM settled s
+    LEFT JOIN chargebacks c ON c.txn_id = s.txn_id
+    GROUP BY s.month
+    ORDER BY s.month;
+  explanation: |
+    Three choices make or break the number:
+
+    1. **Dedup** before counting, or replays inflate the denominator.
+    2. **LEFT JOIN**, so payments without chargebacks stay in the denominator. An inner join would give a rate of 100%.
+    3. **Attribution month.** Chargebacks are filed weeks later. By transaction month, recent months look artificially good until chargebacks arrive. By filed month, the numerator and denominator come from different populations. Pick one, say which, and flag that recent months are immature.
+
+    `COUNT(DISTINCT c.txn_id)` guards against a transaction with two chargebacks multiplying the payment row.
+check:
+  order_matters: true
+  float_tolerance: 0.0001
+rubric:
+  - point: 'Keeps payments without chargebacks in the denominator (LEFT JOIN)'
+    weight: 2
+    topic: left-joins
+  - point: 'Discusses attribution month and that recent months are immature'
+    weight: 2
+    topic: rates
+follow_ups:
+  - Risk wants the rate by amount, not count, in USD. What else do you need?
+  - How would you alert when a month's rate is abnormally high without paging on immature months?

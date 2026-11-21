@@ -1,0 +1,34 @@
+id: sql-trip-duration-histogram
+title: Histogram of trip durations in 10-minute buckets
+round: sql
+topic: [bucketing, aggregation]
+levels: [junior]
+difficulty: easy
+companies: []
+dataset: rides
+time_minutes: 10
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  For completed trips, compute the duration in minutes from `requested_at` to `completed_at`, then count trips per 10-minute bucket: `[0, 10)`, `[10, 20)`, and so on. Label each bucket by its start.
+
+  Output: `bucket_start_min, trips`. Order by `bucket_start_min`.
+hints:
+  - Bucket start = FLOOR(minutes / 10) * 10.
+solution:
+  sql: |
+    SELECT CAST(FLOOR((EPOCH(completed_at) - EPOCH(requested_at)) / 60 / 10) * 10 AS INTEGER) AS bucket_start_min,
+           COUNT(*) AS trips
+    FROM trips
+    WHERE status = 'completed'
+    GROUP BY 1
+    ORDER BY 1;
+  explanation: |
+    Fixed-width buckets come from integer division: `FLOOR(value / width) * width`. Compute the duration in seconds first. Truncating to whole minutes before bucketing is fine here, but rounding (`ROUND`) instead of `FLOOR` would shift a 9.6-minute trip into the wrong bucket.
+
+    Empty buckets don't appear. If the chart needs them, join to a series of bucket starts.
+check:
+  order_matters: true
+follow_ups:
+  - Make the buckets 0–5, 5–15, 15–30, 30+. What changes?
+  - How would you pick bucket widths automatically for an unknown distribution?

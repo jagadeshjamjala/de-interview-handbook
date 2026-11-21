@@ -1,0 +1,45 @@
+id: modeling-data-vault-vs-kimball
+title: When would you choose Data Vault over a Kimball star schema?
+round: modeling
+topic: [data-vault, dimensional-modeling, architecture]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 30
+prompt: |
+  A bank is consolidating customer and account data from 6 source systems (core banking, cards, CRM, two acquired companies, a loans platform). Sources change schema often, auditors need full history of what each system said and when, and business definitions of "customer" are still being argued about.
+
+  The head of data asks: "Data Vault or Kimball?" Give a recommendation, sketch the core model for customers and accounts, and explain the trade-offs.
+hints:
+  - These two aren't exclusive. What does each layer optimize for?
+solution:
+  answer: |
+    **Recommendation: Data Vault for the integration layer, Kimball stars on top for consumption.** Here the hard problems are integration, auditability and change, which are what Data Vault is designed for. Analysts still need stars.
+
+    **Core Data Vault model**
+    - **Hubs** hold business keys only: `hub_customer` (customer business key + hash key + load date + record source), `hub_account`.
+    - **Links** hold relationships: `link_customer_account` (hash of both keys). Many-to-many by design, so "joint account" or "acquired bank's different ownership rules" doesn't need a remodel.
+    - **Satellites** hold descriptive history **per source**: `sat_customer_core`, `sat_customer_crm`, `sat_account_cards`. Insert-only with `load_date` and a `hash_diff` to detect change. Each source evolves independently; a new source means new satellites, not changes to existing tables.
+    - **Business vault**: same-as links for matching customers across systems, and point-in-time (PIT) / bridge tables for query speed.
+
+    **Why it fits:** insert-only plus record source gives auditors "what did system X say on date D". Adding source 7 is additive. The "customer" definition argument is postponed to the business vault and marts, instead of blocking ingestion.
+
+    **Costs, said honestly:** many more tables and joins; needs automation (dbt packages or generators) to be maintainable; unusable directly by analysts; easy to over-engineer for a small team. If the company had 1–2 stable sources and no audit requirement, a straight Kimball model (staging → dims and facts) would be cheaper and faster.
+
+    **Consumption:** `dim_customer` (SCD2, built from PIT tables), `dim_account`, and `fct_account_balance_daily` (periodic snapshot), all in a star schema for BI.
+rubric:
+  - point: 'Gives a clear recommendation tied to the drivers (many sources, audit, change)'
+    weight: 2
+    topic: architecture
+  - point: 'Correctly describes hubs, links, satellites (keys vs relationships vs history)'
+    weight: 3
+    topic: data-vault
+  - point: 'Keeps Kimball stars as the consumption layer'
+    weight: 2
+    topic: dimensional-modeling
+  - point: 'States real costs (table count, automation need, team skill) and when not to use it'
+    weight: 2
+    topic: architecture
+follow_ups:
+  - How do you handle a customer that appears in three systems with different IDs?
+  - What do PIT tables solve, and when do you need them?

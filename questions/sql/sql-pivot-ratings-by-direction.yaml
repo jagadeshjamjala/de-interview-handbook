@@ -1,0 +1,52 @@
+id: sql-pivot-ratings-by-direction
+title: Pivot ratings into driver and rider columns
+round: sql
+topic: [pivot, conditional-aggregation, null-traps]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: rides
+time_minutes: 10
+prompt: |
+  Tables:
+
+  - `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+  - `ratings(trip_id, rated_by, score)`: `rated_by = 'rider'` means the rider rated the driver; `'driver'` means the driver rated the rider.
+
+  Return one row per city with the average rating **of drivers**, the average rating **of riders** (both rounded to 2 decimals), and the total number of ratings.
+
+  Output: `city, avg_driver_rating, avg_rider_rating, ratings`. Order by `city`.
+hints:
+  - One pass, two conditional averages.
+  - What does `ELSE 0` do to an average?
+solution:
+  sql: |
+    SELECT t.city,
+           ROUND(AVG(CASE WHEN r.rated_by = 'rider'  THEN r.score END), 2) AS avg_driver_rating,
+           ROUND(AVG(CASE WHEN r.rated_by = 'driver' THEN r.score END), 2) AS avg_rider_rating,
+           COUNT(*) AS ratings
+    FROM ratings r
+    JOIN trips t ON t.trip_id = r.trip_id
+    GROUP BY t.city
+    ORDER BY t.city;
+  explanation: |
+    Conditional aggregation is the portable pivot. Leave out the `ELSE`: the CASE returns NULL for the other direction, and `AVG` skips NULLs. Writing `ELSE 0` would count every rating of the other kind as a zero and drag both averages down. That's a classic silent bug.
+
+    Read the direction carefully: `rated_by = 'rider'` is a rating *of the driver*.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Explains why ELSE 0 would corrupt the averages (AVG ignores NULLs)'
+    weight: 2
+    topic: null-traps
+follow_ups:
+  - Add a column for the share of trips that got no rating at all. Which join do you need now?
+  - When would you use the engine's PIVOT operator instead, and what does it cost you?
+dialect_notes:
+  snowflake:
+    note: "`PIVOT (AVG(score) FOR rated_by IN ('rider', 'driver'))` is available, but the value list must be known up front (or use `ANY`)."
+    source: https://docs.snowflake.com/en/sql-reference/constructs/pivot
+  bigquery:
+    note: "`PIVOT(AVG(score) FOR rated_by IN ('rider', 'driver'))` in the FROM clause."
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#pivot_operator

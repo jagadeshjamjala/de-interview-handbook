@@ -1,0 +1,58 @@
+id: sql-build-scd2-from-change-log
+title: Build an SCD Type 2 table from a change log
+round: sql
+topic: [scd-type-2, gaps-and-islands, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: ecommerce
+time_minutes: 25
+prompt: |
+  Table: `customer_addresses(customer_id, country, effective_date)`. It's a change log: each row says "from this date the customer lives in this country". The first row is the signup date.
+
+  The source sometimes re-records the **same** country (an address re-verification). Those rows must not create a new version.
+
+  Build the SCD Type 2 history: one row per real version, with `valid_to` = the next version's `valid_from` (exclusive), `9999-12-31` for the current version, and an `is_current` flag.
+
+  Output: `customer_id, country, valid_from, valid_to, is_current`. Order by `customer_id, valid_from`.
+hints:
+  - First drop rows whose country equals the previous row's country for that customer.
+  - Then `LEAD` over what's left gives each version's end.
+solution:
+  sql: |
+    WITH marked AS (
+      SELECT customer_id, country, effective_date,
+             LAG(country) OVER (PARTITION BY customer_id ORDER BY effective_date) AS prev_country
+      FROM customer_addresses
+    ),
+    changes AS (
+      SELECT customer_id, country, effective_date AS valid_from
+      FROM marked
+      WHERE prev_country IS NULL OR prev_country <> country
+    )
+    SELECT customer_id,
+           country,
+           valid_from,
+           COALESCE(LEAD(valid_from) OVER w, DATE '9999-12-31') AS valid_to,
+           LEAD(valid_from) OVER w IS NULL AS is_current
+    FROM changes
+    WINDOW w AS (PARTITION BY customer_id ORDER BY valid_from)
+    ORDER BY customer_id, valid_from;
+  explanation: |
+    Two passes: **collapse**, then **close**. The no-op rows are a gaps-and-islands problem in disguise: consecutive rows with the same value form one island, and only the first row of each island starts a version. After that, `LEAD(valid_from)` closes each version.
+
+    Applying `LEAD` to the raw log gives versions that change from DE to DE. They look harmless, but they break "how many customers moved" and bloat the dimension.
+
+    Using `9999-12-31` instead of NULL for open versions keeps point-in-time joins (`d >= valid_from AND d < valid_to`) simple.
+check:
+  order_matters: true
+rubric:
+  - point: 'Collapses no-op re-records before building versions'
+    weight: 2
+    topic: scd-type-2
+  - point: 'Uses half-open intervals (valid_to exclusive) and a far-future end date, and says why'
+    weight: 1
+    topic: scd-type-2
+follow_ups:
+  - The log arrives daily. How would you MERGE only today's changes into the existing SCD2 table?
+  - A change arrives that is dated before the current version started. What happens to your MERGE?

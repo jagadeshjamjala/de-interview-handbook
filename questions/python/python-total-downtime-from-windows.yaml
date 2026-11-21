@@ -1,0 +1,70 @@
+id: python-total-downtime-from-windows
+title: Total downtime from overlapping incident windows
+round: python
+topic: [intervals, sorting]
+levels: [mid]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Monitoring reports incident windows as `(start, end)` pairs of `datetime`s. Windows can overlap, nest, or arrive unsorted, and some extend outside the day you're reporting on.
+
+  Write `downtime_minutes(windows, day_start, day_end)` that returns the total minutes (float) during `[day_start, day_end)` covered by at least one window. Overlapping time counts once. Ignore windows with `end <= start`.
+hints:
+  - Clip each window to the day, sort by start, then merge as you go.
+solution:
+  python: |
+    def downtime_minutes(windows, day_start, day_end):
+        clipped = sorted(
+            (max(s, day_start), min(e, day_end))
+            for s, e in windows
+            if e > s and e > day_start and s < day_end
+        )
+        total = 0.0
+        cur_start = cur_end = None
+        for s, e in clipped:
+            if cur_end is None or s > cur_end:
+                if cur_end is not None:
+                    total += (cur_end - cur_start).total_seconds()
+                cur_start, cur_end = s, e
+            else:
+                cur_end = max(cur_end, e)
+        if cur_end is not None:
+            total += (cur_end - cur_start).total_seconds()
+        return total / 60
+  explanation: |
+    This is the classic **merge intervals** pattern, which DE interviews like because SLA and uptime reports really need it. Clip to the reporting window first (so a window from yesterday 23:00 to today 01:00 counts one hour), sort by start, and extend the current block while windows overlap or touch. O(n log n) for the sort.
+
+    Summing raw window lengths is the usual wrong answer: it double-counts overlaps and reports more than 24 hours of downtime on a bad day.
+tests: |
+  from datetime import datetime as dt
+  d0, d1 = dt(2024, 5, 1), dt(2024, 5, 2)
+  w = [
+      (dt(2024, 5, 1, 10, 0), dt(2024, 5, 1, 10, 30)),
+      (dt(2024, 5, 1, 10, 15), dt(2024, 5, 1, 11, 0)),   # overlaps -> 10:00-11:00
+      (dt(2024, 5, 1, 10, 20), dt(2024, 5, 1, 10, 25)),  # nested
+      (dt(2024, 5, 1, 12, 0), dt(2024, 5, 1, 12, 10)),   # separate
+      (dt(2024, 4, 30, 23, 0), dt(2024, 5, 1, 0, 30)),   # clipped to 30 min
+      (dt(2024, 5, 1, 23, 50), dt(2024, 5, 2, 2, 0)),    # clipped to 10 min
+      (dt(2024, 5, 1, 15, 0), dt(2024, 5, 1, 14, 0)),    # invalid, ignored
+      (dt(2024, 5, 3, 1, 0), dt(2024, 5, 3, 2, 0)),      # other day
+  ]
+  assert downtime_minutes(w, d0, d1) == 60 + 10 + 30 + 10
+  assert downtime_minutes(list(reversed(w)), d0, d1) == 110   # order doesn't matter
+  assert downtime_minutes([], d0, d1) == 0
+  assert downtime_minutes([(d0, d1), (d0, d1)], d0, d1) == 24 * 60
+  touching = [(dt(2024, 5, 1, 1), dt(2024, 5, 1, 2)), (dt(2024, 5, 1, 2), dt(2024, 5, 1, 3))]
+  assert downtime_minutes(touching, d0, d1) == 120
+rubric:
+  - point: 'Clips windows to the reporting period before merging'
+    weight: 2
+    topic: intervals
+  - point: 'Sorts and merges overlapping/nested windows so overlap counts once'
+    weight: 3
+    topic: intervals
+  - point: 'Handles invalid windows and states the O(n log n) cost'
+    weight: 1
+    topic: sorting
+follow_ups:
+  - Do the same in SQL for a whole month of incidents per service.
+  - Windows arrive as a stream, one at a time. How do you keep a running total?

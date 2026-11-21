@@ -1,0 +1,69 @@
+id: python-batched-csv-reader
+title: Read a large CSV in fixed-size batches with a generator
+round: python
+topic: [generators, files]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+time_minutes: 15
+prompt: |
+  A CSV file is too large to load into memory. Write a generator `batches(f, size)` that takes an open text file (with a header row) and yields lists of up to `size` rows, each row a `dict` keyed by the header.
+
+  - The last batch may be smaller.
+  - An empty file (header only) yields nothing.
+  - `size` must be a positive integer; otherwise raise `ValueError` **when called**, before any reading.
+hints:
+  - '`csv.DictReader` already streams rows; your job is to group them.'
+  - A generator function doesn't run until it's iterated. How do you raise immediately?
+solution:
+  python: |
+    import csv
+    from itertools import islice
+
+    def batches(f, size):
+        if not isinstance(size, int) or isinstance(size, bool) or size < 1:
+            raise ValueError("size must be a positive integer")
+        return _batches(csv.DictReader(f), size)
+
+    def _batches(reader, size):
+        while batch := list(islice(reader, size)):
+            yield batch
+  explanation: |
+    `csv.DictReader` streams. `itertools.islice` takes the next `size` rows without materializing the rest, so memory stays at one batch.
+
+    The subtle part is validation. Code in a generator function runs on the first `next()`, not at the call. Splitting into a plain function that validates and a generator that does the work makes `batches(f, 0)` fail immediately, where the bug is, rather than later in some loop.
+tests: |
+  import io
+  f = io.StringIO("id,name\n1,a\n2,b\n3,c\n4,d\n5,e\n")
+  out = list(batches(f, 2))
+  assert [len(b) for b in out] == [2, 2, 1]
+  assert out[0][0] == {"id": "1", "name": "a"}
+  assert out[2] == [{"id": "5", "name": "e"}]
+  assert list(batches(io.StringIO("id,name\n"), 10)) == []
+  for bad in (0, -1, 1.5, "2", True):
+      try:
+          batches(io.StringIO("id\n1\n"), bad)
+          raise AssertionError(f"no ValueError for {bad!r}")
+      except ValueError:
+          pass
+  # streams: a reader that would explode if fully consumed
+  def rows():
+      yield "id\n"
+      for i in range(10):
+          yield f"{i}\n"
+      raise RuntimeError("read too far")
+  first = next(batches(rows(), 3))
+  assert [r["id"] for r in first] == ["0", "1", "2"]
+rubric:
+  - point: 'Streams with constant memory (no reading the whole file)'
+    weight: 3
+    topic: generators
+  - point: 'Validates size eagerly, explaining lazy generator execution'
+    weight: 2
+    topic: generators
+  - point: 'Handles the partial last batch and the header-only file'
+    weight: 1
+    topic: files
+follow_ups:
+  - Each batch is written to a database. How do you make a crash halfway resumable?
+  - When would you reach for pandas `read_csv(chunksize=...)` or pyarrow instead?

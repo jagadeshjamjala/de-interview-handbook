@@ -1,0 +1,81 @@
+---
+title: Late and out-of-order events
+sidebar_position: 6
+description: Worked design for streaming aggregations with event-time windows, watermarks, allowed lateness and a batch source of truth.
+levels: [senior, lead]
+topic: [system-design, stream-processing, watermarks]
+---
+
+# Worked design: late and out-of-order events
+
+<LevelExpectations
+  senior="Explain event time vs processing time, watermarks, allowed lateness, upsert sinks and side outputs, with the trade-offs."
+  lead="Separate the fast path from the source of truth for money, and design how provisional numbers are presented to users."
+/>
+
+<QuestionEmbed id="sd-late-and-out-of-order-events" />
+
+## 1. Requirements
+
+- **Metric:** deliveries per city per 5-minute window.
+- **Consumers:** an ops wall (fast, approximate is OK) and courier bonuses (exact, can wait until tomorrow).
+- **Lateness profile:** 95% within 30s, 99.9% within 2h, a long tail up to the next day. Events can arrive out of order.
+
+The requirements already show the answer: **one pipeline can't be both instant and final.** Design two paths that share the raw log.
+
+## 2. Data contracts
+
+Each event carries a unique `event_id`, the `event_ts` from the device, the courier and the city. The device clock can be wrong, so the collector also stamps `received_at` and rejects or flags events with `event_ts` far in the future.
+
+## 3. Ingestion
+
+Events go into Kafka keyed by courier (per-courier order is preserved within a partition, but not across partitions). The same topic is also written to the raw lake table, which is the batch path's source.
+
+## 4. Storage and format
+
+- **Stream state:** in Flink or Spark Structured Streaming, the open windows per city.
+- **Serving table:** `deliveries_5min(city, window_start, count, is_final, updated_at)`, upserted.
+- **Raw log and late table:** append-only lake tables.
+
+## 5. Transform: the streaming path
+
+- **Event-time windows**, 5-minute tumbling, keyed by city. Processing time is wrong here: a burst of buffered events would all land in "now".
+- **Watermark** = max seen `event_ts` minus 2 minutes. It says "I don't expect events older than this". When the watermark passes a window's end, emit a first result.
+- **Allowed lateness: 2 hours.** Late events within that update the window, and the sink **upserts** on `(city, window_start)`, so the correction overwrites instead of adding a row.
+- **Too late** (beyond 2h): send to a **side output** into a late-events table. Never drop silently.
+- **Dedup** by `event_id` within the window state, because offline phones resend.
+
+## 6. Serving
+
+The ops wall reads `deliveries_5min` and **shows provisional windows differently** (for example lighter color until `is_final`), so people don't act on a number that will change.
+
+## 7. The batch path is the source of truth
+
+A daily batch job recomputes the previous days from the raw log plus the late table, exactly, with dedup. **Bonuses read only the batch output.** The batch also reports how far the stream's numbers were off, which tells you whether the watermark and lateness settings are right.
+
+## 8. Quality
+
+- Share of events that are late, and too late, per hour.
+- Stream versus batch difference per day, alerted if above a threshold.
+- Watermark lag per partition (an idle partition can hold the watermark back).
+
+## 9. Failure modes
+
+| Failure | Effect | Mitigation |
+|---|---|---|
+| Quiet city at night | Watermark doesn't advance, windows never close | Idle-source timeout so idle partitions don't hold the watermark |
+| Device clock in the future | Watermark jumps ahead and everything else looks late | Clamp or reject future timestamps at the collector |
+| Job restart | Duplicate emissions | Checkpointed state plus upsert sink makes outputs idempotent |
+| Allowed lateness too long | State grows, memory pressure | Size it from the measured lateness distribution |
+
+## 10. Cost
+
+State size is about keys × open windows × allowed lateness. Doubling allowed lateness roughly doubles state. That's the main dial, along with checkpoint frequency.
+
+## 11. What changes at 10×
+
+More cities and finer windows mean more state. Use a state backend on disk (RocksDB), scale out by key, and pre-aggregate per courier before the city window. The two-path design stays.
+
+## Related practice
+
+<RelatedQuestions ids={["sd-clickstream-to-warehouse", "sql-sessionize-page-views", "sql-overlapping-trips-per-driver", "python-total-downtime-from-windows"]} />

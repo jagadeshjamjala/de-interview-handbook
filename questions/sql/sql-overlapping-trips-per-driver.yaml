@@ -1,0 +1,54 @@
+id: sql-overlapping-trips-per-driver
+title: Drivers with overlapping trips
+round: sql
+topic: [interval-overlap, self-joins]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: rides
+time_minutes: 20
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  A driver can't do two trips at once, so overlapping completed trips point to a data problem (or fraud). Two trips overlap if one starts before the other ends: treat each trip as the half-open interval `[requested_at, completed_at)`.
+
+  For each driver with at least one overlapping pair of completed trips, return the number of overlapping pairs.
+
+  Output: `driver_id, overlapping_pairs`. Order by `overlapping_pairs` descending, then `driver_id`.
+hints:
+  - Two intervals [a1, a2) and [b1, b2) overlap when a1 < b2 AND b1 < a2.
+  - Join each trip to the driver's other trips, counting each pair once.
+solution:
+  sql: |
+    WITH done AS (
+      SELECT trip_id, driver_id, requested_at, completed_at
+      FROM trips
+      WHERE status = 'completed'
+    )
+    SELECT a.driver_id, COUNT(*) AS overlapping_pairs
+    FROM done a
+    JOIN done b
+      ON b.driver_id = a.driver_id
+     AND a.trip_id < b.trip_id
+     AND a.requested_at < b.completed_at
+     AND b.requested_at < a.completed_at
+    GROUP BY a.driver_id
+    ORDER BY overlapping_pairs DESC, a.driver_id;
+  explanation: |
+    The overlap test `a.start < b.end AND b.start < a.end` covers every case (partial overlap, containment, identical intervals) in one condition. Using `<` instead of `<=` makes back-to-back trips (one ends at 10:00, the next starts at 10:00) not count, which is what half-open intervals mean.
+
+    `a.trip_id < b.trip_id` counts each pair once and stops a trip matching itself.
+
+    This self-join is quadratic per driver. At scale, sort each driver's trips and compare each one to the previous end (`LAG(completed_at)`). That finds adjacent overlaps in linear time.
+check:
+  order_matters: true
+rubric:
+  - point: 'States the overlap condition correctly, including the boundary (half-open)'
+    weight: 2
+    topic: interval-overlap
+  - point: 'Counts each pair once (a.id < b.id) and mentions the quadratic cost'
+    weight: 1
+    topic: self-joins
+follow_ups:
+  - Find the maximum number of trips any driver had in progress at the same moment.
+  - How would you turn this into a data quality test that runs after every load?

@@ -1,0 +1,39 @@
+id: behavioral-speed-vs-quality-tradeoff
+title: You were asked to ship data faster than you could make it reliable
+round: behavioral
+topic: [tradeoffs, communication, prioritization]
+levels: [junior, mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 10
+prompt: |
+  "Tell me about a time you were under pressure to deliver a dataset or pipeline quickly, and doing it properly would take longer. How did you handle it?"
+hints:
+  - Say what you shipped, what you deliberately didn't, and how you made that visible.
+solution:
+  answer: |
+    **Structure:** the ask and the deadline → what "properly" would have required → the options you laid out → what you chose and why → how you contained the risk → what happened next.
+
+    **Strong signals:**
+    - You **quantified the trade-off** ("a manual extract by Friday that's right for the launch view, or an automated, tested pipeline in 3 weeks").
+    - You shipped a **scoped** version with its limits made visible: labeled "preliminary", known gaps listed, an owner, an expiry date.
+    - You **didn't quietly take on debt**. The follow-up work was scheduled, and you either did it or explicitly re-negotiated it.
+    - At senior and lead level: you changed something so the next request doesn't hit the same wall, such as a reusable ingestion template or an intake process with realistic lead times.
+
+    **Avoid:** "I worked all weekend" as the whole story (heroics aren't a strategy); "I refused" without offering options; a shortcut that later caused an incident you don't mention.
+rubric:
+  - point: 'Lays out options with explicit trade-offs and time estimates'
+    weight: 2
+    topic: tradeoffs
+  - point: 'Ships a scoped version with limits clearly communicated'
+    weight: 2
+    topic: communication
+  - point: 'Follows through on the deferred work (or re-negotiates it openly)'
+    weight: 2
+    topic: prioritization
+  - point: 'Improves the process so the situation recurs less (senior+)'
+    weight: 1
+    topic: prioritization
+follow_ups:
+  - What would have made you say no?
+  - How did you make sure the "temporary" dataset didn't become permanent?

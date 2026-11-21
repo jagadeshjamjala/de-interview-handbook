@@ -1,0 +1,39 @@
+---
+title: Pick your level track
+sidebar_position: 4
+description: What interviewers expect from junior, mid, senior and lead data engineers, and how to show it.
+levels: [junior, mid, senior, lead]
+topic: [interview-process, levels]
+---
+
+# Pick your level track
+
+Every page and question in this handbook is tagged with one or more levels. Use your **target** level, the one you're interviewing for, not your current title.
+
+<LevelExpectations
+  junior="You are here if you have 0–2 years in data or are switching in. Target: correct SQL, clean Python, and good questions."
+  mid="2–5 years. Target: you own pipelines end to end and explain trade-offs without prompting."
+  senior="5–8 years. Target: you design systems, anticipate failure, and make others more effective."
+  lead="8+ years, staff/principal or engineering manager. Target: you set direction across teams and can show its impact."
+/>
+
+## What changes between levels
+
+The same question is asked at every level. **The expected answer gets wider**:
+
+| | Junior | Mid | Senior | Lead / Staff / EM |
+|---|---|---|---|---|
+| **SQL** | Correct, readable queries; knows joins, GROUP BY, window basics | Handles NULLs, ties, duplicates and time without hints; explains performance | Spots modeling problems behind the query; discusses scale and incremental computation | Same bar as senior; rarely the deciding round |
+| **Modeling** | Knows facts vs dimensions, can state a grain | Picks grain and SCD types confidently, handles history | Designs for change, late data, multiple consumers and cost | Ties modeling to org design: ownership, contracts, governance |
+| **System design** | Explains a simple batch pipeline end to end | Covers idempotency, backfills, monitoring | Drives the session: requirements, numbers, failure modes, 10× | Adds build vs buy, cost over time, team and migration plans |
+| **Behavioral** | Learning, ownership of tasks, asking for help | Owning a pipeline, an incident, a stakeholder | Leading projects, raising quality for the team | Cross-team strategy, hiring, growing people, hard decisions |
+
+## How levels are decided in the loop
+
+- **Coding and SQL rounds set the floor.** Doing badly here caps your level; doing well rarely raises it on its own.
+- **Design and behavioral rounds set the ceiling.** That's where interviewers see scope: how far ahead you think and how many people your decisions affect.
+- **Down-leveling is common and negotiable.** If you're targeting senior, prepare senior-sized stories. The interviewer can only level you on what you actually tell them.
+
+## Using the level boxes
+
+Each page opens with a **"What's expected at your level"** box like the one above. Read your row first. When you practice a question, aim to cover the rubric points for your level, plus one point from the level above.

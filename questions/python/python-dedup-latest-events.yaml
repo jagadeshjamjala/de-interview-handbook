@@ -1,0 +1,56 @@
+id: python-dedup-latest-events
+title: Keep the latest version of each record
+round: python
+topic: [deduplication, dictionaries]
+levels: [junior]
+difficulty: easy
+companies: []
+time_minutes: 15
+prompt: |
+  A CDC feed gives you a list of dicts like `{"id": 7, "updated_at": "2024-05-01T10:00:00Z", "status": "paid"}`. The same `id` appears several times.
+
+  Write `latest(records, key="id", ts="updated_at")` that keeps, for each key, the record with the greatest timestamp. If two records for the same key share a timestamp, the one that appears **later** in the input wins. Return the records sorted by key.
+
+  Timestamps are ISO-8601 strings in UTC with the same format, so they compare correctly as strings.
+hints:
+  - One pass with a dict from key to the best record so far.
+  - '`>=` vs `>` decides the tie rule.'
+solution:
+  python: |
+    def latest(records, key="id", ts="updated_at"):
+        best = {}
+        for r in records:
+            k = r[key]
+            if k not in best or r[ts] >= best[k][ts]:
+                best[k] = r
+        return [best[k] for k in sorted(best)]
+  explanation: |
+    One pass, O(n) time, one dict entry per key. The tie rule lives in a single character: `>=` lets a later record with the same timestamp replace the earlier one. Say that out loud, because it's exactly the kind of rule that differs between teams.
+
+    The prompt says string comparison is safe only because the timestamps share one format and timezone. With mixed formats or offsets, parse them first (`datetime.fromisoformat`) or results are silently wrong.
+tests: |
+  rs = [
+      {"id": 2, "updated_at": "2024-05-01T10:00:00Z", "status": "new"},
+      {"id": 1, "updated_at": "2024-05-01T09:00:00Z", "status": "new"},
+      {"id": 2, "updated_at": "2024-05-01T11:00:00Z", "status": "paid"},
+      {"id": 2, "updated_at": "2024-05-01T08:00:00Z", "status": "late-replay"},
+      {"id": 1, "updated_at": "2024-05-01T09:00:00Z", "status": "tie-later-wins"},
+  ]
+  out = latest(rs)
+  assert [r["id"] for r in out] == [1, 2]
+  assert out[0]["status"] == "tie-later-wins"
+  assert out[1]["status"] == "paid"
+  assert latest([]) == []
+  assert latest([{"k": "a", "t": "1"}], key="k", ts="t") == [{"k": "a", "t": "1"}]
+rubric:
+  - point: 'Single pass with a dict; O(n)'
+    weight: 2
+    topic: deduplication
+  - point: 'Implements and explains the tie rule (>= so later input wins)'
+    weight: 2
+    topic: deduplication
+  - point: 'Notes when string timestamp comparison is unsafe'
+    weight: 1
+follow_ups:
+  - The feed is 500 million records and doesn't fit in memory. How would you dedup it?
+  - 'CDC also sends deletes (`"op": "d"`). How does the output change?'

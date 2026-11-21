@@ -83,6 +83,52 @@
           "type": "DECIMAL(10,2)"
         }
       ]
+    },
+    "employees": {
+      "rows": 120,
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "manager_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "department",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "salary",
+          "type": "INTEGER"
+        },
+        {
+          "name": "hired_date",
+          "type": "DATE"
+        }
+      ]
+    },
+    "customer_addresses": {
+      "rows": 859,
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "effective_date",
+          "type": "DATE"
+        }
+      ]
     }
   },
   "rides": {

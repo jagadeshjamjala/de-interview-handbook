@@ -1,0 +1,88 @@
+---
+title: SQL round
+sidebar_position: 1
+description: How the data engineering SQL round works, a method for every question, the patterns that come up, and 30 practice questions.
+levels: [junior, mid, senior, lead]
+topic: [sql]
+---
+
+# SQL round
+
+SQL is the one round almost every DE loop has. It's rarely about obscure syntax. It's about getting the **right answer on messy data** and explaining why it's right.
+
+<LevelExpectations
+  junior="Correct, readable queries with joins, GROUP BY and basic window functions. Ask about the output shape before writing."
+  mid="Handle NULLs, duplicates, ties and dates without being prompted. Explain your choices as you write."
+  senior="Everything above, plus: spot when the data model is the real problem, and discuss how the query behaves at scale or incrementally."
+  lead="Same bar as senior. Use follow-ups to show how you'd make the logic reusable and governed (models, metrics, tests)."
+/>
+
+## Format
+
+Usually 45–60 minutes in a shared editor, sometimes with a real database, often without. Expect 2–4 questions that get harder, with follow-ups like "now make it incremental" or "what if this table has duplicates?". Practice on the [playground](/playground) so you can run things. In the real round, you may have to reason without running.
+
+## A method that works for every question
+
+1. **Restate the output.** Columns, one row per *what*, sort order. "So one row per customer, with their first and second order dates, ordered by customer?"
+2. **Ask about the data.** Can keys repeat? Can values be NULL? Are timestamps in one time zone? Can events arrive late? Ties?
+3. **Plan in steps, out loud.** "First dedup, then aggregate per day, then the window." Each step becomes a CTE.
+4. **Write it with CTEs.** One idea per CTE, named for what it holds (`latest_txns`, `daily_revenue`).
+5. **Check edge cases.** Walk through a NULL, a duplicate, a tie and an empty group. Fix before the interviewer asks.
+6. **Talk about scale if there's time.** Indexes or clustering, what's expensive, how you'd compute it incrementally.
+
+## The patterns
+
+Most SQL questions are one of these patterns, or two combined. Each links to practice questions.
+
+| Pattern | Core idea | Practice |
+|---|---|---|
+| **Top-N per group** | `ROW_NUMBER() OVER (PARTITION BY g ORDER BY x DESC)` then filter | <RelatedQuestions ids={["sql-top-3-products-by-revenue-per-category"]} /> |
+| **Deduplication** | Number copies by a rule, keep 1 | <RelatedQuestions ids={["sql-dedup-replayed-transactions"]} /> |
+| **Running totals, moving averages** | Window `SUM`/`AVG` with an explicit frame | <RelatedQuestions ids={["sql-month-to-date-revenue", "sql-7-day-moving-average-trips"]} /> |
+| **Gaps and islands** | Row-number difference labels runs | <RelatedQuestions ids={["sql-gaps-islands-login-streaks", "sql-longest-failed-streak-per-account"]} /> |
+| **Sessionization** | Flag starts with `LAG`, cumulative-sum the flags | <RelatedQuestions ids={["sql-sessionize-page-views"]} /> |
+| **Retention and cohorts** | Per-user flag first, then aggregate per cohort | <RelatedQuestions ids={["sql-weekly-cohort-retention"]} /> |
+| **Funnels** | Carry each step's timestamp forward | <RelatedQuestions ids={["sql-docs-pricing-billing-funnel"]} /> |
+| **Pivot** | Conditional aggregation (`AVG(CASE …)`) | <RelatedQuestions ids={["sql-pivot-ratings-by-direction"]} /> |
+| **SCD Type 2 and point-in-time joins** | `LEAD` to close versions; join on validity range | <RelatedQuestions ids={["sql-build-scd2-from-change-log", "sql-revenue-by-country-at-order-time"]} /> |
+| **Percentiles** | `PERCENTILE_CONT … WITHIN GROUP` | <RelatedQuestions ids={["sql-median-and-p90-fare-by-city"]} /> |
+| **Self-joins and hierarchies** | Alias the same table twice; recursive CTEs | <RelatedQuestions ids={["sql-employees-earning-more-than-manager", "sql-org-chart-depth-and-path"]} /> |
+| **Anti-joins** | `NOT EXISTS`, never `NOT IN` with NULLs | <RelatedQuestions ids={["sql-customers-who-never-ordered"]} /> |
+| **Date spine** | Generate every day, then left join | <RelatedQuestions ids={["sql-fill-forward-fx-rates", "sql-rolling-28-day-active-users"]} /> |
+| **Period over period** | `LAG` over aggregated periods | <RelatedQuestions ids={["sql-month-over-month-revenue"]} /> |
+| **As-of / bitemporal** | Latest row with `ts <= cutoff`; filter knowledge time first | <RelatedQuestions ids={["sql-usd-volume-with-latest-fx-rate", "sql-transaction-status-as-of-cutoff"]} /> |
+| **Fan-out bugs** | Aggregate the child to the parent's grain before joining | <RelatedQuestions ids={["sql-fix-fan-out-order-count"]} /> |
+| **Interval overlap** | `a.start < b.end AND b.start < a.end` | <RelatedQuestions ids={["sql-overlapping-trips-per-driver"]} /> |
+
+## The mistakes that fail candidates
+
+- **`NOT IN` with a NULL in the subquery.** It returns no rows. Use `NOT EXISTS`.
+- **`COUNT(DISTINCT)` to "dedup".** It counts keys; it doesn't pick the right copy.
+- **Joining before aggregating.** One-to-many joins multiply rows and inflate sums and counts.
+- **Window frames by accident.** `ORDER BY` without a frame defaults to `RANGE … CURRENT ROW` in most engines. Write `ROWS BETWEEN …` when you mean rows.
+- **`ELSE 0` in a conditional average.** It turns "not applicable" into zero.
+- **`BETWEEN` on timestamps with a date upper bound.** It misses most of the last day. Use `>= start AND < next_start`.
+- **No tie-breaker.** `ROW_NUMBER` without a unique ordering gives different answers on different runs.
+
+## Dialects
+
+Interviews usually accept any reasonable SQL, but know your target warehouse's quirks. See the [dialect gotchas cheatsheet](../cheatsheets/dialect-gotchas.mdx) and the [window functions cheatsheet](../cheatsheets/sql-window-functions.mdx). Questions in the bank include dialect notes with links to vendor docs.
+
+## Quick check
+
+What's wrong with this query, which should list customers with no orders?
+
+```sql
+SELECT customer_id FROM customers
+WHERE customer_id NOT IN (SELECT customer_id FROM orders);
+```
+
+<Spoiler label="Show answer">
+
+If any `orders.customer_id` is NULL (guest checkouts, for example), `NOT IN` returns **no rows at all**. `x NOT IN (…, NULL)` is never true. Use `NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id)`.
+
+</Spoiler>
+
+## All SQL questions
+
+<RelatedQuestions round="sql" />

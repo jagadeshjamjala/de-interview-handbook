@@ -1,0 +1,46 @@
+id: sd-cdc-postgres-to-lakehouse
+title: Replicate a production Postgres into the lakehouse with CDC
+round: system-design
+topic: [cdc, lakehouse, schema-evolution]
+levels: [mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/cdc-postgres-to-lakehouse
+prompt: |
+  The orders service runs on Postgres: about 200 tables, the largest with 2 billion rows and 5,000 writes per second. Today a nightly `SELECT *` dump feeds the warehouse, and it now takes 9 hours and slows the primary.
+
+  Design a change data capture (CDC) pipeline that keeps lakehouse tables within 10 minutes of the source, without hurting production. Cover the initial load, deletes, schema changes and how you know the copy is correct.
+hints:
+  - How do you take a consistent initial snapshot and then switch to the change stream without gaps or duplicates?
+  - What happens to a downstream table when someone adds or renames a column?
+solution:
+  answer: |
+    Postgres logical replication (a publication plus a replication slot) → **Debezium** → Kafka (one topic per table, keyed by primary key) → a merge job writes **Iceberg/Delta** tables: an append-only change log (`_bronze`) and a current-state table (`_silver`) maintained by `MERGE` on the primary key, ordered by the source LSN.
+
+    The main points: use an incremental snapshot so the initial load doesn't lock tables, and so snapshot and stream overlap safely (dedup by PK + LSN); deletes arrive as tombstones and become soft deletes or physical deletes by policy; watch **replication slot lag**, because a stuck consumer makes WAL fill the primary's disk; handle additive schema changes automatically and send breaking ones through a contract and review; prove correctness with row counts and checksums per table versus the source.
+rubric:
+  - point: 'Uses log-based CDC (WAL/logical replication) rather than query polling, and says why'
+    weight: 2
+    topic: cdc
+  - point: 'Explains initial snapshot + stream handoff without gaps or duplicates (ordering by LSN/PK)'
+    weight: 3
+    topic: cdc
+  - point: 'MERGE into current-state table plus an append-only change history'
+    weight: 2
+    topic: lakehouse
+  - point: 'Handles deletes, and schema evolution (additive vs breaking)'
+    weight: 2
+    topic: schema-evolution
+  - point: 'Calls out replication slot / WAL growth risk on the primary and monitors lag'
+    weight: 2
+    topic: operations
+  - point: 'Reconciliation: counts/checksums vs source'
+    weight: 2
+    topic: data-quality
+  - point: 'Small-file compaction and MERGE cost at scale'
+    weight: 1
+    topic: cost
+follow_ups:
+  - A developer runs an UPDATE on 300 million rows in one transaction. What happens to your pipeline?
+  - The business wants "orders as they looked yesterday at 09:00". Which table answers it?

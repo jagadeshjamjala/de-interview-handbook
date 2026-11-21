@@ -62,3 +62,12 @@
 .md {
   margin-bottom: 0.75rem;
 }
+
+.examples {
+  margin-bottom: 0.75rem;
+}
+
+.examples > summary {
+  cursor: pointer;
+  font-weight: 600;
+}

@@ -1,0 +1,48 @@
+id: sd-clickstream-to-warehouse
+title: Design a clickstream pipeline from apps to the warehouse
+round: system-design
+topic: [streaming-ingestion, event-modeling, late-arriving-data]
+levels: [mid, senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/clickstream-to-warehouse
+prompt: |
+  Web and mobile apps emit about 50,000 events per second at peak (2–3 billion a day). Product analysts want dashboards that are at most 15 minutes behind, and data scientists want full history for modeling. Events can arrive days late from offline phones.
+
+  Design the pipeline from the SDK to analyst-ready tables. Cover ingestion, storage, transformation, data quality, backfills and cost.
+hints:
+  - Separate the "land it safely" path from the "make it useful" path.
+  - Which timestamp do you partition by, and what does that do to late events?
+solution:
+  answer: |
+    SDK → collector API (validates against a schema registry, adds `received_at`) → **Kafka** (partitioned by user/device for per-user order) → a streaming sink writes **raw Parquet/Iceberg** partitioned by received hour → micro-batch transforms (every 5–15 minutes) dedup on `event_id`, type the common fields and produce `fct_events` partitioned by **event date** → sessions and daily aggregates downstream.
+
+    The main points: keep an immutable raw layer so anything can be replayed; make every step idempotent (dedup keys, overwrite-by-partition); reprocess a sliding window of the last N event dates for late data; enforce contracts at the collector and quarantine bad events rather than drop them; control cost with compaction, partition pruning, tiered retention, and by not streaming what only needs batch.
+
+    The full walkthrough is in the worked design.
+rubric:
+  - point: 'Clarifies requirements: volume, freshness SLA, late data window, consumers'
+    weight: 2
+    topic: requirements
+  - point: 'Durable buffer (Kafka/Kinesis) and an immutable raw layer for replay'
+    weight: 3
+    topic: streaming-ingestion
+  - point: 'Idempotent processing: dedup on event_id, partition overwrite'
+    weight: 2
+    topic: idempotency
+  - point: 'Event time vs received time, and a reprocessing window for late events'
+    weight: 3
+    topic: late-arriving-data
+  - point: 'Schema contracts and a quarantine path for invalid events'
+    weight: 2
+    topic: data-quality
+  - point: 'Cost controls: compaction, partition pruning, retention tiers'
+    weight: 1
+    topic: cost
+  - point: 'Says what changes at 10x volume'
+    weight: 1
+    topic: scaling
+follow_ups:
+  - The 15-minute SLA becomes 10 seconds for one fraud dashboard. What do you add, and what do you not change?
+  - A producer bug sent 6 hours of events with the wrong user_id. Walk through the fix.

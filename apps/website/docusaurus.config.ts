@@ -23,6 +23,7 @@ const config: Config = {
   projectName: 'de-interview-handbook',
 
   onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
 
   i18n: {
     defaultLocale: 'en',

@@ -1,0 +1,60 @@
+id: sql-longest-failed-streak-per-account
+title: Accounts with 3 or more failed transactions in a row
+round: sql
+topic: [gaps-and-islands, deduplication]
+levels: [senior]
+difficulty: hard
+companies: []
+dataset: payments
+time_minutes: 25
+prompt: |
+  Table: `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`. It contains replays; use only the latest copy (`ingested_at`) of each `txn_id`.
+
+  Order each account's transactions by `txn_ts`, then `txn_id`. Find accounts whose longest run of consecutive `failed` transactions is **3 or more**.
+
+  Output: `account_id, longest_failed_streak`. Order by `longest_failed_streak` descending, then `account_id`.
+hints:
+  - A row number over all of an account's transactions minus a row number over only its failed ones is constant within a run.
+solution:
+  sql: |
+    WITH latest AS (
+      SELECT account_id, txn_id, txn_ts, status
+      FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+        FROM transactions
+      ) t
+      WHERE rn = 1
+    ),
+    numbered AS (
+      SELECT account_id, status,
+             ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY txn_ts, txn_id)
+           - ROW_NUMBER() OVER (PARTITION BY account_id, status ORDER BY txn_ts, txn_id) AS island
+      FROM latest
+    ),
+    runs AS (
+      SELECT account_id, island, COUNT(*) AS run_length
+      FROM numbered
+      WHERE status = 'failed'
+      GROUP BY account_id, island
+    )
+    SELECT account_id, MAX(run_length) AS longest_failed_streak
+    FROM runs
+    GROUP BY account_id
+    HAVING MAX(run_length) >= 3
+    ORDER BY longest_failed_streak DESC, account_id;
+  explanation: |
+    This is the "difference of row numbers" version of gaps-and-islands, for runs of a **value** rather than consecutive dates. Across all rows the first row number goes 1, 2, 3, …; the second counts only within the status. Inside a run of `failed` both go up together, so their difference is constant. Any non-failed row in between bumps the first counter only and starts a new island.
+
+    The tie-breaker on `txn_id` matters: two transactions at the same timestamp would otherwise be ordered arbitrarily, and streaks could change between runs.
+check:
+  order_matters: true
+rubric:
+  - point: 'Uses the row-number difference (or LAG + running sum) to label runs'
+    weight: 2
+    topic: gaps-and-islands
+  - point: 'Dedups replays first and adds a deterministic tie-breaker'
+    weight: 1
+    topic: deduplication
+follow_ups:
+  - Make it a streaming rule that alerts on the third consecutive failure. What state do you keep per account?
+  - Rewrite it with LAG and a running SUM. Which is easier to explain in an interview?

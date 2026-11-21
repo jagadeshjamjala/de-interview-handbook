@@ -1,0 +1,83 @@
+id: sql-revenue-by-country-at-order-time
+title: Revenue by the customer's country at order time vs today
+round: sql
+topic: [point-in-time-joins, scd-type-2]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+dataset: ecommerce
+time_minutes: 30
+prompt: |
+  Tables:
+
+  - `customers(customer_id, name, country, signup_date)`: `country` is the **current** country.
+  - `customer_addresses(customer_id, country, effective_date)`: change log, "from this date the customer lives in this country".
+  - `orders(order_id, customer_id, order_date, status)`
+  - `order_items(order_id, product_id, quantity, unit_price)`
+
+  Finance reports revenue by where the customer lived **when they ordered**. Marketing has been using the current country. Show both side by side for completed orders from registered customers.
+
+  Output: `country, revenue_at_order_time, revenue_by_current_country` (0 where a country has none). Order by `country`.
+hints:
+  - For each order, find the latest address row with `effective_date <= order_date`.
+  - A country can appear in one view and not the other. Which join keeps both?
+solution:
+  sql: |
+    WITH order_revenue AS (
+      SELECT o.order_id, o.customer_id, o.order_date, SUM(oi.quantity * oi.unit_price) AS revenue
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.order_id
+      WHERE o.status = 'completed' AND o.customer_id IS NOT NULL
+      GROUP BY o.order_id, o.customer_id, o.order_date
+    ),
+    at_order_time AS (
+      SELECT (
+               SELECT a.country
+               FROM customer_addresses a
+               WHERE a.customer_id = r.customer_id AND a.effective_date <= r.order_date
+               ORDER BY a.effective_date DESC
+               LIMIT 1
+             ) AS country,
+             r.revenue
+      FROM order_revenue r
+    ),
+    historical AS (
+      SELECT country, SUM(revenue) AS revenue FROM at_order_time GROUP BY country
+    ),
+    current_view AS (
+      SELECT c.country, SUM(r.revenue) AS revenue
+      FROM order_revenue r
+      JOIN customers c ON c.customer_id = r.customer_id
+      GROUP BY c.country
+    )
+    SELECT COALESCE(h.country, c.country) AS country,
+           COALESCE(h.revenue, 0) AS revenue_at_order_time,
+           COALESCE(c.revenue, 0) AS revenue_by_current_country
+    FROM historical h
+    FULL OUTER JOIN current_view c ON c.country = h.country
+    ORDER BY country;
+  explanation: |
+    This is a **point-in-time join**, the main reason SCD Type 2 exists. Each order needs the version of the customer that was valid on the order date. The correlated subquery is the portable way to do it. In a warehouse model you would precompute `valid_from` / `valid_to` once (see the SCD2 question) and join on `order_date >= valid_from AND order_date < valid_to`.
+
+    Both views must total the same revenue, since only the country attribution moves. That makes a cheap sanity check worth mentioning.
+
+    Aggregate items to the order first, so the address lookup runs once per order, not once per line item.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Picks the address version valid on the order date (latest effective_date <= order_date)'
+    weight: 2
+    topic: point-in-time-joins
+  - point: 'Keeps countries present in only one view (FULL OUTER JOIN or union) and zero-fills'
+    weight: 1
+  - point: 'Suggests a reconciliation check: both columns sum to the same total'
+    weight: 1
+    topic: data-quality
+follow_ups:
+  - With 2 billion orders, the correlated subquery is too slow. Rewrite it with an SCD2 table and a range join, or an ASOF JOIN.
+  - The fact table stores customer_key at load time instead. What are the pros and cons versus joining on dates at query time?
+dialect_notes:
+  snowflake:
+    note: '`ASOF JOIN customer_addresses a MATCH_CONDITION(r.order_date >= a.effective_date) ON r.customer_id = a.customer_id` replaces the correlated subquery.'
+    source: https://docs.snowflake.com/en/sql-reference/constructs/asof-join

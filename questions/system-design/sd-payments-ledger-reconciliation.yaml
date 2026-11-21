@@ -1,0 +1,43 @@
+id: sd-payments-ledger-reconciliation
+title: Reconcile the internal payments ledger with processor settlements
+round: system-design
+topic: [reconciliation, fintech, data-quality]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+guide: /docs/rounds/system-design/payments-ledger-reconciliation
+prompt: |
+  A fintech records every payment in its own ledger (an event stream of payment state changes). Each night, three card processors and two banks send settlement files (CSV/SFTP, one of them an API) listing what they actually settled, with fees, FX and their own IDs.
+
+  Finance needs, by 08:00 each day: matched transactions, unmatched items on both sides with ageing, fee and FX differences, and a sign-off that totals tie out. Design the system.
+hints:
+  - What's the matching key when the processor doesn't know your payment ID?
+  - Unmatched isn't a failure state; it's a queue. What does it need?
+solution:
+  answer: |
+    Ingest the ledger events (CDC or stream) and the processor files into an immutable **raw zone** with file-level metadata (source, file name, checksum, received_at), and reject duplicate files by checksum. Normalize every source into one **canonical settlement schema** (amount in minor units, currency, value date, processor reference, our reference if present). Matching runs in **tiers**: exact on reference ID, then on (amount, currency, card fingerprint, date ± 1 day), then fuzzy rules, each with a confidence and rule ID. Outputs are `recon_matches`, `recon_breaks` (with reason and age) and daily **control totals** per source that must tie out (`ledger total = matched + unmatched ± fees/FX`).
+
+    The main points: money as integers, never floats; idempotent re-runs per business date; files arrive late or twice, so the run is keyed by business date, not arrival; breaks form a workflow (owner, status, notes) and age-out alerts; everything is auditable (which rule matched what, which file version).
+rubric:
+  - point: 'Canonical schema across sources; money in minor units / decimals, not floats'
+    weight: 2
+    topic: fintech
+  - point: 'Tiered matching (exact ID, then attribute-based, then fuzzy) with recorded rule/confidence'
+    weight: 3
+    topic: reconciliation
+  - point: 'Control totals that must tie out, and a sign-off gate'
+    weight: 3
+    topic: data-quality
+  - point: 'Idempotent, re-runnable by business date; handles late and duplicate files'
+    weight: 2
+    topic: idempotency
+  - point: 'Breaks as a workflow with ageing and ownership'
+    weight: 2
+    topic: reconciliation
+  - point: 'Audit trail: immutable raw files, file checksums, match lineage'
+    weight: 2
+    topic: fintech
+follow_ups:
+  - A processor resends yesterday's file with corrections. What gets recomputed, and how do you show finance what changed?
+  - How would you measure and improve the auto-match rate over time?

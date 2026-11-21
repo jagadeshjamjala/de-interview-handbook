@@ -1,0 +1,47 @@
+id: sql-median-and-p90-fare-by-city
+title: Median and 90th percentile fare per city
+round: sql
+topic: [percentiles, aggregation]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: rides
+time_minutes: 10
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  For completed trips, return per city the number of trips, the median fare and the 90th percentile fare (continuous, interpolated), both rounded to 2 decimals.
+
+  Output: `city, trips, median_fare, p90_fare`. Order by `city`.
+hints:
+  - 'Look for an ordered-set aggregate: `PERCENTILE_CONT(fraction) WITHIN GROUP (ORDER BY …)`.'
+solution:
+  sql: |
+    SELECT city,
+           COUNT(*) AS trips,
+           ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY fare), 2) AS median_fare,
+           ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY fare), 2) AS p90_fare
+    FROM trips
+    WHERE status = 'completed'
+    GROUP BY city
+    ORDER BY city;
+  explanation: |
+    `PERCENTILE_CONT` interpolates between the two middle values; `PERCENTILE_DISC` returns an actual value from the data. For money, either can be right. Say which one the business wants.
+
+    Why median at all? Fares are skewed: a few long airport trips pull the mean up, while the median describes a typical trip.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+follow_ups:
+  - The table has 5 billion rows. How would you compute an approximate p90, and what's the trade-off?
+  - How do you compute a median in an engine that has no percentile function?
+dialect_notes:
+  snowflake:
+    note: '`PERCENTILE_CONT … WITHIN GROUP` works as an aggregate; `MEDIAN(fare)` is a shortcut.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/percentile_cont
+  bigquery:
+    note: '`PERCENTILE_CONT(fare, 0.5) OVER (PARTITION BY city)` is analytic-only. For a grouped result use `APPROX_QUANTILES(fare, 100)[OFFSET(50)]`, or the analytic form plus DISTINCT.'
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/navigation_functions#percentile_cont
+  sqlserver:
+    note: '`PERCENTILE_CONT` requires an `OVER` clause (window function only), so pair it with `DISTINCT` or a subquery to get one row per city.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/percentile-cont-transact-sql
