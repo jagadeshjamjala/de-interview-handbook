@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/.docusaurus/**',
       '.venv/**',
       '**/static/duckdb/**',
+      '**/static/pyodide/**',
     ],
   },
   js.configs.recommended,
@@ -21,6 +22,11 @@ export default tseslint.config(
     plugins: {'react-hooks': reactHooks},
     rules: reactHooks.configs.recommended.rules,
     languageOptions: {globals: {...globals.browser, ...globals.node}},
+  },
+  {
+    // Module Web Worker for the Python playground.
+    files: ['apps/website/static/*.mjs'],
+    languageOptions: {globals: globals.worker},
   },
   prettier,
 );

@@ -9,3 +9,4 @@ apps/website/static/datasets
 apps/website/static/duckdb
 apps/website/static/img/og
 apps/website/src/data
+apps/website/static/pyodide

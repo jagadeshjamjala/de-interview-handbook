@@ -1,8 +1,4 @@
-/* Own identity: deep teal + amber, IBM Plex Sans / JetBrains Mono (self-hosted via @fontsource). */
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/600.css';
-@import '@fontsource/ibm-plex-sans/700.css';
-@import '@fontsource/jetbrains-mono/400.css';
+/* Own identity: deep teal + amber, IBM Plex Sans / JetBrains Mono (self-hosted: static/fonts/fonts.css). */
 
 :root {
   --ifm-color-primary: #0f766e;

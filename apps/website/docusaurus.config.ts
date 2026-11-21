@@ -49,6 +49,17 @@ const config: Config = {
 
   plugins: [docLevels],
   clientModules: ['./src/clientModules/focusableCode.ts'],
+  stylesheets: [`${baseUrl}fonts/fonts.css`],
+  headTags: ['ibm-plex-sans-latin-400-normal', 'ibm-plex-sans-latin-700-normal'].map((f) => ({
+    tagName: 'link',
+    attributes: {
+      rel: 'preload',
+      href: `${baseUrl}fonts/${f}.woff2`,
+      as: 'font',
+      type: 'font/woff2',
+      crossorigin: 'anonymous',
+    },
+  })),
 
   themes: [
     [

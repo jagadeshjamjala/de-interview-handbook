@@ -5,6 +5,7 @@ import useBrokenLinks from '@docusaurus/useBrokenLinks';
 import Heading from '@theme/Heading';
 import Spoiler from '@site/src/components/Spoiler';
 import SqlPlayground from '@site/src/components/SqlPlayground';
+import PythonPlayground from '@site/src/components/PythonPlayground';
 import CardTimer from '@site/src/components/CardTimer';
 import {mockModeStore} from '@site/src/lib/store';
 import {ROUND_LABELS, type Question} from '@site/src/lib/questions';
@@ -63,16 +64,20 @@ export default function QuestionCard({
         </p>
       )}
 
-      {q.round === 'sql' &&
+      {(q.round === 'sql' || q.round === 'python') &&
         (trying ? (
-          <SqlPlayground question={q} />
+          q.round === 'sql' ? (
+            <SqlPlayground question={q} />
+          ) : (
+            <PythonPlayground question={q} />
+          )
         ) : (
           <button
             type="button"
             className="button button--primary button--sm margin-bottom--sm"
             onClick={() => setTrying(true)}
           >
-            Try it in the SQL playground
+            Try it in the {q.round === 'sql' ? 'SQL' : 'Python'} playground
           </button>
         ))}
 

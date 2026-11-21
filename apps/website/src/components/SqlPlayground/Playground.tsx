@@ -5,31 +5,13 @@ import {basicSetup} from 'codemirror';
 import {EditorView, keymap} from '@codemirror/view';
 import {Compartment, Prec} from '@codemirror/state';
 import {sql} from '@codemirror/lang-sql';
-import {oneDark} from '@codemirror/theme-one-dark';
-import {HighlightStyle, syntaxHighlighting} from '@codemirror/language';
-import {tags} from '@lezer/highlight';
+import {darkEditorTheme} from '@site/src/lib/editorTheme';
 import type {Question} from '@site/src/lib/questions';
 import {compareResults, type Verdict} from './compare';
 import {datasets, loadDataset, runQuery, type QueryResult} from './duckdb';
 import styles from './styles.module.css';
 
 const MAX_ROWS = 200;
-// oneDark's active-line tint drops keyword contrast below 4.5:1; keep the plain background.
-// oneDark's coral for names (#e06c75) is 4.4:1 on its background; lighten it to pass AA.
-const darkNames = Prec.highest(
-  syntaxHighlighting(
-    HighlightStyle.define([
-      {
-        tag: [tags.name, tags.propertyName, tags.character, tags.deleted, tags.macroName],
-        color: '#ef8891',
-      },
-    ]),
-  ),
-);
-const darkActiveLine = Prec.highest(
-  EditorView.theme({'.cm-activeLine': {backgroundColor: '#282c34'}}, {dark: true}),
-);
-
 export type PlaygroundProps = {
   question?: Question;
   dataset?: string;
@@ -95,7 +77,7 @@ export default function Playground({question, dataset, onVerdict}: PlaygroundPro
 
   useEffect(() => {
     view.current?.dispatch({
-      effects: theme.reconfigure(colorMode === 'dark' ? [oneDark, darkActiveLine, darkNames] : []),
+      effects: theme.reconfigure(colorMode === 'dark' ? darkEditorTheme : []),
     });
   }, [colorMode, theme]);
 

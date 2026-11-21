@@ -1,0 +1,61 @@
+.playground {
+  margin: 1rem 0;
+}
+
+.editor {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.editor :global(.cm-editor) {
+  min-height: 12rem;
+  max-height: 28rem;
+}
+
+.editor :global(.cm-scroller) {
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.muted {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.ok,
+.bad {
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--ifm-global-radius);
+}
+
+.ok {
+  background: var(--ifm-color-success-contrast-background);
+  color: var(--ifm-color-success-contrast-foreground);
+}
+
+.bad {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-contrast-foreground);
+}
+
+.error,
+.output {
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+}
+
+.error {
+  background: var(--ifm-color-danger-contrast-background);
+  color: var(--ifm-color-danger-contrast-foreground);
+}
