@@ -1,0 +1,76 @@
+---
+title: Apache Spark
+sidebar_position: 2
+description: 'Spark internals for data engineering interviews: jobs, stages and tasks, shuffles, joins, skew, partitioning and memory.'
+levels: [mid, senior, lead]
+topic: [tools, spark]
+---
+
+# Apache Spark deep dive
+
+<LevelExpectations
+  mid="Explain jobs, stages and tasks, narrow vs wide transformations, and why shuffles are expensive."
+  senior="Diagnose slow jobs from the Spark UI: skew, spills, join strategies, partition counts, AQE."
+  lead="Decide when Spark is the right engine versus a warehouse or a streaming engine, and how to run it cost-effectively."
+/>
+
+## How a Spark job runs
+
+```
+your code (DataFrame / SQL)
+   → logical plan → optimized by Catalyst → physical plan
+   → job (one per action: write, count, collect)
+      → stages (split at every shuffle)
+         → tasks (one per partition, run on executors)
+```
+
+- **Lazy evaluation.** Transformations build a plan. Nothing runs until an **action**.
+- **Narrow transformations** (`filter`, `select`, `withColumn`) work within a partition: no data movement.
+- **Wide transformations** (`groupBy`, `join`, `distinct`, `repartition`) need rows with the same key on the same executor, so they **shuffle**: write to disk, transfer over the network, read on the other side. Shuffles are where most time goes.
+- **Partitions** are the unit of parallelism: one task per partition per stage. Shuffle output uses `spark.sql.shuffle.partitions` partitions (200 by default), which Adaptive Query Execution can coalesce at runtime.
+
+## Joins
+
+| Strategy | When Spark uses it | Shuffle? |
+|---|---|---|
+| **Broadcast hash join** | One side is small enough to send to every executor (`spark.sql.autoBroadcastJoinThreshold`, or a `broadcast()` hint) | No shuffle of the big side |
+| **Sort-merge join** | Default for two large sides | Both sides shuffled and sorted by key |
+| **Shuffle hash join** | Sometimes chosen when one side is much smaller per partition | Both sides shuffled |
+
+Bucketed tables with matching bucket counts on the join key can avoid the shuffle of a sort-merge join entirely.
+
+## Skew
+
+One task running much longer than its siblings in a stage means **skew**: a few keys hold most of the rows. Fixes, from cheapest: filter junk keys (NULLs, defaults), enable AQE skew-join handling, broadcast the small side, salt the hot key, or process hot keys separately. See the practice question below.
+
+## Memory and spills
+
+Executors split memory between execution (shuffles, joins, sorts) and storage (cache). When a task's data doesn't fit, it **spills** to disk: slower, but not fatal. Repeated spills or out-of-memory errors usually mean too few partitions, skew, or a huge `collect()` to the driver. More memory is the last fix, not the first.
+
+## File layout
+
+- **Small files** slow down reads (per-file overhead) and come from too many output partitions or frequent appends. Coalesce before writing, or compact with the table format's tools.
+- `partitionBy` on write helps **filtering** on low-cardinality columns. Bucketing helps **repeated joins** on a key.
+
+## Reading the Spark UI
+
+Look at: the stage with the longest duration; task time distribution (max vs median = skew); shuffle read/write sizes; spill (memory and disk); and the SQL tab's physical plan (which join strategy was chosen, whether filters were pushed down).
+
+## Quick check
+
+A job reads 2 TB of Parquet, filters to one day, and joins with a 50 MB lookup table. It shuffles 2 TB. What's wrong?
+
+<Spoiler label="Show answer">
+
+Two likely problems. The filter on the day isn't pruning: maybe the table isn't partitioned by date, or the filter wraps the column in a function, so Spark reads everything instead of one day. And the 50 MB lookup should be **broadcast** rather than joined with a sort-merge join. Check the physical plan for `BroadcastHashJoin` and for partition filters on the scan.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-spark-shuffle-and-skew", "tools-spark-partitioning-vs-bucketing", "sd-daily-batch-with-backfills"]} />
+
+## Official docs
+
+- [Spark SQL performance tuning](https://spark.apache.org/docs/latest/sql-performance-tuning.html)
+- [Spark tuning guide](https://spark.apache.org/docs/latest/tuning.html)

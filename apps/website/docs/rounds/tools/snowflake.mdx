@@ -1,0 +1,70 @@
+---
+title: Snowflake
+sidebar_position: 6
+description: 'Snowflake for data engineering interviews: storage and compute separation, micro-partitions and pruning, warehouses and credits, time travel.'
+levels: [mid, senior, lead]
+topic: [tools, snowflake]
+---
+
+# Snowflake deep dive
+
+<LevelExpectations
+  mid="Explain storage vs compute separation, virtual warehouses, micro-partitions and pruning."
+  senior="Diagnose slow or expensive queries from the query profile; choose clustering, search optimization or redesign."
+  lead="Own cost governance: warehouse strategy, resource monitors, chargeback, and data sharing across the company."
+/>
+
+## Architecture
+
+```
+          ┌────────── cloud services (metadata, optimizer, security) ──────────┐
+compute:  [warehouse ETL_L]   [warehouse BI_M]   [warehouse DS_XL]   (independent, billed per second while running)
+storage:  ─────────── tables as micro-partitions in cloud object storage ───────────
+```
+
+- **Storage and compute are separate.** Any number of **virtual warehouses** (compute clusters) read the same data without competing for resources.
+- Warehouses are billed in **credits** while running (per second, with a minimum when they start). **Auto-suspend** and **auto-resume** keep idle warehouses from burning credits.
+- **Scale up** (bigger warehouse) speeds up big queries. **Scale out** (multi-cluster warehouses) handles many concurrent queries.
+
+## Micro-partitions and pruning
+
+Tables are stored as immutable **micro-partitions** (50–500 MB of uncompressed data each) with metadata per column, including min/max values. Queries skip partitions whose ranges can't match the filter. Data is **naturally clustered** by load order, so time filters usually prune well, and other columns may not. Clustering keys, automatic clustering and the search optimization service address the rest, at extra cost.
+
+## Time travel and zero-copy cloning
+
+- **Time travel** queries a table as of an earlier time, within its retention period: `SELECT … AT (TIMESTAMP => …)`, and recovers dropped tables with `UNDROP`. Longer retention means more storage for changed data.
+- **Zero-copy clones** create a copy of a table, schema or database instantly, sharing storage until either side changes. Great for dev and test environments.
+
+## Loading and streaming
+
+- Bulk loading with `COPY INTO` from stages (files in object storage).
+- **Snowpipe** loads files continuously as they arrive; **Snowpipe Streaming** ingests rows with lower latency.
+- **Streams** (change tracking on a table) plus **tasks** (scheduled SQL) or **dynamic tables** (declarative, refreshed to a target lag) build incremental pipelines inside Snowflake.
+
+## Reading the query profile
+
+Look at: partitions scanned vs total (pruning), bytes spilled to local and remote storage (warehouse too small, or the query exploding rows), the most expensive operator, and join explosions (output rows far above input rows).
+
+## Cost levers
+
+Auto-suspend, right-sized warehouses per workload, avoiding `SELECT *` on wide tables, incremental models instead of full rebuilds, clustering only where it pays, and **resource monitors** that alert or suspend at a credit quota.
+
+## Quick check
+
+Dashboards are slow every morning at 9:00 when 200 analysts log in, but each query is fast on its own. What do you change?
+
+<Spoiler label="Show answer">
+
+This is concurrency, not query size: queries **queue** on one warehouse. Use a **multi-cluster warehouse** (scale out) for BI with a sensible maximum cluster count, keep ETL on a separate warehouse so it doesn't compete with dashboards, and check the result cache and pre-aggregated tables for the most common dashboard queries. A bigger single warehouse helps less than more clusters for this pattern.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-snowflake-clustering-and-pruning", "sd-cut-runaway-warehouse-cost", "sql-usd-volume-with-latest-fx-rate"]} />
+
+## Official docs
+
+- [Snowflake: micro-partitions and data clustering](https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions)
+- [Snowflake: warehouses overview](https://docs.snowflake.com/en/user-guide/warehouses-overview)
+- [Snowflake: Time Travel](https://docs.snowflake.com/en/user-guide/data-time-travel)

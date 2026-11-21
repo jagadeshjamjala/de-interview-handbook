@@ -1,0 +1,44 @@
+---
+title: Tool deep dives
+sidebar_position: 1
+description: How interviewers probe the tools on your resume, and deep dives on Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks and table formats.
+levels: [junior, mid, senior, lead]
+topic: [tools]
+---
+
+# Tool deep dives
+
+Every tool on your resume is an invitation to a deep dive. Interviewers rarely ask for syntax. They ask **how the tool works underneath**, because that's what you need when it's slow, wrong or broken at 3 a.m.
+
+<LevelExpectations
+  junior="Explain what each tool on your resume is for, how you used it, and one thing that went wrong."
+  mid="Explain the internals that matter for performance and correctness (partitions, shuffles, idempotency, pruning) for the tools you use daily."
+  senior="Compare tools and their trade-offs, diagnose problems from symptoms, and know the cost model of each."
+  lead="Choose between tools for a platform, and explain the operational and team costs of each choice."
+/>
+
+## How tool questions are asked
+
+1. **"Walk me through how X works."** Architecture, from the write path to the read path.
+2. **"This job is slow / wrong. What do you check?"** Diagnosis from symptoms: the most common format.
+3. **"When would you not use X?"** Trade-offs and alternatives.
+4. **"What does X cost, and how would you reduce it?"** Increasingly common.
+
+The best preparation: for each tool on your resume, know its **unit of parallelism**, its **unit of storage**, how it **guarantees correctness** (or doesn't), and **what it bills for**.
+
+## The pages
+
+| Tool | What interviewers probe most |
+|---|---|
+| [Apache Spark](./spark.mdx) | Shuffles, skew, joins, partitioning, AQE, memory |
+| [Apache Kafka](./kafka.mdx) | Partitions and ordering, consumer groups, delivery guarantees |
+| [Apache Airflow](./airflow.mdx) | Logical dates, idempotent tasks, backfills, scheduler behavior |
+| [dbt](./dbt.mdx) | Materializations, incremental models, tests, project structure |
+| [Snowflake](./snowflake.mdx) | Micro-partitions and pruning, warehouses and credits, time travel |
+| [BigQuery](./bigquery.mdx) | Bytes-billed cost model, partitioning and clustering, slots |
+| [Databricks and Delta Lake](./databricks.mdx) | Delta log, small files, OPTIMIZE and clustering, Unity Catalog |
+| [Table formats](./table-formats.mdx) | Iceberg vs Delta vs Hudi, snapshots, compaction, catalogs |
+
+## Practice
+
+<RelatedQuestions round="tools" />

@@ -4,6 +4,22 @@ import type * as Preset from '@docusaurus/preset-classic';
 import docLevels from './plugins/doc-levels';
 
 // Runs in Node.js. Switching to a custom domain = change SITE_BASE_URL (and url) + add static/CNAME.
+// Prism's GitHub theme with its low-contrast colors darkened to pass WCAG AA (4.5:1) on its background.
+const AA_FIXES: Record<string, string> = {
+  '#999988': '#5c6370', // comment
+  '#e3116c': '#b3005a', // string
+  '#36acaa': '#00727a', // number, boolean, constant
+  '#00a4db': '#0068a8', // atrule, attr-name
+  '#d73a49': '#b31d28', // function, tag
+};
+const lightCodeTheme = {
+  ...prismThemes.github,
+  styles: prismThemes.github.styles.map((s) => ({
+    ...s,
+    style: {...s.style, color: AA_FIXES[s.style.color ?? ''] ?? s.style.color},
+  })),
+};
+
 const baseUrl = process.env.SITE_BASE_URL ?? '/de-interview-handbook/';
 const repoUrl = 'https://github.com/jagadeshjamjala/de-interview-handbook';
 
@@ -32,6 +48,7 @@ const config: Config = {
   },
 
   plugins: [docLevels],
+  clientModules: ['./src/clientModules/focusableCode.ts'],
 
   themes: [
     [
@@ -131,7 +148,7 @@ const config: Config = {
       copyright: `Code MIT · Content CC BY-SA 4.0 · Structure inspired by the Tech Interview Handbook.`,
     },
     prism: {
-      theme: prismThemes.github,
+      theme: lightCodeTheme,
       darkTheme: prismThemes.vsDark,
       additionalLanguages: ['sql', 'python', 'yaml', 'bash'],
     },

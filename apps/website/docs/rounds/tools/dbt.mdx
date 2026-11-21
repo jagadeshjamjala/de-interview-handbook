@@ -1,0 +1,80 @@
+---
+title: dbt
+sidebar_position: 5
+description: 'dbt for data engineering interviews: models and materializations, incremental models, tests, snapshots and project structure.'
+levels: [junior, mid, senior, lead]
+topic: [tools, dbt]
+---
+
+# dbt deep dive
+
+<LevelExpectations
+  junior="Explain models, ref(), sources, materializations and basic tests."
+  mid="Build incremental models correctly, use snapshots, and structure a project in layers."
+  senior="Design for scale and change: late data, schema changes, slim CI, cost, ownership of models across teams."
+  lead="Set standards for a multi-team dbt platform: contracts, versioning, testing policy and CI/CD."
+/>
+
+## What dbt does
+
+dbt turns SELECT statements into tables and views in your warehouse, in dependency order. You write `models/*.sql` that reference each other with `{{ ref('model') }}` and raw tables with `{{ source('src', 'table') }}`. dbt builds the **DAG** from those references, compiles Jinja to SQL, and runs it in the warehouse. The warehouse does the compute; dbt orchestrates and templates it.
+
+## Materializations
+
+| Materialization | What it creates | Use for |
+|---|---|---|
+| `view` | A view | Light transformations; always fresh, computed at query time |
+| `table` | A table, rebuilt each run | Small or medium models |
+| `incremental` | A table, updated with only new/changed rows | Large facts |
+| `ephemeral` | Inlined as a CTE | Reusable logic without a table |
+| `materialized_view` | A warehouse materialized view (adapter support varies) | Fresh aggregates maintained by the warehouse |
+
+## Incremental models
+
+`is_incremental()` is true on runs after the first. The model selects only new rows (usually filtered against `{{ this }}`), and an **incremental strategy** (append, merge, delete+insert, insert_overwrite, microbatch) writes them. Getting late data, `unique_key` and schema changes right is the core of the interview topic: see the practice question.
+
+## Tests and contracts
+
+- **Data tests:** `unique`, `not_null`, `accepted_values`, `relationships`, plus custom SQL tests that return failing rows. Test keys and business rules on every important model.
+- **Unit tests** (newer dbt versions) check a model's logic against fixed input rows.
+- **Model contracts** enforce column names and types at build time, so downstream consumers don't break silently.
+- **Source freshness** checks alert when upstream data is late.
+
+## Snapshots
+
+Snapshots record how rows in a mutable source change over time, producing SCD Type 2 history (`dbt_valid_from`, `dbt_valid_to`), using a `timestamp` or `check` strategy. They only capture changes that exist when the snapshot runs, so run them often enough, and remember they can't recover history from before they started.
+
+## Project structure
+
+A common layering:
+
+```
+models/
+  staging/      one model per source table: rename, cast, light cleaning (views)
+  intermediate/ joins and business logic building blocks
+  marts/        facts and dimensions for consumers (tables / incremental)
+```
+
+## CI/CD
+
+**Slim CI:** build and test only the models changed in a pull request and their downstream models (`state:modified+`), deferring to production for everything else. It keeps CI fast and cheap.
+
+## Quick check
+
+A model's row count doubled overnight, and the source didn't change. The model is `incremental` with the default append strategy. What's the likely cause?
+
+<Spoiler label="Show answer">
+
+The run reprocessed rows that were already loaded, for example after a failed run was retried, or because the incremental filter's lookback overlapped already-loaded data. With **append and no `unique_key`**, reprocessed rows are inserted again. Fix: use `merge` (or `delete+insert`) with a `unique_key`, add a `unique` test on the key, and deduplicate the existing table.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-dbt-incremental-models", "sql-build-scd2-from-change-log", "behavioral-metric-definition-dispute"]} />
+
+## Official docs
+
+- [dbt: incremental models](https://docs.getdbt.com/docs/build/incremental-models)
+- [dbt: materializations](https://docs.getdbt.com/docs/build/materializations)
+- [dbt: snapshots](https://docs.getdbt.com/docs/build/snapshots)

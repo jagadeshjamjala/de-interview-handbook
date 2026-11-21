@@ -1,0 +1,77 @@
+---
+title: Apache Kafka
+sidebar_position: 3
+description: 'Kafka internals for data engineering interviews: topics and partitions, ordering, consumer groups, replication and delivery guarantees.'
+levels: [mid, senior, lead]
+topic: [tools, kafka]
+---
+
+# Apache Kafka deep dive
+
+<LevelExpectations
+  mid="Explain topics, partitions, offsets and consumer groups, and why ordering is per partition."
+  senior="Explain replication and acks, delivery semantics, exactly-once, rebalances and how to size partitions."
+  lead="Decide when Kafka is the right backbone, how teams share it (schemas, ownership, retention), and what it costs to run."
+/>
+
+## The model
+
+```
+producer ──► topic "orders"
+              ├─ partition 0: [o0][o1][o2][o3] ...  → consumer A (group "billing")
+              ├─ partition 1: [o0][o1][o2] ...      → consumer B (group "billing")
+              └─ partition 2: [o0][o1] ...          → consumer B (group "billing")
+                 (each partition is an append-only log; o = offset)
+```
+
+- A **topic** is split into **partitions**. Each partition is an ordered, append-only log; records are identified by **offset**.
+- **Ordering is guaranteed only within a partition.** The default partitioner hashes the record **key**, so the same key goes to the same partition while the partition count stays the same.
+- **Consumer groups**: each partition is read by one consumer in a group at a time. Parallelism is capped by the partition count. Different groups read the same data independently.
+- Consumers **commit offsets** to record progress. When the commit happens relative to processing decides at-most-once vs at-least-once.
+
+## Durability
+
+- Each partition has a **leader** and **follower replicas** (replication factor, often 3).
+- **In-sync replicas (ISR)** are followers that are caught up. With `acks=all`, the producer waits for all in-sync replicas. With `min.insync.replicas=2`, a write is only accepted if at least two replicas have it.
+- The **idempotent producer** (default in recent versions) prevents duplicates from producer retries.
+
+## Delivery semantics
+
+| Semantics | How |
+|---|---|
+| At-most-once | Commit offsets before processing |
+| At-least-once | Commit after processing (duplicates possible on failure) |
+| Exactly-once within Kafka | Transactions: write outputs and offsets atomically; readers use `read_committed` |
+| Exactly-once into another system | Idempotent writes (upsert by key) or offsets stored transactionally with the data |
+
+## Retention and compaction
+
+- **Time/size retention** deletes old log segments, so Kafka is a buffer you can replay within the retention window.
+- **Log compaction** keeps the latest record per key (and tombstones for deletes). Good for changelog topics such as CDC or "latest state per key".
+
+## Rebalances
+
+When consumers join, leave or miss heartbeats, partitions are reassigned. A consumer that takes longer than `max.poll.interval.ms` between polls is considered dead, which triggers a rebalance and reprocessing. Slow processing is a common cause of "rebalance storms". Cooperative rebalancing reduces the disruption.
+
+## Schemas
+
+Producers and consumers agree on a format (Avro, Protobuf or JSON Schema), usually through a **schema registry** with compatibility rules (backward, forward), so producers can't break consumers by accident.
+
+## Quick check
+
+A topic keyed by `customer_id` has one customer producing 40% of all events. Consumers can't keep up. Will adding partitions help?
+
+<Spoiler label="Show answer">
+
+Not for that customer. All of their events hash to one partition, which one consumer reads, so adding partitions doesn't spread a single hot key. Options: a finer key (for example `customer_id` + `session_id`) if per-customer ordering isn't strictly required, processing that partition faster (batching, async I/O while keeping per-key order), or a dedicated topic for the large customer. Adding partitions also remaps every other key, which breaks ordering during the transition.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-kafka-partitions-and-ordering", "tools-kafka-delivery-guarantees", "sd-late-and-out-of-order-events", "sd-cdc-postgres-to-lakehouse"]} />
+
+## Official docs
+
+- [Kafka documentation: design and semantics](https://kafka.apache.org/documentation/#design)
+- [Kafka documentation: producer configs](https://kafka.apache.org/documentation/#producerconfigs)
