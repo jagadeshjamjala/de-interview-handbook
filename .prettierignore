@@ -6,3 +6,6 @@ pnpm-lock.yaml
 *.mdx
 .venv
 apps/website/static/datasets
+apps/website/static/duckdb
+apps/website/static/img/og
+apps/website/src/data

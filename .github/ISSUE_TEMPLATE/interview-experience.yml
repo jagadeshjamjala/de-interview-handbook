@@ -1,0 +1,35 @@
+name: Interview experience
+description: Share what a data engineering interview loop looked like, to improve the guides.
+title: '[Experience] '
+labels: [interview-experience]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please don't share anything you agreed to keep confidential, or exact questions from an NDA'd process. Describe the **shape** of the loop: rounds, topics, level, what surprised you.
+  - type: dropdown
+    id: level
+    attributes:
+      label: Level interviewed for
+      options: [Junior, Mid, Senior, Lead / Staff / EM]
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role type
+      options: [Analytics engineer, Platform DE, Streaming DE, ML data engineer, Not sure]
+  - type: input
+    id: company
+    attributes:
+      label: Company type (optional)
+      description: For example "fintech scale-up, ~500 people". A company name is optional.
+  - type: textarea
+    id: loop
+    attributes:
+      label: The rounds
+      description: What happened in each round, and what was tested?
+    validations:
+      required: true
+  - type: textarea
+    id: advice
+    attributes:
+      label: What would you tell someone preparing for it?

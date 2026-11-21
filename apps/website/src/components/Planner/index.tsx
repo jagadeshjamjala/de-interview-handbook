@@ -4,7 +4,8 @@ import Heading from '@theme/Heading';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import {useHistory, useLocation} from '@docusaurus/router';
 import de75 from '@site/src/data/de75.json';
-import {LEVELS, ROUND_LABELS, questionsById, type Level, type Round} from '@site/src/lib/questions';
+import {LEVELS, ROUND_LABELS, type Level, type Round} from '@site/src/lib/questions';
+import {indexById as questionsById} from '@site/src/lib/questionIndex';
 import {
   COST_FACTOR,
   ROLE_LABELS,

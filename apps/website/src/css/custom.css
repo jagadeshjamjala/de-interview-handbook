@@ -38,3 +38,27 @@
 .sidebar-dim > .menu__link {
   opacity: 0.6;
 }
+
+/* Accessibility (axe, WCAG AA) */
+[data-theme='dark'] .badge--primary {
+  color: #0b1416; /* white on light teal is 1.9:1 */
+}
+
+[data-theme='light'] .token.comment {
+  color: #5c6370 !important; /* prism github theme comments are 2.7:1; override its inline style */
+}
+
+/* Links inside running text must not rely on color alone. */
+main p a:not(.button),
+.markdown li a,
+.deih-links a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Desktop navbar is crowded below 1440px: show the logo alone instead of a truncated title. */
+@media (min-width: 997px) and (max-width: 1439px) {
+  .navbar__title {
+    display: none;
+  }
+}

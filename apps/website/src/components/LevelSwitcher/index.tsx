@@ -16,7 +16,6 @@ export default function LevelSwitcher({mobile}: {mobile?: boolean}): ReactNode {
   const level = levelStore.use();
   return (
     <label className={clsx(styles.switcher, mobile ? 'menu__list-item' : 'navbar__item')}>
-      <span className={styles.label}>Level</span>
       <select
         aria-label="Your level"
         value={level ?? ''}

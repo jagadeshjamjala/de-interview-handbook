@@ -1,13 +1,7 @@
 import {useState, type ReactNode} from 'react';
 import QuestionCard from '@site/src/components/QuestionCard';
-import {
-  DIFFICULTIES,
-  LEVELS,
-  ROUND_LABELS,
-  questions,
-  type Level,
-  type Round,
-} from '@site/src/lib/questions';
+import {DIFFICULTIES, LEVELS, ROUND_LABELS, type Level, type Round} from '@site/src/lib/questions';
+import {questions} from '@site/src/lib/questionBank';
 import {levelStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 

@@ -17,13 +17,13 @@ export default function Spoiler({
   if (mock && hint) return null;
   if (mock) {
     return (
-      <p className={styles.locked}>
+      <p className={`deih-spoiler ${styles.locked}`}>
         🔒 {label} is locked in mock mode. Turn mock mode off in the navbar to see it.
       </p>
     );
   }
   return (
-    <details className={styles.spoiler}>
+    <details className={`deih-spoiler ${styles.spoiler}`}>
       <summary>{label}</summary>
       <div className={styles.body}>{children}</div>
     </details>

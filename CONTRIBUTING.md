@@ -30,4 +30,17 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm build
 - CI must be green.
 - In the PR description, say what you changed and why.
 
-The question format and the step-by-step "add a question" guide arrive with the question pipeline. See [PLAN.md](PLAN.md) §3.
+## Adding a question
+
+Follow the five steps in the [README](README.md#how-to-contribute-a-question). In short: write `questions/<round>/<id>.yaml` against [`schemas/question.schema.json`](schemas/question.schema.json), prove the answer (`scripts/verify_sql.py --update-golden` for SQL and review the CSV; `tests` + `scripts/verify_python.py` for Python), then run `pnpm questions` and `pnpm dev`.
+
+If the question fills a `planned: true` slot in [`plans/de75.yaml`](plans/de75.yaml), replace that entry with your question's `id`.
+
+## Python checks
+
+```bash
+python -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python scripts/verify_sql.py       # every SQL answer vs its golden result
+.venv/bin/python scripts/verify_python.py    # every Python answer vs its tests
+.venv/bin/python datasets/generate.py        # regenerate datasets (must not change any bytes)
+```
