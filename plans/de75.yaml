@@ -1,0 +1,181 @@
+# DE 75: the planner curriculum (PLAN.md §4.2). The order here IS the study order:
+# fundamentals → intermediate → advanced, mixing rounds so every week touches several.
+# `planned: true` items aren't written yet; the planner hides them and shows "live / 75".
+# `roles` (optional) gives an item priority for that role type when time is short.
+# Targets: sql 30, python 10, modeling 10, system-design 10, tools 10, behavioral 5.
+name: DE 75
+items:
+  # --- Tier 1: fundamentals ---
+  - id: sql-employees-earning-more-than-manager
+  - id: sql-category-share-of-revenue
+    roles: [analytics]
+  - id: sql-customers-who-never-ordered
+  - id: python-dedup-latest-events
+    roles: [platform, streaming]
+  - id: sql-cancellations-with-and-without-driver
+  - id: sql-trip-duration-histogram
+  - id: modeling-ride-sharing-trips-star-schema
+    roles: [analytics]
+  - id: sql-session-duration-by-plan
+  - id: sql-customers-ordering-every-month-in-q4
+    roles: [analytics]
+  - id: behavioral-learning-new-domain-fast
+  - id: sql-top-3-products-by-revenue-per-category
+  - id: sql-dedup-replayed-transactions
+    roles: [platform, streaming]
+  - id: python-parse-access-logs
+    roles: [platform]
+  - id: tools-dbt-incremental-models
+    round: tools
+    title: How dbt incremental models work, and when they go wrong
+    planned: true
+  - id: sql-month-to-date-revenue
+    roles: [analytics]
+  - id: sql-month-over-month-revenue
+    roles: [analytics]
+  - id: python-flatten-nested-json
+    round: python
+    title: Flatten nested JSON records into rows
+    planned: true
+  - id: sql-days-to-second-order
+  - id: sql-pivot-ratings-by-direction
+    roles: [analytics]
+  - id: tools-airflow-idempotent-dags
+    round: tools
+    title: Writing idempotent, backfillable Airflow DAGs
+    planned: true
+  - id: modeling-customer-address-scd
+    roles: [analytics, ml]
+  - id: python-batched-csv-reader
+    roles: [platform]
+  - id: sql-median-and-p90-fare-by-city
+  - id: behavioral-production-incident
+  - id: sd-daily-batch-with-backfills
+    roles: [platform, analytics]
+
+  # --- Tier 2: intermediate ---
+  - id: sql-fix-fan-out-order-count
+    roles: [analytics]
+  - id: sql-7-day-moving-average-trips
+  - id: sql-gaps-islands-login-streaks
+  - id: tools-spark-shuffle-and-skew
+    round: tools
+    title: Spark shuffles, data skew and how to fix them
+    planned: true
+  - id: sql-sessionize-page-views
+    roles: [streaming]
+  - id: modeling-orders-returns-fulfillment
+    roles: [analytics]
+  - id: sql-weekly-cohort-retention
+    roles: [analytics]
+  - id: python-schema-drift-detector
+    round: python
+    title: Detect schema drift between two batches of records
+    planned: true
+  - id: sql-docs-pricing-billing-funnel
+    roles: [analytics]
+  - id: tools-kafka-delivery-guarantees
+    round: tools
+    title: Kafka delivery guarantees, idempotent producers and exactly-once
+    planned: true
+  - id: sql-org-chart-depth-and-path
+  - id: modeling-inventory-periodic-snapshot
+    roles: [analytics]
+  - id: sql-build-scd2-from-change-log
+    roles: [analytics, platform]
+  - id: python-total-downtime-from-windows
+  - id: tools-snowflake-clustering-and-pruning
+    round: tools
+    title: Snowflake micro-partitions, clustering and pruning
+    planned: true
+  - id: sql-overlapping-trips-per-driver
+    roles: [streaming]
+  - id: behavioral-speed-vs-quality-tradeoff
+  - id: modeling-clickstream-events
+    roles: [streaming, analytics]
+  - id: tools-kafka-partitions-and-ordering
+    round: tools
+    title: Kafka partitions, keys and ordering guarantees
+    planned: true
+  - id: sql-rolling-28-day-active-users
+    roles: [analytics, ml]
+  - id: python-paginated-api-with-retries
+    roles: [platform]
+  - id: python-idempotent-upsert-writer
+    round: python
+    title: An idempotent batch upsert writer
+    planned: true
+  - id: sql-fill-forward-fx-rates
+    roles: [ml]
+  - id: tools-bigquery-partitioning-and-cost
+    round: tools
+    title: BigQuery partitioning, clustering and query cost
+    planned: true
+  - id: modeling-one-big-table-tradeoffs
+    roles: [analytics]
+  - id: sd-clickstream-to-warehouse
+    roles: [streaming, platform]
+  - id: sql-chargeback-rate-by-month
+  - id: behavioral-metric-definition-dispute
+    roles: [analytics]
+  - id: tools-spark-partitioning-vs-bucketing
+    round: tools
+    title: Spark partitioning vs bucketing for joins
+    planned: true
+  - id: python-top-k-streaming-heap
+    round: python
+    title: Top-k items from a stream with a heap
+    planned: true
+  - id: sd-cdc-postgres-to-lakehouse
+    roles: [platform, streaming]
+  - id: sd-cut-runaway-warehouse-cost
+    round: system-design
+    title: Cut a runaway warehouse bill
+    planned: true
+
+  # --- Tier 3: advanced ---
+  - id: sql-longest-failed-streak-per-account
+  - id: modeling-bridge-table-joint-accounts
+  - id: sql-usd-volume-with-latest-fx-rate
+    roles: [ml]
+  - id: modeling-saas-subscription-mrr
+    roles: [analytics]
+  - id: tools-iceberg-vs-delta-table-formats
+    round: tools
+    title: Iceberg vs Delta Lake vs Hudi
+    planned: true
+  - id: sql-revenue-by-country-at-order-time
+    roles: [analytics, ml]
+  - id: modeling-point-in-time-training-data
+    roles: [ml]
+  - id: python-sql-lineage-extractor
+    round: python
+    title: Extract table lineage from SQL statements
+    planned: true
+  - id: sql-transaction-status-as-of-cutoff
+    roles: [ml, platform]
+  - id: sd-payments-ledger-reconciliation
+  - id: tools-databricks-optimize-and-zorder
+    round: tools
+    title: Delta OPTIMIZE, Z-ordering and small files on Databricks
+    planned: true
+  - id: modeling-data-vault-vs-kimball
+  - id: sd-late-and-out-of-order-events
+    roles: [streaming]
+  - id: sd-real-time-fraud-features
+    round: system-design
+    title: Real-time fraud features
+    planned: true
+  - id: behavioral-migration-you-led
+  - id: sd-gdpr-delete-across-a-lake
+    round: system-design
+    title: GDPR delete across a data lake
+    planned: true
+  - id: sd-multi-tenant-saas-analytics
+    round: system-design
+    title: Multi-tenant SaaS analytics
+    planned: true
+  - id: sd-legacy-to-cloud-migration
+    round: system-design
+    title: Legacy (Teradata / Ab Initio) to cloud migration
+    planned: true

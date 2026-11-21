@@ -15,6 +15,7 @@ export type Question = {
   companies: {name: string; source: string}[];
   dataset?: string;
   time_minutes: number;
+  prompt: string;
   solution: {sql?: string; python?: string};
   tests?: string;
   guide?: string;

@@ -13,7 +13,12 @@ import styles from './styles.module.css';
 
 const MAX_ROWS = 200;
 
-export type PlaygroundProps = {question?: Question; dataset?: string};
+export type PlaygroundProps = {
+  question?: Question;
+  dataset?: string;
+  /** Called after every "Check my answer" (mock sessions record the result). */
+  onVerdict?: (v: Verdict, sql: string) => void;
+};
 
 function schemaFor(ds: string): Record<string, string[]> {
   return Object.fromEntries(
@@ -25,7 +30,7 @@ function message(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export default function Playground({question, dataset}: PlaygroundProps): ReactNode {
+export default function Playground({question, dataset, onVerdict}: PlaygroundProps): ReactNode {
   const names = Object.keys(datasets);
   const [ds, setDs] = useState(question?.dataset ?? dataset ?? names[0]);
   const [initialDoc] = useState(() =>
@@ -111,15 +116,15 @@ export default function Playground({question, dataset}: PlaygroundProps): ReactN
       setResult(got);
       // shortcut: reference runs in the same DB, so a user `DROP VIEW` breaks it until reload.
       const want = await runQuery(base, question.solution.sql);
-      setVerdict(
-        compareResults(
-          got.columns.length,
-          got.rows,
-          want.columns.length,
-          want.rows,
-          question.check,
-        ),
+      const v = compareResults(
+        got.columns.length,
+        got.rows,
+        want.columns.length,
+        want.rows,
+        question.check,
       );
+      setVerdict(v);
+      onVerdict?.(v, editorSql());
     });
 
   useEffect(() => {

@@ -1,0 +1,19 @@
+.switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.label {
+  color: var(--ifm-color-emphasis-700);
+}
+
+.switcher select {
+  font: inherit;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--ifm-color-emphasis-400);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+}

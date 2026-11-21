@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "questions": "node ../../scripts/build-questions.ts && node ../../scripts/check-content.ts",
+    "questions": "node ../../scripts/build-questions.ts && node ../../scripts/build-plan.ts && node ../../scripts/check-content.ts",
     "start": "pnpm assets && docusaurus start",
     "build": "pnpm assets && docusaurus build",
     "serve": "docusaurus serve",

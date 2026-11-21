@@ -10,7 +10,7 @@
     "dev": "pnpm --filter @deih/website start",
     "build": "pnpm --filter @deih/website build",
     "serve": "pnpm --filter @deih/website serve",
-    "questions": "node scripts/build-questions.ts && node scripts/check-content.ts",
+    "questions": "node scripts/build-questions.ts && node scripts/build-plan.ts && node scripts/check-content.ts",
     "test": "node --test \"scripts/*.test.ts\" \"apps/website/src/**/*.test.ts\"",
     "typecheck": "tsc -p scripts && pnpm --filter @deih/website typecheck",
     "lint": "eslint .",

@@ -1,6 +1,7 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import docLevels from './plugins/doc-levels';
 
 // Runs in Node.js. Switching to a custom domain = change SITE_BASE_URL (and url) + add static/CNAME.
 const baseUrl = process.env.SITE_BASE_URL ?? '/de-interview-handbook/';
@@ -29,6 +30,8 @@ const config: Config = {
     defaultLocale: 'en',
     locales: ['en'],
   },
+
+  plugins: [docLevels],
 
   presets: [
     [
@@ -75,6 +78,10 @@ const config: Config = {
         },
         {to: '/questions', label: 'Questions', position: 'left'},
         {to: '/playground', label: 'Playground', position: 'left'},
+        {to: '/planner', label: 'Planner', position: 'left'},
+        {to: '/mock', label: 'Mock interview', position: 'left'},
+        {type: 'custom-levelSwitcher', position: 'right'},
+        {type: 'custom-mockToggle', position: 'right'},
         {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: repoUrl,
@@ -92,6 +99,8 @@ const config: Config = {
             {label: 'Start here', to: '/docs/start-here'},
             {label: 'Question bank', to: '/questions'},
             {label: 'SQL playground', to: '/playground'},
+            {label: 'DE 75 planner', to: '/planner'},
+            {label: 'Mock interview', to: '/mock'},
           ],
         },
         {
