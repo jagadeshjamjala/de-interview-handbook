@@ -1,0 +1,76 @@
+---
+title: Apache Airflow
+sidebar_position: 4
+description: 'Airflow for data engineering interviews: DAGs, logical dates and data intervals, idempotent tasks, backfills, scheduler and executors.'
+levels: [junior, mid, senior, lead]
+topic: [tools, airflow, orchestration]
+---
+
+# Apache Airflow deep dive
+
+<LevelExpectations
+  junior="Explain DAGs, tasks, operators and schedules, and how you'd rerun a failed task."
+  mid="Write idempotent tasks driven by the data interval, and run backfills safely."
+  senior="Explain the scheduler and executors, scaling limits, sensors and deferrable operators, and DAG design for many teams."
+  lead="Decide on orchestration for a platform (Airflow, Dagster, managed services), and the standards teams must follow."
+/>
+
+## The model
+
+- A **DAG** is a set of **tasks** with dependencies. Each task is an instance of an **operator** (Python, SQL, Spark submit, a sensor…).
+- A **DAG run** covers one **data interval** (for a daily DAG: one day). Its **logical date** is the start of that interval. The run is *triggered after* the interval ends: the run for 1 May starts on 2 May.
+- Tasks should be **pure functions of their interval**: read the interval's data and overwrite the interval's output. That's what makes retries and backfills safe.
+
+## Using the interval, not the clock
+
+```python
+@task
+def load(data_interval_start=None, data_interval_end=None):
+    rows = api.fetch(since=data_interval_start, until=data_interval_end)
+    warehouse.overwrite_partition("orders", day=data_interval_start.date(), rows=rows)
+```
+
+Using `datetime.now()` inside a task is the classic bug: a retry or backfill of an old run processes the wrong period. Templates such as `{{ ds }}` and `{{ data_interval_start }}` give the same values in SQL.
+
+## Backfills and catchup
+
+- `catchup=True` creates runs for intervals missed since `start_date` (for example after a pause).
+- Backfilling a date range reruns those intervals. Limit the pressure on sources and the warehouse with `max_active_runs`, **pools** and priority weights.
+- Backfills are only safe if tasks are idempotent (overwrite, delete+insert or MERGE, never blind append).
+
+## Scheduler and executors
+
+- The **scheduler** parses DAG files continuously and creates task instances when dependencies are met. Heavy code at the top level of a DAG file (API calls, database queries) slows every parse, so keep it inside tasks.
+- The **executor** decides where tasks run: Local, Celery workers, Kubernetes pods (one pod per task), or a managed service.
+- Airflow orchestrates. It shouldn't move large data through its workers. Push heavy work to the warehouse, Spark or another service and let Airflow trigger and monitor it.
+
+## Waiting for things
+
+**Sensors** wait for a condition (a file, a partition, another DAG). Classic sensors hold a worker slot while waiting; **deferrable** operators hand the wait to the triggerer and free the slot. Prefer deferrable, or data-aware scheduling (datasets/assets) where available.
+
+## Common interview traps
+
+- **Wall-clock dates** in tasks.
+- **Appending** in tasks that can be retried.
+- **XCom for data.** XCom is for small metadata, not datasets.
+- **One giant DAG** for everything vs many small DAGs connected through datasets or sensors. Ownership and blast radius matter.
+- **Timezones.** Define the schedule's timezone explicitly; "midnight" in UTC isn't midnight for the business.
+
+## Quick check
+
+A daily DAG has `start_date` = 1 January and is deployed on 10 March with `catchup=True`. What happens, and what could go wrong?
+
+<Spoiler label="Show answer">
+
+Airflow schedules runs for every daily interval since 1 January, about 68 runs, and starts them as fast as `max_active_runs` allows. If tasks aren't idempotent or the source API can't take the load, that floods the source or creates duplicates. Set `catchup=False` if history isn't needed, or backfill deliberately with low concurrency and a pool.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-airflow-idempotent-dags", "sd-daily-batch-with-backfills", "python-paginated-api-with-retries"]} />
+
+## Official docs
+
+- [Airflow best practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html)
+- [Airflow templates reference](https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html)

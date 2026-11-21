@@ -1,0 +1,66 @@
+---
+title: BigQuery
+sidebar_position: 7
+description: 'BigQuery for data engineering interviews: the cost model, partitioning and clustering, slots, storage and streaming ingestion.'
+levels: [mid, senior, lead]
+topic: [tools, bigquery]
+---
+
+# BigQuery deep dive
+
+<LevelExpectations
+  mid="Explain how queries are billed and how partitioning and clustering reduce cost."
+  senior="Choose partitioning and clustering for real access patterns, read query plans, and pick a pricing model."
+  lead="Own cost governance and the slot strategy across teams, and decide how BigQuery fits with the lake and other engines."
+/>
+
+## Architecture
+
+- **Serverless.** No clusters to size: BigQuery allocates **slots** (units of compute) to each query.
+- **Columnar storage**: a query reads only the columns it references.
+- Storage and compute are separate, and storage is billed separately (active vs long-term pricing for data not modified for a while).
+
+## The cost model
+
+- **On-demand pricing:** billed by **bytes processed**, meaning the data in the columns read across the partitions scanned. `LIMIT` doesn't reduce it; `SELECT *` maximizes it.
+- **Capacity pricing:** you buy slot capacity (editions, reservations, autoscaling) and queries run within it. Better for steady heavy workloads, and makes cost predictable.
+
+Guardrails: maximum bytes billed per query, custom quotas, and `INFORMATION_SCHEMA.JOBS` to find the most expensive queries and users.
+
+## Partitioning and clustering
+
+- **Partitioning** by a date/timestamp column, ingestion time, or an integer range. Filters on the partition column prune whole partitions. Use **require partition filter** on big tables.
+- **Clustering** sorts data within partitions by up to four columns, so BigQuery can skip blocks for filters on those columns. Good for high-cardinality filter columns (customer, event name).
+- Typical design: partition by event date, cluster by the most common filter columns in order of use.
+
+## Ingestion
+
+- **Batch loads** from Cloud Storage (free for load jobs, within limits).
+- **Streaming** via the Storage Write API for low-latency rows, with exactly-once semantics available in committed mode.
+- **External / BigLake tables** query files in object storage (including open table formats) without loading them.
+
+## Useful features
+
+- **Materialized views** for repeated aggregations, maintained incrementally where possible.
+- **Time travel** over a short window to query or restore earlier table versions.
+- `MERGE` for upserts; scripting and stored procedures; BI Engine for low-latency dashboards.
+
+## Quick check
+
+A table partitioned by `DATE(created_at)` is queried with `WHERE created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)`. Is pruning working? How do you check?
+
+<Spoiler label="Show answer">
+
+A range filter on the partitioning column normally prunes, but don't assume it. Do a **dry run** (or check the query validator) to see estimated bytes; if it's close to the full table size, nothing was pruned. After running, check bytes processed in the job details. Filters that hide the partition column inside other functions, or use a subquery result as the bound, may not prune. Then filter with a constant expression on the column directly.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-bigquery-partitioning-and-cost", "sd-cut-runaway-warehouse-cost", "sql-rolling-28-day-active-users"]} />
+
+## Official docs
+
+- [BigQuery: partitioned tables](https://cloud.google.com/bigquery/docs/partitioned-tables)
+- [BigQuery: clustered tables](https://cloud.google.com/bigquery/docs/clustered-tables)
+- [BigQuery: controlling costs](https://cloud.google.com/bigquery/docs/best-practices-costs)

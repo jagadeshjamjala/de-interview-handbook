@@ -44,10 +44,6 @@
   color: #0b1416; /* white on light teal is 1.9:1 */
 }
 
-[data-theme='light'] .token.comment {
-  color: #5c6370 !important; /* prism github theme comments are 2.7:1; override its inline style */
-}
-
 /* Links inside running text must not rely on color alone. */
 main p a:not(.button),
 .markdown li a,

@@ -1,0 +1,81 @@
+---
+title: Table formats (Iceberg, Delta, Hudi)
+sidebar_position: 9
+description: 'Open table formats for data engineering interviews: why they exist, snapshots, row-level changes, maintenance and catalogs.'
+levels: [mid, senior, lead]
+topic: [tools, table-formats, lakehouse]
+---
+
+# Table formats deep dive: Iceberg, Delta, Hudi
+
+<LevelExpectations
+  mid="Explain what a table format adds on top of Parquet files: transactions, snapshots, schema evolution."
+  senior="Compare formats, explain copy-on-write vs merge-on-read, and run table maintenance (compaction, expiry, orphan files)."
+  lead="Choose a format and catalog for a multi-engine platform, and set the maintenance and governance standards."
+/>
+
+## The problem they solve
+
+A folder of Parquet files is not a table: no atomic commits, readers can see half-written data, concurrent writers clash, schema changes are guesswork, and updates mean rewriting folders by hand. A **table format** adds metadata that says exactly which files make up each version of the table.
+
+## Iceberg's metadata, as an example
+
+```
+catalog ──► current metadata file (schema, partition spec, snapshots)
+              └─► snapshot S3 ──► manifest list ──► manifests ──► data files + delete files
+                  snapshot S2 ──► ...                (each with column stats for pruning)
+```
+
+A commit writes new metadata and **atomically swaps the catalog pointer**. Readers always see one complete snapshot.
+
+## What they share
+
+- **ACID commits** with optimistic concurrency.
+- **Snapshots and time travel.**
+- **Schema evolution** (add, rename, drop columns safely by ID or position mapping).
+- **Row-level updates and deletes:**
+  - **Copy-on-write:** rewrite affected files at write time. Slower writes, fastest reads.
+  - **Merge-on-read:** write small delete or log files, and merge them at read time until compaction. Faster writes, slower reads until compacted.
+
+## Where they differ
+
+| | Apache Iceberg | Delta Lake | Apache Hudi |
+|---|---|---|---|
+| Metadata | Metadata files, manifest lists, manifests | `_delta_log` JSON commits + checkpoints | Timeline of commits + indexes |
+| Standout features | Hidden partitioning, partition evolution, broad multi-engine support, REST catalog | Deepest Spark/Databricks integration, liquid clustering, UniForm (Iceberg-compatible metadata) | Record-level indexes, upsert-heavy ingestion, incremental queries |
+| Typical fit | Multi-engine lakehouse | Databricks-centric platforms | CDC/upsert-heavy pipelines |
+
+All three evolve quickly. Check current engine support before deciding.
+
+## Maintenance (where lakehouses rot)
+
+- **Compaction:** merge small files (and apply merge-on-read deletes).
+- **Snapshot expiry:** drop old snapshots so their files can be removed. This limits time travel.
+- **Orphan file cleanup:** remove files left by failed writes.
+- **Clustering and sorting** to keep data skipping effective.
+
+Schedule these per table. Skipping them leads to slow queries, growing storage and, for deleted personal data, data that's still readable in old snapshots.
+
+## Catalogs
+
+The catalog stores the pointer to each table's current metadata. It's what makes atomic commits work, and it decides which engines can find and write the tables (Hive Metastore, AWS Glue, Unity Catalog, Polaris, Nessie, REST catalogs). In a multi-engine platform, the catalog choice matters as much as the format.
+
+## Quick check
+
+Queries on an Iceberg table that receives CDC upserts every 5 minutes get slower every day, though the row count is stable. Why?
+
+<Spoiler label="Show answer">
+
+With merge-on-read, each upsert batch adds small data files and **delete files**. Readers must merge more and more delete files with data files, and the small files multiply. Snapshots also pile up. Fix: schedule **compaction** (rewrite data files, applying deletes), **expire snapshots**, and clean orphan files. Possibly switch the table to copy-on-write if reads matter more than write latency.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-iceberg-vs-delta-table-formats", "tools-databricks-optimize-and-zorder", "sd-cdc-postgres-to-lakehouse", "sd-gdpr-delete-across-a-lake"]} />
+
+## Official docs
+
+- [Apache Iceberg documentation](https://iceberg.apache.org/docs/latest/)
+- [Delta Lake documentation](https://docs.delta.io/latest/index.html)
+- [Apache Hudi overview](https://hudi.apache.org/docs/overview)

@@ -1,0 +1,66 @@
+---
+title: Databricks and Delta Lake
+sidebar_position: 8
+description: 'Databricks for data engineering interviews: Delta Lake''s transaction log, small files, OPTIMIZE and liquid clustering, streaming and Unity Catalog.'
+levels: [mid, senior, lead]
+topic: [tools, databricks, delta-lake]
+---
+
+# Databricks and Delta Lake deep dive
+
+<LevelExpectations
+  mid="Explain Delta tables (transaction log, ACID, time travel) and the small-files problem."
+  senior="Tune layout and performance (OPTIMIZE, liquid clustering, data skipping), and run streaming jobs reliably."
+  lead="Design governance with Unity Catalog, workspace and cluster strategy, and the cost model across teams."
+/>
+
+## Delta Lake in one picture
+
+```
+my_table/
+  part-0001.parquet  part-0002.parquet  ...   ← data files (Parquet)
+  _delta_log/
+    00000000000000000000.json                ← commit 0: add files
+    00000000000000000001.json                ← commit 1: add/remove files
+    ...
+    00000000000000000010.checkpoint.parquet  ← periodic checkpoint of the log
+```
+
+- A Delta table is **Parquet files plus a transaction log**. Each commit records which files were added or removed. Readers use the log to see a consistent snapshot, which gives **ACID** commits and **time travel** (`VERSION AS OF`, `TIMESTAMP AS OF`).
+- Updates and deletes rewrite affected files, or write **deletion vectors** that mark deleted rows without rewriting the file immediately.
+- **Optimistic concurrency.** Concurrent writers check for conflicts at commit time, and one may need to retry.
+
+## Layout and performance
+
+- **Small files** come from frequent appends (streaming) and over-partitioning, and they slow everything. **`OPTIMIZE`** compacts them; optimized writes and auto compaction reduce them at write time.
+- **Data skipping** uses per-file min/max statistics. Co-locating data makes it effective: **Z-ordering** (older approach, part of `OPTIMIZE`) or **liquid clustering** (`CLUSTER BY`, recommended for new tables, clusters incrementally and lets you change keys).
+- **`VACUUM`** removes files no longer referenced, after the retention period (7 days by default). That ends time travel to older versions.
+
+## Streaming
+
+**Structured Streaming** with checkpoints gives exactly-once processing into Delta tables (the checkpoint and the Delta commit are coordinated). **Auto Loader** incrementally ingests new files from cloud storage. **Change data feed** exposes row-level changes of a Delta table to downstream jobs.
+
+## Governance and compute
+
+- **Unity Catalog:** a central catalog (catalog.schema.table), permissions, lineage and auditing across workspaces.
+- **Compute:** job clusters for scheduled work (cheaper, isolated), all-purpose clusters for interactive work, SQL warehouses for BI, and serverless options. Most cost waste comes from oversized or never-terminating clusters.
+
+## Quick check
+
+Two streaming jobs write to the same Delta table and one keeps failing with a concurrent modification error. Why, and what are your options?
+
+<Spoiler label="Show answer">
+
+Delta uses **optimistic concurrency**: both writers read the same table version, and if their commits touch overlapping data (or one rewrites files the other read), the second commit fails its conflict check. Options: give each writer its own partitions or tables and merge downstream; funnel the writes through one job; reduce operations that rewrite many files (`OPTIMIZE` running at the same time, broad `MERGE` conditions); or add retries where conflicts are rare.
+
+</Spoiler>
+
+## Practice
+
+<RelatedQuestions ids={["tools-databricks-optimize-and-zorder", "tools-iceberg-vs-delta-table-formats", "sd-gdpr-delete-across-a-lake"]} />
+
+## Official docs
+
+- [Databricks: optimize data file layout](https://docs.databricks.com/en/delta/optimize.html)
+- [Databricks: liquid clustering](https://docs.databricks.com/en/delta/clustering.html)
+- [Delta Lake documentation](https://docs.delta.io/latest/index.html)
