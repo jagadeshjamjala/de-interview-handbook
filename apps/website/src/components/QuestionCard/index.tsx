@@ -1,7 +1,8 @@
-import type {ReactNode} from 'react';
+import {useState, type ReactNode} from 'react';
 import CodeBlock from '@theme/CodeBlock';
 import Heading from '@theme/Heading';
 import Spoiler from '@site/src/components/Spoiler';
+import SqlPlayground from '@site/src/components/SqlPlayground';
 import {ROUND_LABELS, type Question} from '@site/src/lib/questions';
 import styles from './styles.module.css';
 
@@ -11,6 +12,7 @@ function Html({html}: {html: string}): ReactNode {
 }
 
 export default function QuestionCard({q}: {q: Question}): ReactNode {
+  const [trying, setTrying] = useState(false);
   return (
     <article className={styles.card} id={q.id}>
       <Heading as="h2" className={styles.title}>
@@ -32,6 +34,19 @@ export default function QuestionCard({q}: {q: Question}): ReactNode {
       </div>
 
       <Html html={q.html.prompt} />
+
+      {q.round === 'sql' &&
+        (trying ? (
+          <SqlPlayground question={q} />
+        ) : (
+          <button
+            type="button"
+            className="button button--primary button--sm margin-bottom--sm"
+            onClick={() => setTrying(true)}
+          >
+            Try it in the SQL playground
+          </button>
+        ))}
 
       {q.html.hints.map((h, i) => (
         <Spoiler key={i} label={`Hint ${i + 1}`}>

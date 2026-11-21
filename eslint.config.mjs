@@ -5,7 +5,15 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default tseslint.config(
-  {ignores: ['**/node_modules/**', '**/build/**', '**/.docusaurus/**']},
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/build/**',
+      '**/.docusaurus/**',
+      '.venv/**',
+      '**/static/duckdb/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

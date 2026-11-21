@@ -1,0 +1,370 @@
+{
+  "ecommerce": {
+    "customers": {
+      "rows": 600,
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "signup_date",
+          "type": "DATE"
+        }
+      ]
+    },
+    "products": {
+      "rows": 80,
+      "columns": [
+        {
+          "name": "product_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL(10,2)"
+        }
+      ]
+    },
+    "orders": {
+      "rows": 6000,
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "customer_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "order_date",
+          "type": "DATE"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR"
+        }
+      ]
+    },
+    "order_items": {
+      "rows": 13454,
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "product_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "quantity",
+          "type": "INTEGER"
+        },
+        {
+          "name": "unit_price",
+          "type": "DECIMAL(10,2)"
+        }
+      ]
+    }
+  },
+  "rides": {
+    "drivers": {
+      "rows": 200,
+      "columns": [
+        {
+          "name": "driver_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "joined_date",
+          "type": "DATE"
+        }
+      ]
+    },
+    "riders": {
+      "rows": 1500,
+      "columns": [
+        {
+          "name": "rider_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "signup_date",
+          "type": "DATE"
+        }
+      ]
+    },
+    "trips": {
+      "rows": 13091,
+      "columns": [
+        {
+          "name": "trip_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "driver_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rider_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "requested_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "completed_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "fare",
+          "type": "DECIMAL(10,2)"
+        }
+      ]
+    },
+    "ratings": {
+      "rows": 14804,
+      "columns": [
+        {
+          "name": "trip_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rated_by",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "score",
+          "type": "INTEGER"
+        }
+      ]
+    }
+  },
+  "payments": {
+    "accounts": {
+      "rows": 400,
+      "columns": [
+        {
+          "name": "account_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "customer_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "opened_date",
+          "type": "DATE"
+        }
+      ]
+    },
+    "transactions": {
+      "rows": 24820,
+      "columns": [
+        {
+          "name": "txn_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "account_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "txn_ts",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(14,2)"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "txn_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "ingested_at",
+          "type": "TIMESTAMP"
+        }
+      ]
+    },
+    "fx_rates": {
+      "rows": 1124,
+      "columns": [
+        {
+          "name": "rate_date",
+          "type": "DATE"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "usd_rate",
+          "type": "DECIMAL(12,6)"
+        }
+      ]
+    },
+    "chargebacks": {
+      "rows": 145,
+      "columns": [
+        {
+          "name": "chargeback_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "txn_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "filed_date",
+          "type": "DATE"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(14,2)"
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  },
+  "events": {
+    "users": {
+      "rows": 1000,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "signup_date",
+          "type": "DATE"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "plan",
+          "type": "VARCHAR"
+        }
+      ]
+    },
+    "logins": {
+      "rows": 39142,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "login_ts",
+          "type": "TIMESTAMP"
+        }
+      ]
+    },
+    "page_views": {
+      "rows": 105183,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "viewed_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "page",
+          "type": "VARCHAR"
+        }
+      ]
+    },
+    "sessions": {
+      "rows": 39142,
+      "columns": [
+        {
+          "name": "session_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "user_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "ended_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "device",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  }
+}

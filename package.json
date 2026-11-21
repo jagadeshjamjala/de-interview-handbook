@@ -11,11 +11,13 @@
     "build": "pnpm --filter @deih/website build",
     "serve": "pnpm --filter @deih/website serve",
     "questions": "node scripts/build-questions.ts",
-    "test": "node --test \"scripts/*.test.ts\"",
+    "test": "node --test \"scripts/*.test.ts\" \"apps/website/src/**/*.test.ts\"",
     "typecheck": "tsc -p scripts && pnpm --filter @deih/website typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "data": "python datasets/generate.py",
+    "verify:sql": "python scripts/verify_sql.py"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
