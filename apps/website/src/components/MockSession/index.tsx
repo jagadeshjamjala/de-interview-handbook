@@ -3,6 +3,7 @@ import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
 import CodeBlock from '@theme/CodeBlock';
 import SqlPlayground from '@site/src/components/SqlPlayground';
+import PythonPlayground from '@site/src/components/PythonPlayground';
 import {formatClock} from '@site/src/components/CardTimer';
 import {plannerBase} from '@site/src/components/Planner';
 import {LEVELS, ROUND_LABELS, type Level, type Question, type Round} from '@site/src/lib/questions';
@@ -187,6 +188,8 @@ function Running({
             })
           }
         />
+      ) : q.round === 'python' ? (
+        <PythonPlayground key={q.id} question={q} onCode={setNote} />
       ) : (
         <label className={styles.answer}>
           <span>Your answer (notes, outline or code)</span>

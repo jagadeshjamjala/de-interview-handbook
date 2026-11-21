@@ -1,0 +1,31 @@
+/* Self-hosted fonts (copied from @fontsource at build time by scripts/copy-duckdb.ts).
+   Latin subset only. Preloaded in docusaurus.config.ts; `optional` means the browser never swaps
+   fonts after first paint, so text can't reflow and shift the layout (CLS). */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('./ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+  src: url('./ibm-plex-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+  src: url('./ibm-plex-sans-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('./jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}
