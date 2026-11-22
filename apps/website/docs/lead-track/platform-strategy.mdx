@@ -1,0 +1,62 @@
+---
+title: Platform strategy, build vs buy and cost
+sidebar_label: Platform strategy & FinOps
+sidebar_position: 2
+description: How to answer data platform strategy, build-vs-buy and cost (FinOps) questions in lead and staff data engineering interviews.
+levels: [senior, lead]
+topic: [platform-strategy, build-vs-buy, finops]
+---
+
+# Platform strategy, build vs buy and cost
+
+Strategy questions sound open-ended ("What would your first year look like?", "How would you reduce our data costs?"). Interviewers look for a **repeatable way of thinking**: understand the situation, pick a few bets, sequence them, and measure them.
+
+<LevelExpectations
+  senior="Explain the reasoning behind your platform's main choices, and propose improvements with costs and benefits."
+  lead="Produce a strategy with clear priorities, what you won't do, success metrics and a plan to get buy-in; run build-vs-buy and cost decisions."
+/>
+
+## A shape for any strategy answer
+
+1. **Diagnose:** what's true today, with numbers (cost trend, incidents, delivery time, adoption, trust in key metrics). Talk to the people who use the platform and pay for it.
+2. **Name the few problems that matter most** in business terms: "finance doesn't trust revenue", not "we lack data contracts".
+3. **Choose bets and sequence them.** Lead with something visible that builds trust; foundational work follows. Two or three bets, not ten.
+4. **Say what you won't do** this year, and why.
+5. **Define success and checkpoints:** metrics per bet, reviewed quarterly.
+6. **Plan the people side:** who has to change what they do, and how you'll bring them along.
+
+## The paved road
+
+A common lead-level theme: instead of every team picking its own tools, offer **one well-supported way** to ingest, orchestrate, transform, test and deploy, with templates, CI and documentation. Teams can leave the road, but then they own the full cost of their choice. It reduces duplicated effort and on-call load without a forced big-bang migration. Migrate the team in the most pain first, so the road earns its reputation.
+
+## Build vs buy
+
+| Lean towards **buying** (or managed / open source) | Lean towards **building** |
+|---|---|
+| Commodity capability (connectors, BI, observability, orchestration) | It differentiates the business, or nothing fits your constraints |
+| Small team; engineer time is the scarce resource | Scale makes vendor pricing unworkable |
+| Need it working in weeks | Strict data residency or security needs vendors can't meet |
+
+Always compare **total cost of ownership**: engineers to build *and* run it (on-call, upgrades, security reviews), not only license fees. Check **lock-in and exit cost** (open formats such as Parquet and Iceberg help), and de-risk with a time-boxed proof of concept on your own data, with success criteria agreed beforehand.
+
+## Cost (FinOps)
+
+Cost questions test whether you treat spend as an engineering metric.
+
+1. **Make cost visible:** attribute spend to teams, workloads and tables (query tags, separate warehouses or projects, labels). Nobody optimizes what they can't see.
+2. **Fix the biggest items first.** Usually a handful of pipelines and dashboards cause most of the spend: full refreshes that could be incremental, scans that miss partition pruning, oversized or always-on compute, refresh schedules more frequent than anyone needs, and tables nobody reads.
+3. **Put guardrails in place:** budgets and alerts per team, auto-suspend, query timeouts, and cost review in design and code review.
+4. **Make it a habit:** a monthly cost review with owners, and unit metrics (cost per dashboard refresh, per pipeline run, per customer) so growth and efficiency can be told apart.
+
+The worked design [Cut a runaway warehouse bill](../rounds/system-design/cut-runaway-warehouse-cost.mdx) goes deeper.
+
+## Common traps
+
+- Proposing a new tool or architecture before understanding the current pain.
+- A strategy with ten priorities, which is no strategy.
+- Ignoring the migration path: how existing pipelines and people get from today to the target.
+- Treating cost cutting as a one-off project instead of visibility plus ownership.
+
+## Practice
+
+<RelatedQuestions ids={["behavioral-data-platform-strategy", "behavioral-build-vs-buy-decision", "sd-cut-runaway-warehouse-cost", "tools-bigquery-partitioning-and-cost", "tools-snowflake-clustering-and-pruning"]} />

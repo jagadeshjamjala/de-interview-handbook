@@ -1,0 +1,50 @@
+id: behavioral-data-platform-strategy
+title: Pitch a 12-month data platform strategy
+round: behavioral
+topic: [platform-strategy, finops, stakeholders]
+levels: [lead]
+difficulty: hard
+companies: []
+time_minutes: 15
+prompt: |
+  "You've just joined as the data platform lead. The warehouse bill grew 70% last year, three teams run their own pipelines with different tools, and the CFO doesn't trust the revenue numbers. The CTO asks for your 12-month data platform strategy in two weeks. How do you build it, what's in it, and how do you get buy-in?"
+hints:
+  - What would you do in the first two weeks before writing anything?
+  - A strategy is choices. What will you explicitly not do this year?
+  - How will the CTO know in six months whether it's working?
+solution:
+  answer: |
+    **1. Listen and measure first (the two weeks).** Interview the CTO, CFO, the three teams and key consumers. Pull the facts: cost by team and workload, incident history, the revenue discrepancy and where it comes from, tool inventory, on-call load. A strategy without numbers reads as opinion.
+
+    **2. Frame the problems by business impact.** For example: (1) revenue numbers aren't trusted, so decisions are slow and risky; (2) cost is growing faster than usage; (3) fragmented tooling means duplicated work and inconsistent quality.
+
+    **3. Make a few clear bets, in sequence.**
+    - **Quarter 1, trust:** one certified revenue model with an owner, reconciliation to the ledger, tests, and a public definition. Visible, fast, and it fixes the CFO's problem first.
+    - **Cost (FinOps):** attribute spend to teams and workloads, fix the top offenders (full refreshes, oversized compute, unused tables), set budgets and alerts. Aim for a concrete saving, such as 25% of run-rate, and report it monthly.
+    - **Paved road:** one supported way to build pipelines (ingestion, orchestration, transformation, quality checks, CI). Migrate teams onto it gradually, starting with the team that has the most pain. Don't force a big-bang migration.
+    - **Explicitly not this year:** for example, real-time streaming for everyone, or a new BI tool. Saying no is part of the strategy.
+
+    **4. Define success metrics and checkpoints.** Revenue reconciliation within tolerance, number of data incidents found by the data team first, cost per query or per team, share of pipelines on the paved road, delivery time for new data requests. Review quarterly and adjust.
+
+    **5. Get buy-in.** Pre-wire the proposal with each stakeholder before the big meeting, show how it solves *their* problem, be honest about costs (people, migration effort), and ask for specific decisions (headcount, a tool deprecation, a mandate for the paved road).
+rubric:
+  - point: 'Gathers facts and stakeholder input before proposing (cost, incidents, inventory)'
+    weight: 2
+    topic: platform-strategy
+  - point: 'Prioritizes by business impact and sequences the work (trust first, quick visible win)'
+    weight: 3
+    topic: platform-strategy
+  - point: 'Includes a concrete cost (FinOps) plan with attribution and targets'
+    weight: 2
+    topic: finops
+  - point: 'States what they will not do, and defines measurable success criteria with checkpoints'
+    weight: 2
+    topic: platform-strategy
+  - point: 'Plans buy-in: pre-wiring, tailoring to each stakeholder, explicit asks'
+    weight: 1
+    topic: stakeholders
+follow_ups:
+  - q: 'One of the three teams refuses to move to the paved road. What now?'
+    a: "Find out what the paved road lacks for them and whether it's a real gap or a preference. Fix real gaps, offer migration help, and agree a timeline with their leadership. If they stay off it, they own the full cost of their own stack (on-call, compliance, cost) so the trade-off is visible."
+  - q: 'Halfway through the year, the company cuts your headcount plan by half. How do you revise the strategy?'
+    a: "Re-prioritize, don't spread thinner: keep the highest-impact bet (usually trust in key numbers), slow or stop the rest, and tell stakeholders explicitly what moves out and why. Look for leverage: buying instead of building, automating toil, deprecating low-value pipelines."

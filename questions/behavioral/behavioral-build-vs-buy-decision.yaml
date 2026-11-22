@@ -1,0 +1,48 @@
+id: behavioral-build-vs-buy-decision
+title: A build-vs-buy decision you drove
+round: behavioral
+topic: [build-vs-buy, tradeoffs, platform-strategy]
+levels: [senior, lead]
+difficulty: medium
+companies: []
+time_minutes: 12
+prompt: |
+  "Tell me about a time you had to decide whether to build a data tool or capability in-house or buy it (or adopt an open-source or managed option). How did you decide, who did you have to convince, and how did it turn out?"
+hints:
+  - The interviewer wants your decision process, not the product name. What criteria did you compare, and what would have changed your mind?
+  - Total cost includes people. How many engineers would have maintained the built version, and for how long?
+solution:
+  answer: |
+    **Structure:** the problem and why it mattered now → the options (build, buy, open source, managed) → the criteria and how each option scored → the decision and who had to agree → what happened, including what you'd revisit.
+
+    **Strong signals:**
+    - **Total cost of ownership**, not license price: engineer time to build and run it, on-call, upgrades, security reviews, plus the license or cloud bill. "Building it is free" is the classic mistake.
+    - **Core vs context:** build what differentiates the business or where nothing fits; buy commodity capabilities (ingestion connectors, observability, BI) unless scale or cost makes them unworkable.
+    - **Exit cost and lock-in:** open formats, data portability, what migrating away would cost in three years.
+    - A **time-boxed proof of concept** with success criteria agreed before it started, on your own data.
+    - Bringing security, finance and the teams who'd use it into the decision early.
+    - Honest outcome: what turned out more expensive or harder than expected, and what triggers a re-evaluation (price change, scale).
+
+    **Example spine:**
+
+    > "Our team maintained 45 custom ingestion scripts that broke about twice a week. I compared building a framework (two engineers for six months, then ongoing), a managed connector service, and an open-source tool we'd host. We ran a two-week trial of the managed service and the open-source tool on our ten worst sources. Managed cost about a third of the engineer time we spent on maintenance, so we bought it for standard SaaS sources and kept custom code for two internal systems no vendor supported. Breakages dropped from eight a month to one. The bill grew faster than forecast with row volume, so we added usage alerts and renegotiated at renewal."
+
+    **Lead level:** show how the decision fit a platform strategy (fewer, well-supported tools), and how you handled engineers who wanted to build.
+rubric:
+  - point: 'Compares options on explicit criteria including total cost of ownership (people, not just licenses)'
+    weight: 3
+    topic: build-vs-buy
+  - point: 'Considers core vs commodity, lock-in and exit cost'
+    weight: 2
+    topic: platform-strategy
+  - point: 'De-risks with a time-boxed proof of concept and involves stakeholders (security, finance, users)'
+    weight: 2
+    topic: tradeoffs
+  - point: 'Shares a measurable outcome and what they would revisit'
+    weight: 2
+    topic: build-vs-buy
+follow_ups:
+  - q: 'The vendor raises prices 60% at renewal. What do you do?'
+    a: "Know your options before the renewal: usage data, the cost of the alternatives and of migrating. Negotiate with that leverage (volume commitments, multi-year terms), reduce usage that isn't worth it, and keep a credible exit plan, which is why open formats and limited lock-in matter at decision time."
+  - q: 'An engineer on your team strongly wants to build it instead. How do you handle that?'
+    a: 'Take the argument seriously: ask for the build case on the same criteria, including who runs it in two years. If the decision is still to buy, explain the reasoning openly and give them meaningful work elsewhere, ideally on the part that really does need building.'

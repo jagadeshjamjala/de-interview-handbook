@@ -1,0 +1,54 @@
+id: behavioral-growing-a-data-team
+title: Growing and structuring a data team
+round: behavioral
+topic: [hiring, team-design, leadership]
+levels: [lead]
+difficulty: hard
+companies: []
+time_minutes: 15
+prompt: |
+  "You have budget to grow the data team from 4 to 12 people over the next year. The business wants faster answers, the platform is fragile, and two product teams want dedicated data support. How would you structure the team, who would you hire first, and how would you run hiring?"
+hints:
+  - Start from the problems, not the org chart. Which problem hurts most if you leave it for six months?
+  - What are the trade-offs of a central team, embedded engineers and a hybrid?
+  - How do you keep hiring quality consistent when several people interview?
+solution:
+  answer: |
+    **1. Diagnose before designing.** Name the top problems with evidence: incidents per month, request backlog and wait time, who is waiting on what. A fragile platform slows everything else, so it usually gets the first hires.
+
+    **2. Choose a structure and say why.**
+
+    | Model | Strength | Risk |
+    |---|---|---|
+    | Central team | Shared standards, efficient platform work | Becomes a ticket queue; far from the business |
+    | Embedded in product teams | Close to decisions, fast | Duplicated tooling, inconsistent quality, isolated engineers |
+    | Hybrid (platform team + embedded or domain-aligned engineers) | Platform consistency with business closeness | Needs clear ownership boundaries and a shared practice |
+
+    A common answer at this size: a small **platform team** (ingestion, orchestration, warehouse, quality, cost) and **analytics engineers aligned to domains**, who sit with the product teams but share standards, code review and a weekly practice meeting.
+
+    **3. Sequence the hiring.** For example: first a senior platform engineer to stabilize (on-call, tests, CI), then one analytics engineer per demanding product team, then more as backlog data justifies it. Hire seniors early so they can set standards and mentor juniors later. Plan for a **manager or tech lead** once the team passes about 6–8 people.
+
+    **4. Run hiring well.** Write a role scorecard (skills, level expectations) before posting. Use a structured loop: each interviewer covers different competencies with prepared questions and a rubric, writes feedback before discussing, and the debrief decides against the scorecard. Use a realistic exercise (a SQL or modeling task, a design discussion) rather than puzzles. Track time-to-hire, offer acceptance and how hires perform after six months.
+
+    **5. Show you'd measure the result:** incidents, request turnaround, stakeholder satisfaction, and whether the platform team's work is reducing toil.
+rubric:
+  - point: 'Starts from the problems with evidence and prioritizes the platform stability vs demand trade-off'
+    weight: 2
+    topic: team-design
+  - point: 'Compares central, embedded and hybrid models and justifies a choice'
+    weight: 3
+    topic: team-design
+  - point: 'Sequences hires (seniors first, when a manager/lead is needed)'
+    weight: 2
+    topic: hiring
+  - point: 'Describes a structured, fair hiring process (scorecard, rubric-based loop, independent feedback)'
+    weight: 2
+    topic: hiring
+  - point: 'Defines how success would be measured'
+    weight: 1
+    topic: leadership
+follow_ups:
+  - q: 'Six months in, the embedded analytics engineers are building three different versions of the same customer table. What do you change?'
+    a: 'Make shared models a platform responsibility with one owner, agree on naming and domain ownership, and add the duplicates to a deprecation plan. Strengthen the shared practice: cross-team code review, a model catalog, and a rule that core entities are reused, not rebuilt.'
+  - q: 'How do you decide between hiring a senior engineer and two juniors?'
+    a: 'Look at what the team lacks most: if nobody can set standards, review designs or mentor, juniors will struggle and the senior comes first. Once that capacity exists, juniors add throughput and growth. Also consider the work: ambiguous platform problems need experience; well-defined modeling work suits juniors with support.'
