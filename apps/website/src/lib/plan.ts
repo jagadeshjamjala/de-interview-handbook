@@ -2,7 +2,7 @@
 // always gives the same plan and `node --test` can check it.
 import type {Difficulty, Level, Round} from './questions';
 
-export type Role = 'analytics' | 'platform' | 'streaming' | 'ml';
+export type Role = 'generalist' | 'analytics' | 'platform' | 'streaming' | 'ml';
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type PlanItem = {
@@ -41,6 +41,7 @@ export type Plan = {
 
 export const LEVEL_VALUES: Level[] = ['junior', 'mid', 'senior', 'lead'];
 export const ROLE_LABELS: Record<Role, string> = {
+  generalist: 'Data Engineer (generalist)',
   analytics: 'Analytics Eng',
   platform: 'Platform DE',
   streaming: 'Streaming DE',
@@ -80,7 +81,7 @@ export function defaults(today: Date, liveRounds: Round[]): PlanInput {
     weeks: 6,
     hours: 5,
     focus: ROUND_ORDER.filter((r) => liveRounds.includes(r)),
-    role: 'analytics',
+    role: 'generalist',
     start: nextMonday(today),
     days: ['sat', 'sun'],
     time: '09:00',

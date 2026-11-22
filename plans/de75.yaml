@@ -12,45 +12,51 @@ items:
     roles: [analytics]
   - id: sql-customers-who-never-ordered
   - id: python-dedup-latest-events
-    roles: [platform, streaming]
+    roles: [generalist, platform, streaming]
   - id: sql-cancellations-with-and-without-driver
   - id: sql-trip-duration-histogram
   - id: modeling-ride-sharing-trips-star-schema
-    roles: [analytics]
+    roles: [generalist, analytics]
   - id: sql-session-duration-by-plan
   - id: sql-customers-ordering-every-month-in-q4
     roles: [analytics]
   - id: behavioral-learning-new-domain-fast
   - id: sql-top-3-products-by-revenue-per-category
   - id: sql-dedup-replayed-transactions
-    roles: [platform, streaming]
+    roles: [generalist, platform, streaming]
   - id: python-parse-access-logs
     roles: [platform]
   - id: tools-dbt-incremental-models
+    roles: [generalist]
   - id: sql-month-to-date-revenue
     roles: [analytics]
   - id: sql-month-over-month-revenue
     roles: [analytics]
   - id: python-flatten-nested-json
+    roles: [generalist]
   - id: sql-days-to-second-order
   - id: sql-pivot-ratings-by-direction
     roles: [analytics]
   - id: tools-airflow-idempotent-dags
+    roles: [generalist]
   - id: modeling-customer-address-scd
-    roles: [analytics, ml]
+    roles: [generalist, analytics, ml]
   - id: python-batched-csv-reader
     roles: [platform]
   - id: sql-median-and-p90-fare-by-city
   - id: behavioral-production-incident
+    roles: [generalist]
   - id: sd-daily-batch-with-backfills
-    roles: [platform, analytics]
+    roles: [generalist, platform, analytics]
 
   # --- Tier 2: intermediate ---
   - id: sql-fix-fan-out-order-count
     roles: [analytics]
   - id: sql-7-day-moving-average-trips
   - id: sql-gaps-islands-login-streaks
+    roles: [generalist]
   - id: tools-spark-shuffle-and-skew
+    roles: [generalist]
   - id: sql-sessionize-page-views
     roles: [streaming]
   - id: modeling-orders-returns-fulfillment
@@ -58,6 +64,7 @@ items:
   - id: sql-weekly-cohort-retention
     roles: [analytics]
   - id: python-schema-drift-detector
+    roles: [generalist]
   - id: sql-docs-pricing-billing-funnel
     roles: [analytics]
   - id: tools-kafka-delivery-guarantees
@@ -65,7 +72,7 @@ items:
   - id: modeling-inventory-periodic-snapshot
     roles: [analytics]
   - id: sql-build-scd2-from-change-log
-    roles: [analytics, platform]
+    roles: [generalist, analytics, platform]
   - id: python-total-downtime-from-windows
   - id: tools-snowflake-clustering-and-pruning
   - id: sql-overlapping-trips-per-driver
@@ -77,22 +84,24 @@ items:
   - id: sql-rolling-28-day-active-users
     roles: [analytics, ml]
   - id: python-paginated-api-with-retries
-    roles: [platform]
+    roles: [generalist, platform]
   - id: python-idempotent-upsert-writer
+    roles: [generalist]
   - id: sql-fill-forward-fx-rates
     roles: [ml]
   - id: tools-bigquery-partitioning-and-cost
   - id: modeling-one-big-table-tradeoffs
     roles: [analytics]
   - id: sd-clickstream-to-warehouse
-    roles: [streaming, platform]
+    roles: [generalist, streaming, platform]
   - id: sql-chargeback-rate-by-month
   - id: behavioral-metric-definition-dispute
     roles: [analytics]
   - id: tools-spark-partitioning-vs-bucketing
+    roles: [generalist]
   - id: python-top-k-streaming-heap
   - id: sd-cdc-postgres-to-lakehouse
-    roles: [platform, streaming]
+    roles: [generalist, platform, streaming]
   - id: sd-cut-runaway-warehouse-cost
 
   # --- Tier 3: advanced ---
