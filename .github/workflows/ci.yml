@@ -36,8 +36,8 @@ jobs:
       - name: Python solutions pass their tests
         run: python scripts/verify_python.py
       - run: pnpm install --frozen-lockfile
+      - run: pnpm questions # validates question YAML + docs frontmatter and question references; tests read its output
       - run: pnpm test
-      - run: pnpm questions # validates question YAML + docs frontmatter and question references
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

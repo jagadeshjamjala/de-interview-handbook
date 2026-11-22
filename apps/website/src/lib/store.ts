@@ -47,3 +47,4 @@ export const newCardsStore = createStore<{day: string; count: number}>('deih.fla
   day: '',
   count: 0,
 });
+export const radarStore = createStore<Record<string, number>>('deih.radar', {});

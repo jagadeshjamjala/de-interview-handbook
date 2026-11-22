@@ -288,7 +288,13 @@ Write original content, levels-tagged, for:
 3. ✅ Python playground (Pyodide, self-hosted)
 4. ✅ Flashcards from `follow_ups` (prompts now; optional `{q, a}` answers can be added per follow-up)
 
-**Deferred to future builds (decided):** incident drills, company interview loops, skill radar, pipeline design canvas, custom domain, DataEngTube/DataEngReads cross-links (waiting on links).
+**Deferred to future builds (decided):** company interview loops, custom domain, DataEngTube/DataEngReads cross-links (waiting on links), offer section (waiting on cited sources).
+
+### Phase 8 — Practice tools (2026-11-21)
+The deferred Phase 7 items that need no outside input, one PR each:
+1. Skill radar (`/radar`): rate 8 skills 1–5; skills rated ≤ 2 add their topics to the planner's `w=` weak topics.
+2. Incident drills: branching "what do you check next?" scenarios.
+3. Pipeline design canvas with a self-review checklist.
 
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist

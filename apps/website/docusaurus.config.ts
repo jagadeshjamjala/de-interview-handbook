@@ -128,6 +128,7 @@ const config: Config = {
           items: [
             {to: '/questions', label: 'Question bank'},
             {to: '/playground', label: 'SQL playground'},
+            {to: '/radar', label: 'Skill radar'},
             {to: '/planner', label: 'DE 75 planner'},
             {to: '/mock', label: 'Mock interview'},
             {to: '/flashcards', label: 'Flashcards'},
@@ -151,6 +152,7 @@ const config: Config = {
             {label: 'Start here', to: '/docs/start-here'},
             {label: 'Question bank', to: '/questions'},
             {label: 'SQL playground', to: '/playground'},
+            {label: 'Skill radar', to: '/radar'},
             {label: 'DE 75 planner', to: '/planner'},
             {label: 'Mock interview', to: '/mock'},
             {label: 'Flashcards', to: '/flashcards'},

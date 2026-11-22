@@ -1,0 +1,75 @@
+.radar {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 997px) {
+  .radar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.form fieldset {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-global-radius);
+  padding: 0.4rem 0.75rem 0.6rem;
+  margin: 0 0 0.6rem;
+}
+
+.form legend {
+  font-weight: 600;
+  padding: 0 0.25rem;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 1rem;
+  min-height: 2rem; /* touch target */
+}
+
+.muted {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.875rem;
+}
+
+.chart {
+  width: 100%;
+  max-width: 420px;
+  display: block;
+  margin: 0 auto 1rem;
+}
+
+.grid {
+  fill: none;
+  stroke: var(--ifm-color-emphasis-300);
+  stroke-width: 1;
+}
+
+.area {
+  fill: var(--ifm-color-primary);
+  fill-opacity: 0.18;
+  stroke: var(--ifm-color-primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.dot {
+  fill: var(--ifm-color-primary);
+  stroke: var(--ifm-background-color);
+  stroke-width: 2;
+}
+
+.label {
+  fill: var(--ifm-color-emphasis-800);
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
