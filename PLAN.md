@@ -294,7 +294,7 @@ Write original content, levels-tagged, for:
 The deferred Phase 7 items that need no outside input, one PR each:
 1. Skill radar (`/radar`): rate 8 skills 1–5; skills rated ≤ 2 add their topics to the planner's `w=` weak topics.
 2. Incident drills (`/drills`): 3 branching scenarios; weak moves loop back with feedback, the debrief links related questions.
-3. Pipeline design canvas with a self-review checklist.
+3. Pipeline design canvas (`/canvas`): drag or arrow-key boxes per stage, button-driven connections, automatic diagram checks, a 9-item self-review checklist and copy-as-text; saved per browser.
 
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist
