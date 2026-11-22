@@ -137,3 +137,10 @@ test('ics: valid structure, escaping, floating times, folding', () => {
   for (const line of ics.split('\r\n')) assert.ok(new TextEncoder().encode(line).length <= 75);
   assert.equal(fold('é'.repeat(50)).split('\r\n ').join(''), 'é'.repeat(50)); // no split characters
 });
+
+test('generalist is the default role; links with other roles still parse', () => {
+  const base = defaults(new Date(2024, 0, 3), ['sql']);
+  assert.equal(base.role, 'generalist');
+  assert.equal(parseParams('?role=analytics', base).role, 'analytics');
+  assert.equal(parseParams('?role=nope', base).role, 'generalist');
+});

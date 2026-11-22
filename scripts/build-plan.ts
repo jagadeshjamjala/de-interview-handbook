@@ -13,7 +13,7 @@ export const TARGETS: Record<string, number> = {
   tools: 10,
   behavioral: 5,
 };
-const ROLES = new Set(['analytics', 'platform', 'streaming', 'ml']);
+const ROLES = new Set(['generalist', 'analytics', 'platform', 'streaming', 'ml']);
 
 type Item = {id?: unknown; round?: unknown; title?: unknown; planned?: unknown; roles?: unknown};
 type Out = {id: string; round: string; planned?: true; title?: string; roles?: string[]};
