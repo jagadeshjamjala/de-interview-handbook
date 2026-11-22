@@ -62,7 +62,7 @@ Step 2 — The rounds
   ├─ Data modeling        (grain, Kimball, SCD 1/2/3/6, Data Vault, OBT, "model X")
   ├─ Pipeline system design (framework + worked designs)
   ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)   [hidden in v1]
-  ├─ Data quality & observability                                                                      [hidden in v1]
+  ├─ Data quality & observability                                                                      [live: Phase 9b]
   ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [live: /drills page]
   └─ Behavioral           (DE story bank: incidents, migrations, stakeholder disputes)
 

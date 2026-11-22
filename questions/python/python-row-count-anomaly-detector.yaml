@@ -1,0 +1,75 @@
+id: python-row-count-anomaly-detector
+title: Detect anomalies in daily row counts with a robust baseline
+round: python
+topic: [data-quality, anomaly-detection, algorithms]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  A monitor records how many rows a table received each day. Write `flag_anomalies(counts, window=7, threshold=3.5)` that returns the indices of days whose count is anomalous compared with the **previous `window` days**:
+
+  - Skip the first `window` days (not enough history).
+  - Baseline: the **median** of the previous `window` counts.
+  - Spread: the **median absolute deviation** (MAD) of those counts, scaled by 1.4826 so it's comparable to a standard deviation.
+  - A day is anomalous if `|count - median| / scaled_mad > threshold`.
+  - If the MAD is 0 (the previous days were all equal), flag the day only if its count differs from the median.
+
+  Use only the standard library.
+hints:
+  - '`statistics.median` does the hard part. MAD is the median of `|x - median|` over the window.'
+  - Why does one bad day inside the window barely move a median, but drag a mean and a standard deviation a long way?
+solution:
+  python: |
+    from statistics import median
+
+
+    def flag_anomalies(counts, window=7, threshold=3.5):
+        flagged = []
+        for i in range(window, len(counts)):
+            history = counts[i - window:i]
+            mid = median(history)
+            mad = median(abs(x - mid) for x in history) * 1.4826
+            if mad == 0:
+                if counts[i] != mid:
+                    flagged.append(i)
+            elif abs(counts[i] - mid) / mad > threshold:
+                flagged.append(i)
+        return flagged
+  explanation: |
+    This is the robust cousin of a z-score. A **mean and standard deviation** are pulled by the very outliers you're trying to catch: after one bad day (say 0 rows), the next week's mean drops and the standard deviation balloons, so a second incident hides inside the widened band. The **median and MAD** barely move when one value in the window is extreme, so the band stays tight.
+
+    The 1.4826 factor makes the MAD match the standard deviation for normally distributed data, so a threshold of 3.5 means roughly "3.5 standard deviations" (a common choice for MAD-based outlier tests).
+
+    The zero-MAD case matters in practice: a table that receives exactly the same count every day (a dimension, a fixed export) has no spread, and dividing by zero would crash. Treat any change as anomalous instead.
+
+    Cost is O(n × window log window); for a daily series that's nothing. In production you'd also add a seasonal baseline (same weekday), a minimum absolute change, and alert routing.
+tests: |
+  steady = [100, 102, 98, 101, 99, 100, 103]
+  assert flag_anomalies(steady + [101]) == []
+  assert flag_anomalies(steady + [0]) == [7]                 # a missing load
+  assert flag_anomalies(steady + [250]) == [7]               # a double load
+  assert flag_anomalies(steady[:5]) == []                    # not enough history
+  # one outlier inside the window must not hide the next incident
+  series = steady + [0, 100, 99, 101, 0]
+  assert flag_anomalies(series) == [7, 11]
+  # zero spread: any change is an anomaly, no division by zero
+  assert flag_anomalies([50] * 7 + [50, 51]) == [8]
+  # window and threshold are respected
+  assert flag_anomalies([10, 12, 11, 30], window=3) == [3]
+  assert flag_anomalies(steady + [110], threshold=10) == []
+rubric:
+  - point: 'Uses only the previous window as the baseline (no look-ahead, skips days without history)'
+    weight: 2
+    topic: anomaly-detection
+  - point: 'Computes median and scaled MAD correctly and explains why they are robust to outliers'
+    weight: 3
+    topic: anomaly-detection
+  - point: 'Handles zero MAD without dividing by zero'
+    weight: 2
+    topic: data-quality
+follow_ups:
+  - q: 'Row counts are fine, but one column suddenly becomes 40% NULL. How would you extend this?'
+    a: "Track more metrics per load, not just row count: the null rate per column, distinct counts, min/max and sums of key measures. Run the same robust detector on each metric's daily series, and alert on the ones that matter for consumers."
+  - q: 'How would you avoid paging on every Sunday dip?'
+    a: 'Use a seasonal baseline (compare against the same weekday over the last several weeks), and require a minimum absolute change as well as a relative one. Route low-severity anomalies to a channel instead of a page.'

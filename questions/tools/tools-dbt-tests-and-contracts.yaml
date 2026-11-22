@@ -1,0 +1,55 @@
+id: tools-dbt-tests-and-contracts
+title: A testing strategy for a dbt project with dbt tests and contracts
+round: tools
+topic: [dbt, data-quality, data-contracts, testing]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your dbt project has 300 models and almost no tests. Twice last quarter, bad data reached the finance dashboard: once a duplicated order inflated revenue, once an upstream team renamed a column and a model silently produced NULLs for a week.
+
+  How would you use dbt's features (data tests, unit tests, model contracts, source freshness, severity and CI) to stop this from happening again? What would you test first, and what would you deliberately not test?
+hints:
+  - Which of the two incidents would a `unique` test have caught, and which needs something that runs at build time instead?
+  - With 300 models, where do tests give the most protection per minute of effort?
+solution:
+  answer: |
+    **Start where the incidents came from, then cover the critical path.**
+
+    1. **Keys on every model: `unique` + `not_null` on the grain.** This catches duplicate orders (the first incident) and fan-out joins. Use `dbt_utils.unique_combination_of_columns` for composite grains.
+    2. **Sources: freshness and schema.** Declare sources with `loaded_at_field` and `freshness` (`warn_after`, `error_after`), and test source columns the models rely on (`not_null`, `accepted_values`). Freshness catches stalled loads.
+    3. **Model contracts** (`contract: {enforced: true}`) on public, consumer-facing models: dbt checks column names and types at build time and fails the build if they don't match. Combined with `not_null` on the affected columns, the rename (the second incident) fails loudly on the first run instead of producing NULLs for a week. For the upstream team's side, agree a data contract (owned schema, change notice) with the producer.
+    4. **Business rules on marts:** `relationships` between facts and dimensions, `accepted_values` on statuses, and custom singular tests such as "revenue ≥ 0" or "finance mart total equals the source ledger total" (reconciliation).
+    5. **Unit tests** (dbt 1.8+) for tricky logic: fixed input rows → expected output, for things like SCD handling or currency conversion. They run in CI without production data.
+
+    **Severity and blocking.** Tests on keys and contracts are `error` and block downstream models (`dbt build` runs tests after each model, so a failure skips everything downstream, which acts as a circuit breaker for the dashboard). Noisier checks are `warn`, with `warn_if` / `error_if` thresholds. `store_failures` saves the failing rows for debugging.
+
+    **CI:** slim CI (`dbt build --select state:modified+`) runs changed models and their tests on every pull request, so a broken model never merges.
+
+    **What not to test:** don't put five generic tests on every column of every staging model. That's slow, noisy and ignored. Test grains, keys, the columns consumers use, and the business rules finance cares about. Every test should have an owner, and a failing test should mean someone acts.
+rubric:
+  - point: 'unique + not_null on every model grain (catches the duplicate-order incident)'
+    weight: 2
+    topic: testing
+  - point: 'Model contracts and/or not_null on consumed columns so schema changes fail at build time (the rename incident)'
+    weight: 3
+    topic: data-contracts
+  - point: 'Source freshness, relationships/accepted_values and reconciliation tests on critical marts'
+    weight: 2
+    topic: data-quality
+  - point: 'Severity, blocking with dbt build, slim CI, and a focused scope (not testing everything)'
+    weight: 2
+    topic: dbt
+follow_ups:
+  - q: 'A test has failed with severity warn every day for two months. What do you do?'
+    a: "A test nobody acts on is noise. Either fix the underlying data, make it an error with a real owner, adjust the threshold to what's actually acceptable, or delete it. Track alert fatigue: failing-but-ignored tests hide new failures."
+  - q: 'How do dbt contracts differ from a data contract with the producing team?'
+    a: "A dbt contract only checks a model's own output columns and types at build time, inside your project. A data contract is an agreement with the producing team about their data (schema, semantics, freshness, change process), enforced at their side or at ingestion, so breaking changes are caught before they reach you."
+resources:
+  - title: dbt docs — Add data tests to your DAG
+    url: https://docs.getdbt.com/docs/build/data-tests
+  - title: dbt docs — Model contracts
+    url: https://docs.getdbt.com/docs/mesh/govern/model-contracts
+  - title: dbt docs — Source freshness
+    url: https://docs.getdbt.com/docs/deploy/source-freshness
