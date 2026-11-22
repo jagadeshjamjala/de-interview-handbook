@@ -302,6 +302,19 @@ No outside input needed; one PR each:
 2. Data quality & observability section: round page + ~5 questions (tests, contracts, anomaly detection, SLAs, freshness).
 3. Lead / Staff / EM track: platform strategy, build vs buy, FinOps, team design and hiring, leadership behavioral.
 4. Firefox and WebKit runs of the browser test suite (playgrounds, planner, canvas, flashcards).
+   **Result (2026-11-22):** Playwright 1.56.1 with Chromium (Chrome), Firefox and WebKit (Safari's engine), desktop 1280 px. All three pass the same checks with no page errors:
+   - SQL playground (DuckDB-WASM): reference answer ✅
+   - Python playground (Pyodide worker): tests pass
+   - Planner: renders, and the .ics download is valid
+   - Flashcards: reveal and rate work with the keyboard
+   - Canvas: add, connect, arrow-key move and mouse drag all work
+   - Radar → planner `w=` link works
+   - Drills: run to the debrief
+   - Mock: session starts
+   - Search: suggestions appear
+   - Theme toggle: cycles and persists across reloads
+
+   No browser-specific fixes were needed. Not covered: real iOS/Android devices (touch drag on the canvas), Safari itself (WebKit is close but not identical).
 
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist
