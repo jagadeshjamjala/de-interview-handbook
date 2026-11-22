@@ -4,6 +4,7 @@ import {useSyncExternalStore} from 'react';
 import type {Level} from './questions';
 import type {PlanInput} from './plan';
 import type {Progress} from './srs';
+import type {Diagram} from './canvas';
 
 export type Store<T> = {get: () => T; set: (v: T) => void; use: () => T};
 
@@ -48,3 +49,4 @@ export const newCardsStore = createStore<{day: string; count: number}>('deih.fla
   count: 0,
 });
 export const radarStore = createStore<Record<string, number>>('deih.radar', {});
+export const canvasStore = createStore<Diagram>('deih.canvas', {boxes: [], edges: [], checks: []});
