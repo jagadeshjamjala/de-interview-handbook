@@ -1,0 +1,80 @@
+id: sql-flag-daily-volume-anomalies
+title: Flag days with abnormal trip volume
+round: sql
+topic: [data-quality, anomaly-detection, date-spine, window-functions]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: rides
+time_minutes: 25
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  You're adding a volume monitor to the trips pipeline. For every city and every day from **2024-02-01 to 2024-03-31**, compare the number of completed trips (by the date of `completed_at`) with a **baseline**: the average daily completed trips in that city over the **previous 7 days** (not including the day itself).
+
+  Flag a city-day when the baseline is at least 3 (too little volume is just noise) and the day's count is **below half** the baseline or **above double** it. A day with no completed trips is a day with 0 trips, not a missing row.
+
+  Output: `city, day, trips, baseline` (baseline rounded to 2 decimals), flagged rows only. Order by `city, day`.
+hints:
+  - Which city-days have no row at all if you group the trips table, and what does that do to "the previous 7 rows"?
+  - Build every (city, day) pair first, then left join the counts. Start the calendar early enough that February 1 has 7 days of history.
+  - A window frame of `ROWS BETWEEN 7 PRECEDING AND 1 PRECEDING` averages the 7 days before the current one.
+solution:
+  sql: |
+    WITH days AS (
+      SELECT CAST(d AS DATE) AS day
+      FROM generate_series(DATE '2024-01-25', DATE '2024-03-31', INTERVAL 1 DAY) AS t(d)
+    ),
+    cities AS (
+      SELECT DISTINCT city FROM trips
+    ),
+    daily AS (
+      SELECT city, CAST(completed_at AS DATE) AS day, COUNT(*) AS trips
+      FROM trips
+      WHERE status = 'completed'
+      GROUP BY city, CAST(completed_at AS DATE)
+    ),
+    filled AS (
+      SELECT c.city, d.day, COALESCE(x.trips, 0) AS trips
+      FROM cities c
+      CROSS JOIN days d
+      LEFT JOIN daily x ON x.city = c.city AND x.day = d.day
+    ),
+    scored AS (
+      SELECT city, day, trips,
+             AVG(trips) OVER (
+               PARTITION BY city ORDER BY day
+               ROWS BETWEEN 7 PRECEDING AND 1 PRECEDING
+             ) AS baseline
+      FROM filled
+    )
+    SELECT city, day, trips, ROUND(baseline, 2) AS baseline
+    FROM scored
+    WHERE day BETWEEN DATE '2024-02-01' AND DATE '2024-03-31'
+      AND baseline >= 3
+      AND (trips < 0.5 * baseline OR trips > 2 * baseline)
+    ORDER BY city, day;
+  explanation: |
+    The core of a volume monitor is a **baseline** and a **tolerance**. Here the baseline is the trailing 7-day mean and the tolerance is ×0.5 to ×2, with a minimum baseline so tiny volumes don't alert constantly.
+
+    The trap is **missing days**. Grouping `trips` only produces rows for days that had trips, so a day with zero trips (the most important anomaly a volume check exists for) never appears, and `ROWS 7 PRECEDING` silently looks further back than 7 days. A **city × date spine** with `COALESCE(count, 0)` fixes both. Without it, Denver's two zero-trip days disappear from the output.
+
+    The calendar starts on January 25 so the first reported day already has a full 7-day history. The frame ends at `1 PRECEDING` so today's value doesn't pull its own baseline toward itself.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Builds a city × date spine and treats missing days as zero'
+    weight: 3
+    topic: date-spine
+  - point: 'Baseline excludes the current day (frame ends at 1 PRECEDING) and starts early enough for a full window'
+    weight: 2
+    topic: window-functions
+  - point: 'Explains the minimum-volume floor and the trade-off of fixed thresholds (noise vs missed incidents)'
+    weight: 2
+    topic: anomaly-detection
+follow_ups:
+  - q: 'Weekends always look like anomalies against a weekday-heavy baseline. How would you fix that?'
+    a: 'Compare each day with the same weekday in previous weeks (for example the median of the last 4 Mondays), or model weekly seasonality explicitly. That removes the predictable weekly pattern so only real surprises alert.'
+  - q: 'Fixed ×0.5 / ×2 thresholds are either noisy or blind depending on the city. What would you use instead?'
+    a: "A threshold scaled to each series' own variability: a z-score against a rolling mean and standard deviation, or a robust version with the median and MAD so past outliers don't inflate the band. Tune the threshold on past incidents to balance false alerts against missed ones."

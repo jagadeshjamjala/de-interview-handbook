@@ -1,0 +1,64 @@
+id: sql-payments-finality-sla
+title: Measure a data freshness SLA from ingestion timestamps
+round: sql
+topic: [data-quality, slas, freshness, deduplication]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: payments
+time_minutes: 20
+prompt: |
+  Table: `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`
+
+  Each `txn_id` arrives as one or more copies. Many transactions first arrive as `pending` and get a later copy with their final status (`settled` or `failed`). Some copies are replays: the same final status ingested again later.
+
+  The finance team's SLA: a transaction should reach the warehouse with a **final status within 24 hours** of `txn_ts`. A transaction reaches finality when its **first** non-`pending` copy is ingested. A transaction that is still only `pending` has missed the SLA.
+
+  For each day of `txn_ts` in **June 2024**, report the number of transactions, how many reached finality within 24 hours, and that share as a percentage rounded to 1 decimal.
+
+  Output: `day, txns, final_within_24h, pct_within_sla`. Order by `day`.
+hints:
+  - Reduce to one row per `txn_id` first. What timestamp marks finality, and why not the latest copy's?
+  - Transactions that never got a final copy must stay in the denominator.
+solution:
+  sql: |
+    WITH per_txn AS (
+      SELECT txn_id,
+             MIN(txn_ts) AS txn_ts,
+             MIN(CASE WHEN status <> 'pending' THEN ingested_at END) AS final_at
+      FROM transactions
+      GROUP BY txn_id
+    )
+    SELECT CAST(txn_ts AS DATE) AS day,
+           COUNT(*) AS txns,
+           SUM(CASE WHEN final_at <= txn_ts + INTERVAL 24 HOUR THEN 1 ELSE 0 END) AS final_within_24h,
+           ROUND(100.0 * SUM(CASE WHEN final_at <= txn_ts + INTERVAL 24 HOUR THEN 1 ELSE 0 END)
+                 / COUNT(*), 1) AS pct_within_sla
+    FROM per_txn
+    WHERE txn_ts >= TIMESTAMP '2024-06-01' AND txn_ts < TIMESTAMP '2024-07-01'
+    GROUP BY CAST(txn_ts AS DATE)
+    ORDER BY day;
+  explanation: |
+    A freshness SLA is measured from **when the data became correct in the warehouse**, so pick the right event per key: the **first** non-pending copy (`MIN` over non-pending `ingested_at`). Using the latest copy is the common wrong answer: replays arrive later and make the pipeline look slower than it was.
+
+    Completeness matters as much as latency. A transaction stuck in `pending` has `final_at = NULL`. The comparison `NULL <= …` isn't true, so it counts as a miss while staying in `COUNT(*)`. Filtering to rows with a final status first would quietly inflate the SLA.
+
+    Reporting by day of `txn_ts` (not by ingestion day) answers "how complete is each business day", which is what finance reads.
+check:
+  order_matters: true
+  float_tolerance: 0.05
+rubric:
+  - point: 'Uses the first non-pending ingestion per txn_id, not the latest copy (replays)'
+    weight: 3
+    topic: freshness
+  - point: 'Keeps never-finalized transactions in the denominator as SLA misses'
+    weight: 2
+    topic: slas
+  - point: 'Explains how this becomes an alerting metric (target, window, who is paged)'
+    weight: 2
+    topic: data-quality
+follow_ups:
+  - q: 'June 30 looks worse than June 2 even with no incident. Why, and how do you report it fairly?'
+    a: "Recent days are still maturing: transactions from the last 24 hours haven't had their full SLA window yet. Report only days whose SLA window has closed (txn date + 1 day < now), or mark the latest days as provisional."
+  - q: 'How would you turn this into an alert instead of a report?'
+    a: 'Compute the metric on a schedule for each day as soon as its window closes, compare it with an SLO (for example 95% within 24 hours), and alert the owning team when it breaches, with a link to the affected transactions. Track the error budget over a month instead of paging on every bad day.'

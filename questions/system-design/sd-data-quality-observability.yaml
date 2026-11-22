@@ -1,0 +1,61 @@
+id: sd-data-quality-observability
+title: Design data quality and observability for a data platform
+round: system-design
+topic: [data-quality, observability, slas, data-contracts, lineage]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 45
+prompt: |
+  Your company's data platform has 60 sources (databases, SaaS APIs, event streams), about 400 dbt models and 30 executive dashboards. Last quarter the CEO found three data problems before the data team did. Leadership asks you to design how the platform detects, prevents and handles bad data.
+
+  Cover what you check and where, how alerts reach the right people without drowning them, how you stop bad data from reaching dashboards, and how you'd measure whether it's working.
+hints:
+  - 'Think in layers: at the source, at ingestion, in transformation, before publishing. What is each layer best at catching?'
+  - An alert with no owner gets ignored. How does each check know whom to notify?
+  - "Three of the main signals are freshness, volume and schema. What's missing from that list?"
+solution:
+  answer: |
+    **1. Clarify and prioritize.** Not all 400 models matter equally. Start from the 30 dashboards, trace their lineage back, and mark those models and sources **tier 1** with an owner and an SLA (for example "finance revenue mart fresh by 07:00, complete, reconciled to the ledger"). Everything else gets lighter coverage.
+
+    **2. Checks by layer.**
+
+    | Layer | What it catches | Examples |
+    |---|---|---|
+    | Producer / contract | Breaking changes before they ship | Schema registry compatibility, data contracts with owning teams, CI checks in producer repos |
+    | Ingestion | Missing, late, malformed data | Freshness per source, row-count and volume anomalies, schema drift, quarantine for invalid records |
+    | Transformation | Logic and grain errors | dbt tests on keys and relationships, contracts on public models, unit tests on tricky logic |
+    | Publish | Wrong numbers reaching people | Reconciliation (mart totals vs source of truth), metric anomaly checks on key KPIs, distribution checks |
+
+    The five signals to monitor automatically: **freshness, volume, schema, distribution** (null rates, value ranges), and **lineage** to know the impact of any failure.
+
+    **3. Stop bad data, don't just report it.** Tier-1 pipelines use a **circuit breaker**: publish (swap the new partition or table in) only when the checks pass. Otherwise keep yesterday's data and mark the dashboard "stale since …". Write-audit-publish is the general pattern: write to staging, audit, then publish atomically. Stale-but-correct beats fresh-but-wrong for executive numbers.
+
+    **4. Alerting people, not channels.** Every check has an owner, from model ownership metadata. Alerts are routed by tier and severity: tier-1 errors page the on-call engineer, warnings go to the team channel, and owners of downstream dashboards are notified automatically using lineage. Deduplicate alerts (one incident, not 40 failing downstream tests), and review noisy checks monthly: fix, retune or delete them.
+
+    **5. Incidents and communication.** A status banner on affected dashboards, an incident channel, a runbook per tier-1 pipeline, and blameless post-incident reviews that add the check that would have caught it.
+
+    **6. Measure it.** Data incidents per month, **share detected by the data team before consumers** (the headline metric here), time to detect and time to resolve, SLA attainment per tier-1 dataset, and alert precision (alerts that led to action).
+
+    **Build vs buy:** dbt tests plus freshness checks and a simple anomaly detector cover a lot. Observability tools add automatic monitors, lineage and incident workflows across hundreds of tables. Choose based on team size and how much you'd otherwise build.
+rubric:
+  - point: 'Prioritizes by tiers/lineage from the critical dashboards, with owners and SLAs'
+    weight: 2
+    topic: slas
+  - point: 'Layers checks (contracts at source, ingestion monitors, transformation tests, publish-time reconciliation)'
+    weight: 3
+    topic: data-quality
+  - point: 'Blocks bad data from reaching dashboards (circuit breaker / write-audit-publish, stale-but-correct)'
+    weight: 3
+    topic: data-quality
+  - point: 'Routes alerts by owner and severity, uses lineage for impact, manages alert fatigue'
+    weight: 2
+    topic: observability
+  - point: 'Defines success metrics (detected-before-consumers rate, time to detect/resolve, SLA attainment)'
+    weight: 2
+    topic: observability
+follow_ups:
+  - q: 'The circuit breaker blocked the finance mart at 06:30 and the CFO needs numbers at 08:00. What now?'
+    a: "Follow the runbook: page the owner, show the dashboard as stale with a clear note, and find the cause. If it's a false alarm, override and publish with a record of who decided. If it's real, tell the CFO when correct numbers will be available. Afterwards, tune the check or fix the root cause."
+  - q: 'How would you get 20 producer teams to adopt data contracts?'
+    a: "Start with the few sources behind tier-1 data, make contracts cheap (a template, a schema registry check in their CI), and show the incidents they would have prevented. Make the contract a shared agreement with a named owner and change process, and tie it to the producers' own goals instead of imposing it."

@@ -1,0 +1,83 @@
+---
+title: Data quality & observability
+sidebar_position: 6
+description: How data engineers catch bad data before stakeholders do — tests, data contracts, anomaly detection, freshness SLAs and incident handling — with practice questions.
+levels: [junior, mid, senior, lead]
+topic: [data-quality, observability, data-contracts, slas]
+---
+
+# Data quality & observability
+
+Data quality rarely gets its own interview round, but it shows up in every round: the SQL question with duplicates, the pipeline design that must "handle bad data", the behavioral question about an incident. Interviewers want to hear that you **expect data to break**, and that you've designed to notice before your stakeholders do.
+
+<LevelExpectations
+  junior="Write tests for keys and nulls, explain freshness and volume checks, and know what to do when a test fails."
+  mid="Choose checks per layer, handle late and duplicate data, measure freshness against an SLA, and avoid noisy alerts."
+  senior="Design detection and prevention across a platform: contracts with producers, circuit breakers, lineage-based impact, alert routing and SLOs."
+  lead="Set the operating model: tiers and ownership, incident process, success metrics, build-vs-buy for observability tools."
+/>
+
+## What "bad data" means
+
+| Dimension | The question it answers | Typical check |
+|---|---|---|
+| **Freshness** | Is the data up to date? | Max loaded timestamp vs SLA (`dbt source freshness`) |
+| **Completeness / volume** | Did all of it arrive? | Row counts vs a baseline; source vs warehouse reconciliation |
+| **Uniqueness** | Is each thing counted once? | `unique` on the grain; duplicate keys after replays |
+| **Validity** | Are values allowed? | Not null, accepted values, ranges, formats |
+| **Consistency** | Do related tables agree? | Foreign keys (`relationships`), totals that must match across layers |
+| **Accuracy** | Does it match reality? | Reconciliation with a system of record (ledger, processor files) |
+
+Freshness, volume and schema changes cause most incidents, and they're cheap to monitor automatically. Accuracy is the hardest: it needs an external source of truth.
+
+## Where checks belong
+
+Catch problems as close to their source as possible, and check each layer for what it's best at:
+
+1. **At the producer: data contracts.** An agreed schema, meaning and freshness for a dataset, owned by the producing team and enforced in their CI or by a schema registry (for example backward-compatible Avro or Protobuf). Breaking changes fail before they ship.
+2. **At ingestion:** freshness per source, volume anomalies, schema drift, and a **quarantine** for records that fail validation instead of dropping them or loading them silently.
+3. **In transformation:** tests on every model's grain (`unique`, `not_null`), relationships, business rules, contracts on public models, and unit tests for tricky logic.
+4. **Before publishing:** reconciliation and anomaly checks on the key metrics people actually read.
+
+## Detecting anomalies
+
+Fixed rules ("row count > 0") catch total failures. Real incidents are usually partial: 40% of rows missing, a column suddenly half NULL. For those, compare each metric with its own history:
+
+- **Baseline:** a trailing window (the last 7 days, or the same weekday over the last 4 weeks for weekly patterns).
+- **Tolerance:** a ratio band, a z-score, or a robust version using the **median and MAD**, which a single past outlier can't distort.
+- **Missing days are zeros.** A grouped count has no row for a day with no data, which is exactly the day you need to flag. Use a date spine.
+- **Minimum volume.** Tiny series are noise; don't page on 2 rows instead of 4.
+
+## Stopping bad data, not just reporting it
+
+Alerts after the fact still let the CEO see the wrong number. For important tables, use **write-audit-publish**: write the new data to a staging location, run the checks, and only then swap it into the published table. If checks fail, keep the previous version and mark the dashboard as stale. For executive and financial numbers, **stale but correct beats fresh but wrong**.
+
+In dbt, `dbt build` runs each model's tests right after it, and a failing `error` test skips everything downstream: a built-in circuit breaker.
+
+## Alerting without alert fatigue
+
+- **Every check has an owner.** An alert nobody owns is ignored.
+- **Severity and routing:** errors on tier-1 data page the on-call engineer; warnings go to a channel.
+- **Use lineage** to notify the owners of affected dashboards, and to group 40 failing downstream tests into one incident.
+- **Review noisy checks** regularly: fix the data, retune the threshold, or delete the check. A test that has warned every day for months hides new failures.
+
+## Measuring it
+
+Track **incidents found by the data team before consumers** (the metric leadership cares about), time to detect and resolve, SLA attainment for tier-1 datasets, and the share of alerts that led to action.
+
+## Common traps
+
+- Testing every column of every staging model with five generic tests: slow, noisy and ignored. Test grains, consumed columns and business rules.
+- Measuring freshness from the wrong timestamp (the latest replay instead of the first correct arrival).
+- Excluding records that never arrived from the denominator, which inflates completeness.
+- Treating "the job succeeded" as "the data is right".
+
+## Practice
+
+<RelatedQuestions ids={["sql-flag-daily-volume-anomalies", "sql-payments-finality-sla", "python-row-count-anomaly-detector", "tools-dbt-tests-and-contracts", "sd-data-quality-observability"]} />
+
+Related questions elsewhere in the bank:
+
+<RelatedQuestions ids={["python-schema-drift-detector", "sql-dedup-replayed-transactions", "sql-overlapping-trips-per-driver", "sd-payments-ledger-reconciliation", "behavioral-production-incident"]} />
+
+For a hands-on version, try the [incident drills](/drills): two of them start with bad data reaching a dashboard.
