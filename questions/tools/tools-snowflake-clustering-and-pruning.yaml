@@ -43,8 +43,10 @@ rubric:
     weight: 3
     topic: cost
 follow_ups:
-  - Clustering costs are higher than expected. How do you find out which tables are responsible?
-  - How does this compare to BigQuery clustering or Delta Z-ordering?
+  - q: 'Clustering costs are higher than expected. How do you find out which tables are responsible?'
+    a: 'Query the `AUTOMATIC_CLUSTERING_HISTORY` view (account usage) to see credits by table, and compare that cost with query savings for each table. Then reconsider tables with heavy churn or poor clustering-key choices, or suspend clustering on them.'
+  - q: 'How does this compare to BigQuery clustering or Delta Z-ordering?'
+    a: 'BigQuery clustering sorts data within partitions by up to four columns and re-clusters automatically at no extra charge. Delta Z-ordering is a manual `OPTIMIZE` job that co-locates data for several columns, and liquid clustering is the newer incremental option. All three aim to skip files or blocks using min and max statistics.'
 resources:
   - title: Snowflake docs — Micro-partitions & data clustering
     url: https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions

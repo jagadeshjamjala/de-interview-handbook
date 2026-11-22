@@ -53,8 +53,10 @@ rubric:
     weight: 1
     topic: retention-cohorts
 follow_ups:
-  - The newest cohorts haven't had 13 days yet. How do you keep them from looking like churn?
-  - Turn this into a full retention triangle (week 0 to week 8). What's the shape of the output?
+  - q: "The newest cohorts haven't had 13 days yet. How do you keep them from looking like churn?"
+    a: "Only report retention for cohorts that have had the full window (signup + 13 days ≤ today), and show the rest as NULL or 'not yet mature' instead of 0. Charts should visually separate immature cohorts."
+  - q: "Turn this into a full retention triangle (week 0 to week 8). What's the shape of the output?"
+    a: 'One row per cohort week and week number (0–8) with the retained users and the cohort size, which pivots into a triangle: older cohorts have all nine columns, newer ones fewer. Include the cohort size so percentages can be computed and weighted.'
 dialect_notes:
   bigquery:
     note: '`DATE_TRUNC(signup_date, WEEK)` starts weeks on **Sunday**. Use `WEEK(MONDAY)` or `ISOWEEK` to match this question.'

@@ -25,7 +25,7 @@ Python (venv + `requirements.txt`, exact `==` pins): `python datasets/generate.p
 - **localStorage** access is always wrapped in try/catch.
 - Keep the site static: no backend, no accounts, no cookie-banner analytics.
 - **DE 75** (`plans/de75.yaml`): the order is the study order. Live items are just `id` (+ optional `roles`); unwritten ones are `planned: true` with `round` and `title`. `pnpm questions` fails on unknown ids, duplicates, or per-round counts that don't match the targets. When you add a planned question, replace its planned entry with the real id.
-- **Follow-ups** may be plain strings or `{q, a}`; answers then show on flashcards.
+- **Follow-ups** are `{q, a}` with a short model answer (shown on flashcards and in the solution). Plain strings still validate but show no answer.
 - **Browser state** goes through `src/lib/store.ts` (localStorage with try/catch, hydration-safe). Planner settings live in the URL so links reproduce plans; progress and level are per browser.
 
 ## Workflow

@@ -43,8 +43,10 @@ rubric:
     weight: 1
     topic: hierarchies
 follow_ups:
-  - Return, for each manager, the total headcount under them (all levels). How?
-  - How would you store this hierarchy so the dashboard doesn't recurse on every query?
+  - q: 'Return, for each manager, the total headcount under them (all levels). How?'
+    a: 'Use a recursive CTE producing every (manager, descendant) pair, then group by manager and count descendants. Exclude the manager themselves unless you want to count them.'
+  - q: "How would you store this hierarchy so the dashboard doesn't recurse on every query?"
+    a: 'Precompute a closure table (ancestor, descendant, depth) or a materialized path column, rebuilt when the org changes, which is rare. Dashboards then answer headcount and path questions with a simple join or a `LIKE` on the path.'
 dialect_notes:
   sqlserver:
     note: 'Write `WITH chain AS (…)` without the `RECURSIVE` keyword; recursion is implied. Default max recursion is 100 (`OPTION (MAXRECURSION n)`).'

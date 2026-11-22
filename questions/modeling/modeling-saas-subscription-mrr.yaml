@@ -54,5 +54,7 @@ rubric:
     weight: 1
     topic: data-quality
 follow_ups:
-  - The CFO wants daily MRR. What does that do to your snapshot's size and how would you control it?
-  - Sales says expansion is understated because seat add-ons are billed separately. How do you model add-ons?
+  - q: "The CFO wants daily MRR. What does that do to your snapshot's size and how would you control it?"
+    a: 'A daily row per subscription grows quickly (subscriptions × days). Keep the daily grain only for a recent window, store monthly snapshots for history, or store only change events and compute daily MRR on demand from valid-from / valid-to ranges.'
+  - q: 'Sales says expansion is understated because seat add-ons are billed separately. How do you model add-ons?'
+    a: 'Model add-ons as their own subscription lines (or line items) that roll up to the customer, and classify their start and increase as expansion. MRR movements are then computed per customer across all lines, so a new add-on shows as expansion rather than a new subscription.'

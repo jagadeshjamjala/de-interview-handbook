@@ -127,5 +127,7 @@ rubric:
     weight: 2
     topic: lineage
 follow_ups:
-  - Extend it to column-level lineage. Why is that much harder?
-  - The repo has 4,000 SQL files using Jinja templates (dbt). How would you get lineage then?
+  - q: 'Extend it to column-level lineage. Why is that much harder?'
+    a: "Columns pass through expressions, aliases, `SELECT *`, CTEs, joins, aggregates and window functions, so you need a real SQL parser and the table schemas to resolve each output column to its inputs. Regexes can't do it."
+  - q: 'The repo has 4,000 SQL files using Jinja templates (dbt). How would you get lineage then?'
+    a: "Use dbt's own artifacts: `manifest.json` already has model dependencies from `ref` and `source`. For column level, parse the compiled SQL (with a library like sqlglot) rather than the Jinja templates."

@@ -35,5 +35,7 @@ rubric:
     weight: 1
     topic: prioritization
 follow_ups:
-  - What would have made you say no?
-  - How did you make sure the "temporary" dataset didn't become permanent?
+  - q: 'What would have made you say no?'
+    a: "Say no (or 'not like this') when the shortcut risks real harm: wrong numbers in a regulatory or financial report, exposing PII, or breaking other consumers. Otherwise prefer 'yes, with these caveats', stated in writing, so the risk is a shared decision."
+  - q: 'How did you make sure the "temporary" dataset didn''t become permanent?'
+    a: 'Give it an owner, an expiry date and a ticket for the proper version, and label it as provisional where people use it. Then actually schedule the follow-up work and check usage, so it gets migrated or deleted instead of quietly becoming a dependency.'

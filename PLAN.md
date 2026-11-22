@@ -296,6 +296,13 @@ The deferred Phase 7 items that need no outside input, one PR each:
 2. Incident drills (`/drills`): 3 branching scenarios; weak moves loop back with feedback, the debrief links related questions.
 3. Pipeline design canvas (`/canvas`): drag or arrow-key boxes per stage, button-driven connections, automatic diagram checks, a 9-item self-review checklist and copy-as-text; saved per browser.
 
+### Phase 9 — Content depth (2026-11-22)
+No outside input needed; one PR each:
+1. Flashcard answers: every follow-up becomes `{q, a}` (150 short model answers, pre-rendered as Markdown).
+2. Data quality & observability section: round page + ~5 questions (tests, contracts, anomaly detection, SLAs, freshness).
+3. Lead / Staff / EM track: platform strategy, build vs buy, FinOps, team design and hiring, leadership behavioral.
+4. Firefox and WebKit runs of the browser test suite (playgrounds, planner, canvas, flashcards).
+
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist
 - Incident drills: branching "what do you check next?" scenarios

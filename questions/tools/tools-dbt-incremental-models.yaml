@@ -54,8 +54,10 @@ rubric:
     weight: 2
     topic: incremental-models
 follow_ups:
-  - The model is partitioned by order date and 2% of updates touch orders older than 30 days. Which strategy, and what lookback?
-  - How would you backfill 2 years of this model without one giant query?
+  - q: 'The model is partitioned by order date and 2% of updates touch orders older than 30 days. Which strategy, and what lookback?'
+    a: 'Use `merge` (or `delete+insert`) on `order_id` with a lookback window, rather than `insert_overwrite` of only recent partitions, because old orders still change. The lookback should be based on `updated_at`, not order date, for example `updated_at > max(updated_at) - 3 days`. Add a periodic full refresh or a targeted rebuild for the rare very old updates.'
+  - q: 'How would you backfill 2 years of this model without one giant query?'
+    a: 'Backfill in date-range batches: use the `microbatch` strategy with `--event-time-start` and `--event-time-end`, or run with variables for the date range in a loop, one month at a time. Each batch is idempotent, so a failure only reruns that range.'
 resources:
   - title: dbt docs — Incremental models
     url: https://docs.getdbt.com/docs/build/incremental-models

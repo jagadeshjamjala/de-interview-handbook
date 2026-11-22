@@ -35,8 +35,10 @@ check:
   order_matters: true
   float_tolerance: 0.01
 follow_ups:
-  - Some sessions have ended_at before started_at because of clock skew. How do you detect and handle them?
-  - Would you report mean or median session length to a product manager? Why?
+  - q: 'Some sessions have ended_at before started_at because of clock skew. How do you detect and handle them?'
+    a: "Count them first: `WHERE ended_at < started_at`, by source and app version, to see whether it's widespread. Exclude them or clamp them to zero in the metric, and document the choice. Also report the excluded count, and ask the producers to fix the clocks (or use server-side timestamps)."
+  - q: 'Would you report mean or median session length to a product manager? Why?'
+    a: 'Usually the median, because session lengths are heavily skewed: a few very long sessions pull the mean up. Show the mean too if the total time matters, and ideally the distribution (p25, p50, p90).'
 dialect_notes:
   snowflake:
     note: "`DATEDIFF('second', started_at, ended_at)`; avoid the 'minute' part, which counts boundaries crossed."

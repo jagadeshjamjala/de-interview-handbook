@@ -56,5 +56,7 @@ rubric:
     weight: 1
     topic: deduplication
 follow_ups:
-  - Make it a streaming rule that alerts on the third consecutive failure. What state do you keep per account?
-  - Rewrite it with LAG and a running SUM. Which is easier to explain in an interview?
+  - q: 'Make it a streaming rule that alerts on the third consecutive failure. What state do you keep per account?'
+    a: 'Per account: a counter of consecutive failures (and maybe the time of the first one). On a failure, increment it and alert when it reaches 3. On a success, reset it to 0. Events must be processed in order per account, so key the stream by account.'
+  - q: 'Rewrite it with LAG and a running SUM. Which is easier to explain in an interview?'
+    a: 'Use `LAG` to flag where the status changes, a running `SUM` of those flags as a group id, then count the rows per group. The row-number difference trick is shorter but harder to explain; the LAG version reads step by step, which is clearer in an interview.'

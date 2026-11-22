@@ -41,8 +41,10 @@ rubric:
     weight: 2
     topic: data-skew
 follow_ups:
-  - After salting, the job is faster but produces more rows than before. What did you forget?
-  - How would you spot skew automatically in production jobs?
+  - q: 'After salting, the job is faster but produces more rows than before. What did you forget?'
+    a: 'You replicated the small side once per salt value but joined on the original key only, not on (key, salt), so each big-side row matched all N copies. Join on both the key and the salt so every row matches exactly one copy, then aggregate by the original key.'
+  - q: 'How would you spot skew automatically in production jobs?'
+    a: 'Use Spark task metrics: compare the max to the median task duration and shuffle-read bytes per stage. Alert when the ratio is high (for example max > 5× median), using the Spark event logs or a listener. AQE skew-join logs and spill metrics are also signals.'
 resources:
   - title: Spark docs — Performance tuning (AQE, skew join, broadcast)
     url: https://spark.apache.org/docs/latest/sql-performance-tuning.html

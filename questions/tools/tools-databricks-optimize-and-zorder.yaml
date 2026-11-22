@@ -42,8 +42,10 @@ rubric:
     weight: 2
     topic: delta-lake
 follow_ups:
-  - How would you decide which columns to cluster by?
-  - What does this look like for an Iceberg table instead?
+  - q: 'How would you decide which columns to cluster by?'
+    a: 'Pick columns that are frequently used in selective filters or join keys and have high cardinality, usually one to four of them. Check query history for the most common predicates, and avoid columns already used for partitioning or ones that are rarely filtered on. Measure files skipped before and after.'
+  - q: 'What does this look like for an Iceberg table instead?'
+    a: 'Iceberg uses `rewrite_data_files` (compaction) with a sort order, including a z-order sort, set on the table. You also schedule snapshot expiration and orphan file removal, and partition transforms such as `day(ts)` or `bucket(n, id)` replace Hive-style partition columns.'
 resources:
   - title: Databricks docs — Optimize data file layout
     url: https://docs.databricks.com/en/delta/optimize.html

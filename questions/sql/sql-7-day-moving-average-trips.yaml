@@ -69,8 +69,10 @@ rubric:
     weight: 1
     topic: null-traps
 follow_ups:
-  - Could you use a RANGE frame with an INTERVAL instead of a spine? What would it still get wrong?
-  - In a production pipeline, where would the date spine come from?
+  - q: 'Could you use a RANGE frame with an INTERVAL instead of a spine? What would it still get wrong?'
+    a: "Yes: `RANGE BETWEEN INTERVAL 6 DAY PRECEDING AND CURRENT ROW` over the date handles missing days in the window. It still averages only the days that have rows, so a day with zero trips doesn't pull the average down, and days with no trips get no output row. Divide the sum by 7 and use a spine to list every day."
+  - q: 'In a production pipeline, where would the date spine come from?'
+    a: 'From a shared calendar dimension (`dim_date`), generated once for a wide range (for example 2000–2050) with attributes like week, month and holidays, or from a generator such as `dbt_utils.date_spine`. Every model reuses it instead of building its own.'
 dialect_notes:
   snowflake:
     note: 'No GENERATE_SERIES. Build the spine with `TABLE(GENERATOR(ROWCOUNT => n))` and `DATEADD(day, SEQ4(), first_day)`, or join a calendar table.'

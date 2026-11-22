@@ -39,5 +39,7 @@ rubric:
     weight: 2
     topic: null-traps
 follow_ups:
-  - Rewrite it as a LEFT JOIN. Which column must you test for NULL, and why that one?
-  - Which form is faster on your warehouse, and how would you check?
+  - q: 'Rewrite it as a LEFT JOIN. Which column must you test for NULL, and why that one?'
+    a: '`LEFT JOIN orders o ON o.customer_id = c.customer_id WHERE o.order_id IS NULL`. Test a column that is never NULL in a real match (the primary key `order_id`, or the join key itself). Testing a nullable column like `status` would wrongly include customers whose order happens to have a NULL there.'
+  - q: 'Which form is faster on your warehouse, and how would you check?'
+    a: "Most modern optimizers turn both `NOT EXISTS` and the `LEFT JOIN ... IS NULL` form into the same anti-join, so they're usually equal. Check with `EXPLAIN` or the query profile on realistic data. Avoid `NOT IN` with a nullable subquery: a single NULL makes it return no rows."

@@ -42,5 +42,7 @@ rubric:
     weight: 1
     topic: fact-types
 follow_ups:
-  - A store's counts are corrected after an audit two weeks ago. How do the snapshots get fixed?
-  - How would you test that snapshots and movements stay in sync?
+  - q: "A store's counts are corrected after an audit two weeks ago. How do the snapshots get fixed?"
+    a: 'Fix the source of truth (the movements or the corrected count), then rebuild the affected snapshot days from the correction date forward, because every later daily balance depends on it. Make the rebuild idempotent by overwriting by date partition, and record the restatement for downstream users.'
+  - q: 'How would you test that snapshots and movements stay in sync?'
+    a: "Reconcile them: yesterday's snapshot plus today's net movements must equal today's snapshot, per product and store. Run it as a data test after every load, and fail or alert on any difference above a small tolerance."

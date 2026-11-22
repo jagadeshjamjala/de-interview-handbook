@@ -50,5 +50,7 @@ rubric:
     weight: 2
     topic: date-spine
 follow_ups:
-  - Change it to year-over-year by month. What does LAG need now?
-  - Finance wants growth by category too. Where does PARTITION BY go?
+  - q: 'Change it to year-over-year by month. What does LAG need now?'
+    a: '`LAG(revenue, 12)` over months ordered by month. That only works if every month is present, so build from a month spine. Alternatively, join each month to the same month of the previous year.'
+  - q: 'Finance wants growth by category too. Where does PARTITION BY go?'
+    a: 'Group by month and category, then use `LAG(revenue) OVER (PARTITION BY category ORDER BY month)`, so each category is compared with its own previous month.'

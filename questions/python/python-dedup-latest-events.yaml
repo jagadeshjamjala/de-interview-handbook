@@ -52,5 +52,7 @@ rubric:
   - point: 'Notes when string timestamp comparison is unsafe'
     weight: 1
 follow_ups:
-  - The feed is 500 million records and doesn't fit in memory. How would you dedup it?
-  - 'CDC also sends deletes (`"op": "d"`). How does the output change?'
+  - q: "The feed is 500 million records and doesn't fit in memory. How would you dedup it?"
+    a: "Don't hold everything in memory. Use an engine (SQL with `ROW_NUMBER()`, Spark), or partition the input by a hash of the key into files that each fit in memory and dedup each one. An external sort by key and timestamp followed by a single pass also works."
+  - q: 'CDC also sends deletes (`"op": "d"`). How does the output change?'
+    a: "Treat a delete as the latest version of that key: if the newest event for a key is `op = 'd'`, drop the key from the output (or emit a tombstone or soft-delete flag if downstream needs to know)."

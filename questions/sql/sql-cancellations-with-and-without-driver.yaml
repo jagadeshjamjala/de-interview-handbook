@@ -34,5 +34,7 @@ check:
   order_matters: true
   float_tolerance: 0.0001
 follow_ups:
-  - Split cancellations by who cancelled. What column would you ask the source team for?
-  - Where should "cancellation rate" be defined so every dashboard uses the same formula?
+  - q: 'Split cancellations by who cancelled. What column would you ask the source team for?'
+    a: "A `cancelled_by` column (rider, driver, system or support) and ideally a cancellation reason and timestamp. Without it, you'd have to guess from other columns, which is unreliable."
+  - q: 'Where should "cancellation rate" be defined so every dashboard uses the same formula?'
+    a: 'In one governed place: a metric in the semantic layer or a dbt model, with the numerator, the denominator and the edge cases (system cancellations, test trips) documented. Dashboards read the metric instead of re-implementing the formula.'

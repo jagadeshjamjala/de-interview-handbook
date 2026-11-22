@@ -96,5 +96,7 @@ rubric:
     weight: 1
     topic: idempotency
 follow_ups:
-  - The job runs hourly and must only pull records changed since the last run. What do you store, and where?
-  - The API rate limit is 10 requests/second across 20 workers. How do you enforce it?
+  - q: 'The job runs hourly and must only pull records changed since the last run. What do you store, and where?'
+    a: "Store a high-water mark (the latest `updated_at` or cursor you processed) in a state table or file, and update it only after the data is committed. Query from slightly before it (an overlap) and upsert, so late or same-timestamp records aren't missed."
+  - q: 'The API rate limit is 10 requests/second across 20 workers. How do you enforce it?'
+    a: 'Use a shared limiter: a central token bucket (for example in Redis), or give each worker a fixed share (0.5 requests/s) with jittered backoff. Respect `429` responses and `Retry-After` headers either way.'

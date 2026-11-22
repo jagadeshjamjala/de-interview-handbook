@@ -54,5 +54,7 @@ rubric:
     weight: 1
     topic: scd-type-2
 follow_ups:
-  - The log arrives daily. How would you MERGE only today's changes into the existing SCD2 table?
-  - A change arrives that is dated before the current version started. What happens to your MERGE?
+  - q: "The log arrives daily. How would you MERGE only today's changes into the existing SCD2 table?"
+    a: "Stage today's changes, deduplicated to the last change per key per timestamp. Then, in one transaction, close the current row (`valid_to = change time`, `is_current = false`) for keys whose attributes changed, and insert the new versions. Many teams do this as one `MERGE` with a union trick, or as an update followed by an insert."
+  - q: 'A change arrives that is dated before the current version started. What happens to your MERGE?'
+    a: "A simple MERGE assumes changes arrive in order, so a backdated change would be inserted as current, or overlap the existing versions. You must split the version that covers that date, insert the late version in between, and fix the following row's `valid_from`. Often it's simplest to rebuild that key's history from the full log."

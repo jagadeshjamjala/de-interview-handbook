@@ -42,8 +42,10 @@ rubric:
     weight: 3
     topic: architecture
 follow_ups:
-  - Two writers commit to the same Iceberg table at the same moment. What happens?
-  - What maintenance jobs does a lakehouse table need, and what happens if you skip them?
+  - q: 'Two writers commit to the same Iceberg table at the same moment. What happens?'
+    a: "Iceberg uses optimistic concurrency: both writers prepare their files, then each tries to atomically swap the catalog's metadata pointer. One wins. The other detects the conflict, re-checks whether its changes conflict with the new snapshot, and retries the commit, or fails if both modified the same data."
+  - q: 'What maintenance jobs does a lakehouse table need, and what happens if you skip them?'
+    a: 'Compaction (small files), snapshot expiration, orphan file cleanup and, for Iceberg, manifest rewrites. Skip them and queries slow down (many files and manifests), and storage costs grow because old snapshots and unreferenced files are never deleted.'
 resources:
   - title: Apache Iceberg documentation
     url: https://iceberg.apache.org/docs/latest/

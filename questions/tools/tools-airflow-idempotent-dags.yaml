@@ -54,8 +54,10 @@ rubric:
     weight: 1
     topic: backfills
 follow_ups:
-  - The task depends on a dimension table that changes over time. In a backfill, should it read today's version or the historical one?
-  - How would you make a backfill of 90 days finish overnight without starving the daily run?
+  - q: "The task depends on a dimension table that changes over time. In a backfill, should it read today's version or the historical one?"
+    a: "Normally the historical version, as of the run's logical date (`data_interval_start`), using an SCD2 or snapshot table. Then a backfill produces the same output the original run should have produced. Use today's version only if the business wants restated history."
+  - q: 'How would you make a backfill of 90 days finish overnight without starving the daily run?'
+    a: "Run the backfill in a separate DAG or with `max_active_runs` and pools limited, give the daily DAG a higher priority weight, and process in larger date chunks per task if the task supports it. Watch the warehouse load as well as Airflow's own concurrency."
 resources:
   - title: Airflow — Best practices
     url: https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html

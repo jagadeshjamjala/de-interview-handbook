@@ -44,5 +44,7 @@ rubric:
     weight: 3
     topic: bitemporal
 follow_ups:
-  - Which table design lets you answer this for any cutoff cheaply (hint, valid_from / valid_to on ingestion time)?
-  - How do Iceberg or Delta time travel relate to this, and where do they fall short?
+  - q: 'Which table design lets you answer this for any cutoff cheaply (hint, valid_from / valid_to on ingestion time)?'
+    a: 'A bitemporal history table: each version of a transaction has `known_from` (its ingestion time) and `known_to` (when it was superseded). A cutoff query is then `WHERE known_from <= cutoff AND (known_to > cutoff OR known_to IS NULL)`, a single range filter instead of a window over all copies.'
+  - q: 'How do Iceberg or Delta time travel relate to this, and where do they fall short?'
+    a: "Time travel lets you query a table as of a past snapshot, which answers 'what did the table contain then' cheaply. It's limited by snapshot retention (old snapshots are expired to save storage), it reflects when data was committed rather than business time, and you can't correct the past. Model history explicitly if you need it long term."

@@ -35,5 +35,7 @@ rubric:
     weight: 1
     topic: onboarding
 follow_ups:
-  - What's the first thing you'd do in your first week here?
-  - How do you know when you understand a system well enough to change it?
+  - q: "What's the first thing you'd do in your first week here?"
+    a: 'Map the system before changing it: read the runbooks and the main DAGs, trace one important dataset from source to dashboard, and ask its consumers what they rely on. Then ship a small, low-risk change (a test, a doc fix) to learn the deploy path and get early feedback.'
+  - q: 'How do you know when you understand a system well enough to change it?'
+    a: "When you can predict what a change will affect: name the upstream inputs and downstream consumers, explain why the current design looks the way it does, and say how you'd notice and roll back if you were wrong. If you can't do that yet, you need more context or a reviewer who has it."

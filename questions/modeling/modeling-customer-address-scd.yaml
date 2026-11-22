@@ -48,5 +48,7 @@ rubric:
     weight: 2
     topic: late-arriving-data
 follow_ups:
-  - How would you build this in dbt? What does a snapshot give you, and what doesn't it?
-  - A GDPR delete request comes in for a customer with 12 versions. What do you do?
+  - q: "How would you build this in dbt? What does a snapshot give you, and what doesn't it?"
+    a: "A dbt snapshot (`timestamp` or `check` strategy) turns a mutable source into SCD2 with `dbt_valid_from` / `dbt_valid_to`. It only captures what it sees at each run, so changes between runs are lost and history before the first run doesn't exist. It also won't reconstruct backdated changes; you still model the final dimension on top of it."
+  - q: 'A GDPR delete request comes in for a customer with 12 versions. What do you do?'
+    a: "Delete or anonymize the personal fields in every version (and in snapshots, staging and backups per your retention policy), while keeping the surrogate keys so facts still join. Log the request, and make sure a later rebuild from raw data doesn't bring the data back."

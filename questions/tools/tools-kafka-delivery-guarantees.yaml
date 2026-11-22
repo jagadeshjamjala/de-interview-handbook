@@ -48,8 +48,10 @@ rubric:
     weight: 3
     topic: idempotency
 follow_ups:
-  - What does exactly-once cost in latency and throughput, and when would you not use it?
-  - A consumer is stuck in a rebalance loop and keeps reprocessing the same batch. What settings would you look at?
+  - q: 'What does exactly-once cost in latency and throughput, and when would you not use it?'
+    a: "Transactions add commit overhead and latency (consumers using `read_committed` wait for commits), and reduce throughput somewhat. Skip exactly-once when the sink is idempotent anyway (upserts by key), when you can deduplicate downstream, or when occasional duplicates don't matter, such as for metrics."
+  - q: 'A consumer is stuck in a rebalance loop and keeps reprocessing the same batch. What settings would you look at?'
+    a: 'Processing takes longer than `max.poll.interval.ms`, so the consumer is kicked out and the batch replays. Lower `max.poll.records`, raise `max.poll.interval.ms`, or speed up processing. Also check `session.timeout.ms` and heartbeats, and consider cooperative rebalancing and static membership (`group.instance.id`).'
 resources:
   - title: Kafka documentation — Message delivery semantics
     url: https://kafka.apache.org/documentation/#semantics

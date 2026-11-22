@@ -45,8 +45,10 @@ check:
   order_matters: true
   float_tolerance: 0.01
 follow_ups:
-  - The business wants every calendar day listed, including days with zero revenue. What do you add?
-  - What's the difference between ROWS and RANGE frames, and when does it change the result?
+  - q: 'The business wants every calendar day listed, including days with zero revenue. What do you add?'
+    a: 'A date spine: generate every date in the range, `LEFT JOIN` the daily revenue, use `COALESCE(revenue, 0)`, then run the running total over the spine.'
+  - q: "What's the difference between ROWS and RANGE frames, and when does it change the result?"
+    a: '`ROWS` counts physical rows. `RANGE` uses the `ORDER BY` value, so rows with equal values (peers) are included together. They differ when the ordering has ties: with `RANGE`, a running total gives every tied row the same total. With time intervals, `RANGE` also handles missing days.'
 dialect_notes:
   bigquery:
     note: 'Argument order is reversed: `DATE_TRUNC(order_date, MONTH)`.'

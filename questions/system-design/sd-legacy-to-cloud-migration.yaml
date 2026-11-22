@@ -42,5 +42,7 @@ rubric:
     weight: 2
     topic: planning
 follow_ups:
-  - Halfway through, the parallel run shows a 0.02% difference in a regulatory total. What do you do?
-  - How do you keep business teams from adding new jobs to the legacy system during the migration?
+  - q: 'Halfway through, the parallel run shows a 0.02% difference in a regulatory total. What do you do?'
+    a: "Stop and investigate before going further: reproduce it, trace the difference down to the rows (rounding, NULL handling, timezone or sort-order differences are typical), and fix the new pipeline. For a regulatory total, explain and sign off any accepted difference with the business owner. Don't hide it."
+  - q: 'How do you keep business teams from adding new jobs to the legacy system during the migration?'
+    a: 'Freeze the legacy system: new jobs need an approval, and the migration team offers to build new work directly in the cloud platform. Make the new platform the easier path, with templates and support, and track legacy changes so they can be added to the migration scope.'

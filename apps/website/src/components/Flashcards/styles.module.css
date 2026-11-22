@@ -62,7 +62,7 @@
   padding: 0 0.4rem;
   border-radius: 999px;
   background: var(--ifm-color-primary);
-  color: var(--ifm-background-color);
+  color: var(--ifm-font-color-base-inverse);
   font-size: 0.75rem;
   font-weight: 700;
 }

@@ -85,5 +85,7 @@ rubric:
     weight: 2
     topic: schema-evolution
 follow_ups:
-  - The batches have 50 million rows each. What would you sample, and what could sampling miss?
-  - Where should this check live, in the producer's CI, at ingestion or in the warehouse?
+  - q: 'The batches have 50 million rows each. What would you sample, and what could sampling miss?'
+    a: "Sample randomly across the whole batch (not just the first rows), plus check the full set of keys cheaply if you can. Sampling can miss rare fields or rare type changes, so compare full schemas from metadata (Parquet footers) when it's available."
+  - q: "Where should this check live, in the producer's CI, at ingestion or in the warehouse?"
+    a: "As early as possible: contract checks in the producer's CI catch breaking changes before release, while checks at ingestion catch what slips through. Warehouse tests are the last line of defense."

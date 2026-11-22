@@ -40,5 +40,7 @@ rubric:
     weight: 1
     topic: data-security
 follow_ups:
-  - The product team wants each customer to define custom metrics. What changes?
-  - How do you charge back serving cost per tenant?
+  - q: 'The product team wants each customer to define custom metrics. What changes?'
+    a: 'Store metric definitions as data (a metric spec per tenant: measure, filters, dimensions), validated against a fixed set of allowed fields, and compile them to SQL with a semantic layer. Add query limits and caching, since custom metrics make query cost less predictable.'
+  - q: 'How do you charge back serving cost per tenant?'
+    a: 'Measure resource usage per tenant: tag queries with the tenant id, record credits or slot time and bytes scanned, add storage per tenant, and allocate shared costs proportionally. Use the result for pricing tiers or usage-based billing.'

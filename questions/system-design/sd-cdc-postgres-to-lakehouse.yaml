@@ -42,5 +42,7 @@ rubric:
     weight: 1
     topic: cost
 follow_ups:
-  - A developer runs an UPDATE on 300 million rows in one transaction. What happens to your pipeline?
-  - The business wants "orders as they looked yesterday at 09:00". Which table answers it?
+  - q: 'A developer runs an UPDATE on 300 million rows in one transaction. What happens to your pipeline?'
+    a: 'Debezium emits 300 million change events once the transaction commits, so the pipeline sees a burst: Kafka lag spikes, the merge into the lakehouse table becomes huge and slow, and the WAL may grow on the source while the connector catches up. Mitigate by scaling consumers, merging in batches, alerting on lag and WAL size, and asking for large updates to be batched or coordinated in advance.'
+  - q: 'The business wants "orders as they looked yesterday at 09:00". Which table answers it?'
+    a: "A history table: either the raw change log (every version with its commit timestamp) or an SCD2 table built from it, queried with `valid_from <= '... 09:00' < valid_to`. Table time travel can also answer it if snapshots are kept that long."

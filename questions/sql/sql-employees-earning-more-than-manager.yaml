@@ -27,5 +27,7 @@ solution:
 check:
   order_matters: true
 follow_ups:
-  - Include employees who earn more than *any* manager above them, not only the direct one.
-  - What index or clustering would you want if this table had 10 million rows?
+  - q: 'Include employees who earn more than *any* manager above them, not only the direct one.'
+    a: "Use a recursive CTE that walks up the chain, producing (employee, ancestor manager) pairs, then keep employees whose salary is greater than at least one ancestor's (`EXISTS` or `salary > MIN(ancestor salary)`)."
+  - q: 'What index or clustering would you want if this table had 10 million rows?'
+    a: 'An index or clustering on `employee_id` (the join target, usually the primary key) and on `manager_id`. In a columnar warehouse it hardly matters at 10 million rows, because a hash join on a self-join is fast.'

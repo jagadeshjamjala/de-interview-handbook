@@ -7,19 +7,14 @@ import {NEW_PER_DAY, buildQueue, localDay, nextDue, schedule, type Rating} from 
 import {flashcardStore, levelStore, newCardsStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 
-type Card = {id: string; q: Question; front: string; answer?: string};
+type Card = {id: string; q: Question; front: string; answer: string}; // HTML; answer '' if none
 
 // Deck in curated DE 75 order (fundamentals first), then any question not in DE 75.
 const order = new Map((de75 as {id: string}[]).map((it, i) => [it.id, i]));
 const ALL_CARDS: Card[] = [...questions]
   .sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999))
   .flatMap((q) =>
-    (q.follow_ups ?? []).map((f, i) => ({
-      id: `${q.id}#${i}`,
-      q,
-      front: typeof f === 'string' ? f : f.q,
-      answer: typeof f === 'string' ? undefined : f.a,
-    })),
+    q.html.follow_ups.map((f, i) => ({id: `${q.id}#${i}`, q, front: f.q, answer: f.a})),
   );
 const CARD_BY_ID = new Map(ALL_CARDS.map((c) => [c.id, c]));
 const ROUNDS = [...new Set(ALL_CARDS.map((c) => c.q.round))] as Round[];
@@ -127,7 +122,7 @@ export default function Flashcards(): ReactNode {
             {ROUND_LABELS[card.q.round]} · {card.q.difficulty}
             {!progress[card.id] && <span className={styles.newBadge}>new</span>}
           </p>
-          <p className={styles.front}>{card.front}</p>
+          <p className={styles.front} dangerouslySetInnerHTML={{__html: card.front}} />
 
           {!revealed ? (
             <button
@@ -141,7 +136,7 @@ export default function Flashcards(): ReactNode {
             <>
               <div className={styles.back}>
                 {card.answer ? (
-                  <p>{card.answer}</p>
+                  <div dangerouslySetInnerHTML={{__html: card.answer}} />
                 ) : (
                   <>
                     <p>

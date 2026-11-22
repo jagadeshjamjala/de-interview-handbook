@@ -65,5 +65,7 @@ rubric:
     weight: 1
     topic: streaming
 follow_ups:
-  - The stream is split across 50 workers. How do you get the global top k?
-  - Now the stream yields word occurrences and you need the top-k most frequent words. What changes, and what if the vocabulary doesn't fit in memory?
+  - q: 'The stream is split across 50 workers. How do you get the global top k?'
+    a: 'Each worker keeps its local top k and sends it to one reducer, which merges them with a heap. This is correct because any global top-k item must be in the top k of the worker that saw it.'
+  - q: "Now the stream yields word occurrences and you need the top-k most frequent words. What changes, and what if the vocabulary doesn't fit in memory?"
+    a: "You need a count per word first, then a top-k by count. If the vocabulary doesn't fit in memory, shard words by hash across workers, or use an approximate sketch such as Count-Min Sketch with a heap, which trades accuracy for memory."

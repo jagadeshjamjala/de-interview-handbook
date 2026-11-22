@@ -49,8 +49,10 @@ check:
   order_matters: true
   float_tolerance: 0.01
 follow_ups:
-  - The business now wants ties included, even if that means 4 rows. What changes?
-  - How would you get the same result without a window function?
+  - q: 'The business now wants ties included, even if that means 4 rows. What changes?'
+    a: 'Use `RANK()` (or `DENSE_RANK()`) instead of `ROW_NUMBER()`, and keep rank ≤ 3. `RANK` includes every product tied at 3rd place. `DENSE_RANK` would also keep more distinct revenue levels.'
+  - q: 'How would you get the same result without a window function?'
+    a: "A correlated subquery: keep a product if fewer than 3 products in the same category have strictly higher revenue. It's slow on large tables, but it works in engines without window functions."
 dialect_notes:
   snowflake:
     note: 'Use `QUALIFY revenue_rank <= 3` to filter on the window result without the extra CTE.'

@@ -66,5 +66,7 @@ rubric:
     weight: 1
     topic: sorting
 follow_ups:
-  - Do the same in SQL for a whole month of incidents per service.
-  - Windows arrive as a stream, one at a time. How do you keep a running total?
+  - q: 'Do the same in SQL for a whole month of incidents per service.'
+    a: 'Order windows per service by start time, flag a new island when a window starts after the running maximum of previous ends, group by island to get each merged window, then sum the durations per service.'
+  - q: 'Windows arrive as a stream, one at a time. How do you keep a running total?'
+    a: 'Keep the merged intervals sorted and insert each new window, merging overlaps, then update the total. If windows arrive in start order, you only need the current merged window and the total.'
