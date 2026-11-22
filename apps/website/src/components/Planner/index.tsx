@@ -236,7 +236,7 @@ export default function Planner(): ReactNode {
 
       {input.weak.length > 0 && (
         <p className={styles.weak}>
-          Prioritizing weak topics from your mock interview:{' '}
+          Prioritizing weak topics (from your mock interview or skill radar):{' '}
           {input.weak.map((t) => (
             <code key={t}>{t}</code>
           ))}{' '}
