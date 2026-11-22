@@ -1,0 +1,57 @@
+---
+title: Team design and hiring
+sidebar_label: Team design & hiring
+sidebar_position: 3
+description: How to answer team structure, hiring and people-management questions in data engineering lead and manager interviews.
+levels: [lead]
+topic: [team-design, hiring, leadership]
+---
+
+# Team design and hiring
+
+Manager and lead loops almost always include "How would you structure the team?" and "How do you hire?". Staff-level ICs get lighter versions ("How would you organize ownership of the platform?"). Strong answers start from the problems the team must solve, not from an org chart.
+
+<LevelExpectations
+  lead="Compare team structures with their trade-offs, sequence hiring to the problems, run a fair structured hiring process, and handle performance and growth conversations."
+/>
+
+## Team structures
+
+| Model | Works well when | Watch out for |
+|---|---|---|
+| **Central data team** | Small company, shared platform still being built | Turns into a ticket queue; far from business context |
+| **Embedded** in product or business teams | Domains need deep context and fast iteration | Duplicated tooling and models; isolated engineers with no peers |
+| **Hybrid: platform team + domain-aligned engineers** | Mid-size and up | Needs clear ownership boundaries and a shared practice (reviews, standards) |
+| **Data mesh** (domains own data products) | Large organizations with mature domains and a strong self-serve platform | Requires real platform investment and governance; easy to name, hard to do |
+
+Make ownership explicit: who owns each source, core model, dashboard and on-call rotation. Shared things with no owner decay.
+
+## Sequencing hires
+
+- **Hire against the biggest problem.** A fragile platform blocks everyone, so stabilizing it often comes first.
+- **Seniors before juniors** in a new team, so someone can set standards, review designs and mentor.
+- **A manager or tech lead** once a team grows past roughly 6–8 people, or sooner if the lead is overloaded with both delivery and people work.
+- Balance specialties to the work: platform, analytics engineering, streaming or ML data, as the roadmap needs them.
+
+## Running hiring
+
+1. **Scorecard first:** the competencies and level expectations for the role, written before the job is posted.
+2. **A structured loop:** each interviewer covers specific competencies with prepared questions and a rubric. Use realistic exercises (SQL on real-looking data, modeling a business process, a design discussion) instead of puzzles.
+3. **Independent feedback** written before the debrief, so the loudest voice doesn't decide.
+4. **Decide against the scorecard**, not against "would I like to work with them".
+5. **Measure it:** time to hire, offer acceptance, and how hires perform after six months.
+
+## Performance and growth
+
+Expect at least one question about an underperformer or a conflict. Show that you:
+
+- Set clear expectations early and give specific, timely feedback.
+- Look for causes (unclear role, skills gap, personal circumstances) before concluding.
+- Agree on a concrete improvement plan with support and check-ins, and document it.
+- Act when it doesn't work, fairly and respectfully, and with HR involved where needed.
+
+For growth: career ladders with examples of each level, stretch projects matched to people's goals, and promotion cases built from evidence over time.
+
+## Practice
+
+<RelatedQuestions ids={["behavioral-growing-a-data-team", "behavioral-learning-new-domain-fast", "behavioral-speed-vs-quality-tradeoff"]} />

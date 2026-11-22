@@ -66,7 +66,7 @@ Step 2 — The rounds
   ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [live: /drills page]
   └─ Behavioral           (DE story bank: incidents, migrations, stakeholder disputes)
 
-Step 3 — Lead / Staff / EM track                                                                       [hidden in v1]
+Step 3 — Lead / Staff / EM track                                                                       [live: Phase 9c]
   ├─ Platform strategy, build vs buy, cost (FinOps)
   ├─ Team design & hiring
   └─ Leadership behavioral
