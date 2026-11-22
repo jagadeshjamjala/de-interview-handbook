@@ -2,7 +2,7 @@ import {useEffect, useRef, useState, type ReactNode} from 'react';
 import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
 import {useLocation} from '@docusaurus/router';
-import {DRILLS, type Choice, type Drill, type Verdict} from '@site/src/data/drills';
+import {DRILLS, type Choice, type Drill, type Verdict} from '@site/src/lib/drills';
 import {indexById} from '@site/src/lib/questionIndex';
 import styles from './styles.module.css';
 
