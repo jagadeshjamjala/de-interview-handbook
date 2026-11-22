@@ -149,7 +149,15 @@ test('follow-ups can be plain strings or {q, a}', () => {
   const ok =
     modeling +
     'follow_ups:\n  - Plain follow-up?\n  - q: With an answer?\n    a: Yes, like this.\n';
-  assert.deepEqual(run({'modeling/modeling-ok.yaml': ok}).errors, []);
+  const res = run({'modeling/modeling-ok.yaml': ok});
+  assert.deepEqual(res.errors, []);
+  assert.deepEqual(
+    (res.questions[0] as {html: {follow_ups: {q: string; a: string}[]}}).html.follow_ups,
+    [
+      {q: 'Plain follow-up?', a: ''},
+      {q: 'With an answer?', a: '<p>Yes, like this.</p>\n'},
+    ],
+  );
   const bad = modeling + 'follow_ups:\n  - q: Missing the answer?\n';
   assert.ok(run({'modeling/modeling-ok.yaml': bad}).errors.length > 0);
 });

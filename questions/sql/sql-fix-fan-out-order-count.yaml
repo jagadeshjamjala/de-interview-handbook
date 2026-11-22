@@ -64,5 +64,7 @@ rubric:
     weight: 1
     topic: fan-out-joins
 follow_ups:
-  - Add an `order_discount` column from `orders` to the report. Which version stays correct?
-  - How would you catch fan-out bugs automatically in a dbt project?
+  - q: 'Add an `order_discount` column from `orders` to the report. Which version stays correct?'
+    a: 'The fixed version, which pre-aggregates items per order before joining. The original join repeats `order_discount` once per item, so summing it would inflate discounts exactly like the order count.'
+  - q: 'How would you catch fan-out bugs automatically in a dbt project?'
+    a: "Add tests on grain: a `unique` test on each model's key, and row-count or sum reconciliation tests between a model and its source (for example total revenue must equal the sum of order items). Also use a model naming and documentation convention that states each model's grain."

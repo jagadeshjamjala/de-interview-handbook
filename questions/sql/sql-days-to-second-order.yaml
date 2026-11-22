@@ -38,8 +38,10 @@ solution:
 check:
   order_matters: true
 follow_ups:
-  - Return the median days-to-second-order per signup month. What would you watch out for with recent cohorts?
-  - Why does the tie-breaker matter for reproducible pipelines?
+  - q: 'Return the median days-to-second-order per signup month. What would you watch out for with recent cohorts?'
+    a: "Use `PERCENTILE_CONT(0.5)` (or `MEDIAN`) over days-to-second-order grouped by signup month. Recent cohorts are censored: customers who will order a second time haven't yet, so their median looks fast and the conversion looks low. Only compare cohorts at the same age, or report the share with a second order within N days."
+  - q: 'Why does the tie-breaker matter for reproducible pipelines?'
+    a: 'Without a unique ordering (for example two orders at the same timestamp), `ROW_NUMBER` can pick a different row on each run, so outputs change between identical runs and tests flake. Add a unique column such as `order_id` to the `ORDER BY`.'
 dialect_notes:
   snowflake:
     note: '`DATEDIFF(day, first_order_date, second_order_date)`.'

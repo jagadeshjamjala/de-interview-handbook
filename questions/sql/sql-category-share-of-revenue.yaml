@@ -39,5 +39,7 @@ check:
   order_matters: true
   float_tolerance: 0.0001
 follow_ups:
-  - Show each category's share within each month instead. What goes in OVER ()?
-  - Why do window functions run after GROUP BY and before ORDER BY?
+  - q: "Show each category's share within each month instead. What goes in OVER ()?"
+    a: 'Partition the total by month: `revenue / SUM(revenue) OVER (PARTITION BY month)`, after grouping by month and category.'
+  - q: 'Why do window functions run after GROUP BY and before ORDER BY?'
+    a: "Logically, window functions run over the result of `FROM`/`WHERE`/`GROUP BY`/`HAVING`, so they can use aggregates such as `SUM(revenue)` inside `OVER`. `ORDER BY` comes after so it can sort by window results. That's also why you can't filter on a window function in `WHERE`; wrap it in a subquery or use `QUALIFY`."

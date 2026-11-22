@@ -39,5 +39,7 @@ rubric:
     weight: 2
     topic: fintech
 follow_ups:
-  - A processor resends yesterday's file with corrections. What gets recomputed, and how do you show finance what changed?
-  - How would you measure and improve the auto-match rate over time?
+  - q: "A processor resends yesterday's file with corrections. What gets recomputed, and how do you show finance what changed?"
+    a: "Load the new file as a new version (keep the old one), rerun matching for that settlement date, and recompute that day's reconciliation and every later balance it affects. Produce a diff report (rows changed, matches gained or lost, amount differences) for finance before replacing the published result."
+  - q: 'How would you measure and improve the auto-match rate over time?'
+    a: 'Track auto-match rate = auto-matched rows / total rows, per processor and day, on a dashboard. Review unmatched cases by reason (rounding, fees, timing, missing references), then add matching rules or fix upstream data for the biggest buckets, and measure again.'

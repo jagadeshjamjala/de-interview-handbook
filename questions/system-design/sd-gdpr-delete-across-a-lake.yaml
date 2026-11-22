@@ -40,5 +40,7 @@ rubric:
     weight: 2
     topic: data-governance
 follow_ups:
-  - An analyst exported a CSV of customer emails to their laptop last year. Is that your problem, and what controls would prevent it?
-  - How do you erase someone from an aggregated table (for example daily revenue by country)?
+  - q: 'An analyst exported a CSV of customer emails to their laptop last year. Is that your problem, and what controls would prevent it?'
+    a: 'Yes. The company is responsible for personal data wherever it ends up, including copies on laptops. Prevent it with access controls on PII columns (masking), restricted export permissions, data loss prevention tooling, audit logs of exports, and a policy plus training on handling personal data.'
+  - q: 'How do you erase someone from an aggregated table (for example daily revenue by country)?'
+    a: "Aggregates with no individual identifiers usually aren't personal data, so they can stay. Check that small groups can't re-identify someone (a minimum group size), and if a table could, rebuild it from the erased source data."

@@ -32,7 +32,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm build
 
 ## Adding a question
 
-Follow the five steps in the [README](README.md#how-to-contribute-a-question). In short: write `questions/<round>/<id>.yaml` against [`schemas/question.schema.json`](schemas/question.schema.json), prove the answer (`scripts/verify_sql.py --update-golden` for SQL and review the CSV; `tests` + `scripts/verify_python.py` for Python), then run `pnpm questions` and `pnpm dev`.
+Follow the five steps in the [README](README.md#how-to-contribute-a-question). In short: write `questions/<round>/<id>.yaml` against [`schemas/question.schema.json`](schemas/question.schema.json), prove the answer (`scripts/verify_sql.py --update-golden` for SQL and review the CSV; `tests` + `scripts/verify_python.py` for Python), then run `pnpm questions` and `pnpm dev`. Give each follow-up a short model answer (`{q, a}`); it is shown on flashcards and in the solution.
 
 If the question fills a `planned: true` slot in [`plans/de75.yaml`](plans/de75.yaml), replace that entry with your question's `id`.
 

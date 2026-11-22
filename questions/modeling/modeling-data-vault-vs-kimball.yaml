@@ -41,5 +41,7 @@ rubric:
     weight: 2
     topic: architecture
 follow_ups:
-  - How do you handle a customer that appears in three systems with different IDs?
-  - What do PIT tables solve, and when do you need them?
+  - q: 'How do you handle a customer that appears in three systems with different IDs?'
+    a: "Each system's ID lands in its own hub or as separate business keys, and a same-as link records which IDs belong to the same customer, produced by matching rules or a master data system. Raw data stays unchanged, and the match is applied in the business vault."
+  - q: 'What do PIT tables solve, and when do you need them?'
+    a: 'Point-in-time tables precompute, for each hub key and snapshot date, which satellite row was current. You need them when queries join many satellites as of a date, which is otherwise slow and complex.'

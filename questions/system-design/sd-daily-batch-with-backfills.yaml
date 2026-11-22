@@ -38,5 +38,7 @@ rubric:
     weight: 2
     topic: data-quality
 follow_ups:
-  - The transform depends on a dimension that has changed since then. Should a backfill use today's dimension or the historical one?
-  - How do you backfill a table that 30 downstream dbt models depend on?
+  - q: "The transform depends on a dimension that has changed since then. Should a backfill use today's dimension or the historical one?"
+    a: "Usually the historical version, so a backfill reproduces what the data meant at that time: join to an SCD2 dimension as of the event date. Use today's version only when the business explicitly wants restated history (for example a current org structure). Either way, decide it deliberately and document it."
+  - q: 'How do you backfill a table that 30 downstream dbt models depend on?'
+    a: "Backfill the upstream table in date-range batches, then rebuild downstream with lineage-aware selection (`dbt build --select table+`) for the same partitions. Schedule it outside the daily run's window, consider writing to a separate schema and swapping it in, and validate row counts before releasing."

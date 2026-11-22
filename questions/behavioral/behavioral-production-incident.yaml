@@ -39,5 +39,7 @@ rubric:
     weight: 1
     topic: ownership
 follow_ups:
-  - What would you do differently in the first 30 minutes now?
-  - How did you decide whether to stop the dashboards or let them show possibly-wrong data?
+  - q: 'What would you do differently in the first 30 minutes now?'
+    a: "A strong answer is concrete: acknowledge and tell stakeholders sooner, stop the bad data from spreading (pause downstream jobs or flag the dashboard) before root-causing, and write down a timeline as you go. Show what you learned, not just what you'd repeat."
+  - q: 'How did you decide whether to stop the dashboards or let them show possibly-wrong data?'
+    a: 'Weigh the cost of a wrong decision against the cost of no data. For decisions made on the numbers (finance, pricing), mark the dashboard stale or hide it. For low-stakes monitoring, keep it up with a clear warning banner. Either way, tell the users which data is affected.'

@@ -76,5 +76,7 @@ rubric:
     weight: 1
     topic: parsing
 follow_ups:
-  - The file is 200 GB. What changes, if anything?
-  - How would you report the bad lines so someone can fix the producer?
+  - q: 'The file is 200 GB. What changes, if anything?'
+    a: 'Streaming line by line still works for memory, but one process is slow. Split the file into byte ranges aligned to line breaks, process them in parallel, and merge the counters, or use Spark or a warehouse to do the same.'
+  - q: 'How would you report the bad lines so someone can fix the producer?'
+    a: 'Count them by reason, keep a sample of bad lines with the file name and line number, write them to a quarantine file or table, and alert if the bad-line rate crosses a threshold.'

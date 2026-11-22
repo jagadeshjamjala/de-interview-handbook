@@ -61,5 +61,7 @@ rubric:
     weight: 1
     topic: funnels
 follow_ups:
-  - Product wants the funnel to count only if all three steps happen within 7 days. What changes?
-  - How would you build this as a dbt model that is cheap to refresh daily?
+  - q: 'Product wants the funnel to count only if all three steps happen within 7 days. What changes?'
+    a: 'For each user, find the first docs view, then the first pricing view after it, then the first billing view after that, and require billing to be within 7 days of the first step. Join each step on `user_id` with time conditions (or use window functions). Users who take longer drop out of later steps.'
+  - q: 'How would you build this as a dbt model that is cheap to refresh daily?'
+    a: "Make it incremental: process only new events (with a lookback of at least 7 days, the funnel window), keep a per-user state table with each step's first timestamp, and merge on `user_id`. Partition by event date and aggregate from the state table."

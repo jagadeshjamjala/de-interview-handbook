@@ -76,5 +76,7 @@ rubric:
     weight: 2
     topic: parsing
 follow_ups:
-  - The warehouse needs one row per element of `items` instead of `items.0`, `items.1`. How would you "explode" lists into rows?
-  - New keys appear every week. How does this interact with a fixed table schema?
+  - q: 'The warehouse needs one row per element of `items` instead of `items.0`, `items.1`. How would you "explode" lists into rows?'
+    a: "Emit one output row per list element, copying the parent fields onto each row and adding an index column. An empty list produces zero rows, or one row with nulls if you want to keep the parent. Recursively flatten each element's nested objects."
+  - q: 'New keys appear every week. How does this interact with a fixed table schema?'
+    a: 'A fixed schema breaks or silently drops new keys. Decide a policy: fail and alert, add new columns automatically (schema evolution), or keep unknown keys in a JSON or variant column. Many teams store raw JSON and flatten in the warehouse.'

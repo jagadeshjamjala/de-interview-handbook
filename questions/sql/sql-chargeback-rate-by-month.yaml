@@ -60,5 +60,7 @@ rubric:
     weight: 2
     topic: rates
 follow_ups:
-  - Risk wants the rate by amount, not count, in USD. What else do you need?
-  - How would you alert when a month's rate is abnormally high without paging on immature months?
+  - q: 'Risk wants the rate by amount, not count, in USD. What else do you need?'
+    a: "Amounts in a common currency: an FX rate table, joined on the currency and the transaction date (or the settlement date, as finance defines it). Decide whether to use the transaction amount or the chargeback amount, since partial chargebacks exist. Then it's `SUM(chargeback USD) / SUM(payment USD)`."
+  - q: "How would you alert when a month's rate is abnormally high without paging on immature months?"
+    a: 'Chargebacks are filed weeks or months after the transaction, so recent months look artificially low. Compare each month against earlier months at the same age (for example rate at 30, 60 and 90 days after month end), or alert only on months older than the usual chargeback window.'

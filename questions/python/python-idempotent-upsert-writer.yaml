@@ -88,5 +88,7 @@ rubric:
     weight: 1
     topic: upserts
 follow_ups:
-  - Two changes for the same id have the same `updated_at`. How do you break the tie deterministically?
-  - How does this map to a `MERGE` statement in a warehouse?
+  - q: 'Two changes for the same id have the same `updated_at`. How do you break the tie deterministically?'
+    a: 'Add a deterministic tie-breaker, ideally a source sequence such as a log sequence number (LSN) or an offset, else something stable like an ingestion order column. Never rely on input order, which can change between runs.'
+  - q: 'How does this map to a `MERGE` statement in a warehouse?'
+    a: '`MERGE INTO target USING staged_batch ON target.id = staged.id WHEN MATCHED AND staged.updated_at > target.updated_at THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...`, with the batch deduplicated to one row per id first.'

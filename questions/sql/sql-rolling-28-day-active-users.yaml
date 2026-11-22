@@ -45,8 +45,10 @@ rubric:
     weight: 1
     topic: rolling-distinct-counts
 follow_ups:
-  - Compute this for every day of the year on 2 billion login rows. What do you precompute?
-  - How do DAU / MAU ratios behave when you change the window from 28 to 30 days?
+  - q: 'Compute this for every day of the year on 2 billion login rows. What do you precompute?'
+    a: 'Precompute one row per user per active day (deduplicated), or a daily bitmap or HyperLogLog sketch of users. Then a 28-day window unions 28 small daily sets or merges 28 sketches instead of rescanning 2 billion rows each day.'
+  - q: 'How do DAU / MAU ratios behave when you change the window from 28 to 30 days?'
+    a: 'A longer window counts more users, so MAU rises and DAU/MAU falls. 30-day windows also include a different number of weekends depending on the date, which adds day-of-week noise. 28 days contains exactly four of each weekday, which keeps the ratio stable.'
 dialect_notes:
   bigquery:
     note: '`HLL_COUNT.MERGE` over daily `HLL_COUNT.INIT` sketches gives approximate rolling distinct counts cheaply.'

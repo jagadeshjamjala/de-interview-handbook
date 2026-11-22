@@ -44,5 +44,7 @@ rubric:
     weight: 1
     topic: event-modeling
 follow_ups:
-  - A producer starts sending `price` as a string instead of a number. What catches it, and where?
-  - Storage costs are doubling every quarter. Where would you cut first?
+  - q: 'A producer starts sending `price` as a string instead of a number. What catches it, and where?'
+    a: 'A schema contract at ingestion: validate events against a registry schema (for example JSON Schema or Avro) and route failures to a quarantine table with an alert to the producer. A type test in the warehouse is a second line of defense, but by then the bad data has landed.'
+  - q: 'Storage costs are doubling every quarter. Where would you cut first?'
+    a: 'Look at what is actually queried. Shorten the retention of raw events, drop or move unused high-volume properties, compress and partition by date, and tier old data to cheaper storage. Pre-aggregated tables can replace scans of the raw table for common dashboards.'

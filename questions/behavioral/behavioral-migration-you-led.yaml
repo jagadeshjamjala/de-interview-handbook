@@ -44,5 +44,7 @@ rubric:
     weight: 1
     topic: migrations
 follow_ups:
-  - What did you decide not to migrate, and how did you get agreement on that?
-  - How did you handle a consumer who refused to move?
+  - q: 'What did you decide not to migrate, and how did you get agreement on that?'
+    a: "Name what you left out, such as unused reports, dead jobs or low-value history, and the evidence for leaving it (query logs, last-access dates). Agree on it explicitly with the owners, with a date after which it's switched off and a way to restore it if someone shouts."
+  - q: 'How did you handle a consumer who refused to move?'
+    a: "Find out why first: missing features, no time, or distrust of the new numbers. Remove the blocker (pair with them, add the missing piece, show the reconciliation), and agree a deadline with their manager, so the legacy path doesn't stay alive for one team forever."

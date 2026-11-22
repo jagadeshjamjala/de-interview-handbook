@@ -42,8 +42,10 @@ rubric:
     weight: 2
     topic: spark
 follow_ups:
-  - How would you choose the number of buckets?
-  - The data moves to Iceberg. What replaces bucketing there?
+  - q: 'How would you choose the number of buckets?'
+    a: "Aim for bucket files of a healthy size (roughly 100 MB–1 GB) at the expected data size: the table size divided by the target file size, rounded to a number that fits your cluster's parallelism. Both tables in the join need the same count (or a multiple, in some engines), and changing it later means rewriting the table."
+  - q: 'The data moves to Iceberg. What replaces bucketing there?'
+    a: "Iceberg's `bucket(n, account_id)` partition transform, and Storage Partitioned Joins in Spark 3.3+, which can skip the shuffle when both tables share compatible bucket partitioning. Sort orders and compaction help as well."
 resources:
   - title: Spark docs — Bucketing, sorting and partitioning
     url: https://spark.apache.org/docs/latest/sql-data-sources-load-save-functions.html#bucketing-sorting-and-partitioning

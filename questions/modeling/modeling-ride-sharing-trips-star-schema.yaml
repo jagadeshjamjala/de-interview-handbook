@@ -52,5 +52,7 @@ rubric:
     weight: 1
     topic: dimensional-modeling
 follow_ups:
-  - A trip is reassigned to a second driver mid-way. How does your grain cope?
-  - Surge pricing rules change weekly. Where does that history live?
+  - q: 'A trip is reassigned to a second driver mid-way. How does your grain cope?'
+    a: "Keep the trip grain and add a trip-segment (or trip-driver) fact with one row per driver per trip, with the distance and time of each part. The trip fact stays one row per trip, so trip counts don't double, and driver earnings come from the segment fact."
+  - q: 'Surge pricing rules change weekly. Where does that history live?'
+    a: 'In a pricing-rules dimension with SCD2 history (valid_from / valid_to), or with a rule version id stored on each trip. Also store the actual multiplier applied on the trip fact, so you never have to reconstruct it.'

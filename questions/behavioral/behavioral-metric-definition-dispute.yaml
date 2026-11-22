@@ -38,5 +38,7 @@ rubric:
     weight: 1
     topic: influence
 follow_ups:
-  - What if the business owner chose the definition you thought was wrong?
-  - How do you stop new conflicting definitions from appearing?
+  - q: 'What if the business owner chose the definition you thought was wrong?'
+    a: "Disagree and commit: make sure your concerns and the trade-off are written down, then implement the owner's definition properly. Name it precisely, document the edge cases it excludes, and revisit it with data if the risk you flagged shows up."
+  - q: 'How do you stop new conflicting definitions from appearing?'
+    a: 'Define metrics once, in a governed place (a semantic layer or a single dbt model) with a named owner and documentation. Make dashboards read from that definition instead of recomputing it, and review new metric requests against the existing catalog.'

@@ -39,5 +39,7 @@ rubric:
     weight: 2
     topic: one-big-table
 follow_ups:
-  - How would you build the OBT incrementally when a dimension attribute changes?
-  - The BI tool has a semantic layer. Does that change your answer?
+  - q: 'How would you build the OBT incrementally when a dimension attribute changes?'
+    a: 'Track which dimension keys changed, then rebuild only the OBT rows that reference them (a merge on those keys), or partition the OBT and overwrite affected partitions. If attributes change often, keep them in a dimension and join at query time instead of copying them into the OBT.'
+  - q: 'The BI tool has a semantic layer. Does that change your answer?'
+    a: 'Usually yes. A semantic layer defines joins and metrics once, so a clean star schema underneath works well and avoids the duplication of an OBT. OBTs still help for tools without a semantic layer or for very hot dashboards.'

@@ -20,6 +20,7 @@ type Raw = {
   prompt: string;
   hints?: string[];
   solution: {answer?: string; explanation?: string};
+  follow_ups?: (string | {q: string; a: string})[];
 };
 
 function yamlFiles(dir: string): string[] {
@@ -70,6 +71,12 @@ export function loadQuestions(dir: string): {
         hints: (q.hints ?? []).map((h) => md.render(h)),
         answer: q.solution.answer ? md.render(q.solution.answer) : undefined,
         explanation: q.solution.explanation ? md.render(q.solution.explanation) : undefined,
+        // a: '' where a follow-up has no written answer yet (plain string in YAML)
+        follow_ups: (q.follow_ups ?? []).map((f) =>
+          typeof f === 'string'
+            ? {q: md.renderInline(f), a: ''}
+            : {q: md.renderInline(f.q), a: md.render(f.a)},
+        ),
       },
     });
   }

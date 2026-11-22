@@ -50,8 +50,10 @@ rubric:
     weight: 2
     topic: cost
 follow_ups:
-  - When would you switch from on-demand to capacity (slot) pricing?
-  - Partition by ingestion time or by event time? What changes for late events?
+  - q: 'When would you switch from on-demand to capacity (slot) pricing?'
+    a: 'When your on-demand spend is high and steady enough that reserved slots cost less, or when you need predictable spend. Look at your historical bytes processed and slot usage. Capacity pricing also lets you isolate workloads with reservations, but queries can queue when slots are busy.'
+  - q: 'Partition by ingestion time or by event time? What changes for late events?'
+    a: 'Ingestion-time partitioning puts late events in the partition of the day they arrived, so queries by event date must scan several partitions, and backfills are awkward. Event-time partitioning matches how users filter, but late events modify old partitions, so incremental models need a lookback window.'
 resources:
   - title: BigQuery docs — Partitioned tables
     url: https://cloud.google.com/bigquery/docs/partitioned-tables

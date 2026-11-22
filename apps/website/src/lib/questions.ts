@@ -24,7 +24,13 @@ export type Question = {
   follow_ups?: (string | {q: string; a: string})[];
   dialect_notes?: Record<string, {note: string; source: string}>;
   resources?: {title: string; url: string}[];
-  html: {prompt: string; hints: string[]; answer?: string; explanation?: string};
+  html: {
+    prompt: string;
+    hints: string[];
+    answer?: string;
+    explanation?: string;
+    follow_ups: {q: string; a: string}[]; // HTML; a = '' when unanswered
+  };
 };
 
 export const LEVELS: Level[] = ['junior', 'mid', 'senior', 'lead'];

@@ -41,8 +41,10 @@ rubric:
     weight: 2
     topic: null-traps
 follow_ups:
-  - Add a column for the share of trips that got no rating at all. Which join do you need now?
-  - When would you use the engine's PIVOT operator instead, and what does it cost you?
+  - q: 'Add a column for the share of trips that got no rating at all. Which join do you need now?'
+    a: "Start from `trips` and `LEFT JOIN ratings`, because trips with no rating don't appear in `ratings`. Then compute `AVG(CASE WHEN no rating THEN 1.0 ELSE 0 END)` per city over distinct trips (aggregate per trip first if a trip can have two ratings)."
+  - q: "When would you use the engine's PIVOT operator instead, and what does it cost you?"
+    a: "When the engine supports it and the pivot values are known and fixed, `PIVOT` is shorter. It's less portable across dialects, needs the value list hardcoded, and is harder to combine with several aggregates than conditional aggregation with `CASE`."
 dialect_notes:
   snowflake:
     note: "`PIVOT (AVG(score) FOR rated_by IN ('rider', 'driver'))` is available, but the value list must be known up front (or use `ANY`)."

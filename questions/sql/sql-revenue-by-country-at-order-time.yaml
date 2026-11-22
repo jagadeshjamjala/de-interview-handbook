@@ -75,8 +75,10 @@ rubric:
     weight: 1
     topic: data-quality
 follow_ups:
-  - With 2 billion orders, the correlated subquery is too slow. Rewrite it with an SCD2 table and a range join, or an ASOF JOIN.
-  - The fact table stores customer_key at load time instead. What are the pros and cons versus joining on dates at query time?
+  - q: 'With 2 billion orders, the correlated subquery is too slow. Rewrite it with an SCD2 table and a range join, or an ASOF JOIN.'
+    a: 'Build the address history as SCD2 rows with `valid_from` and `valid_to` (using `LEAD` on `effective_date`), then join orders `ON customer_id AND order_date >= valid_from AND order_date < valid_to`. Engines with `ASOF JOIN` (DuckDB, Snowflake) do this match directly and efficiently.'
+  - q: 'The fact table stores customer_key at load time instead. What are the pros and cons versus joining on dates at query time?'
+    a: "Storing the key at load time makes queries simple and fast and fixes history as it was loaded. But backdated corrections to the address won't be reflected unless you reload. Joining on dates at query time is always correct against the latest history, but costs a range join on every query."
 dialect_notes:
   snowflake:
     note: '`ASOF JOIN customer_addresses a MATCH_CONDITION(r.order_date >= a.effective_date) ON r.customer_id = a.customer_id` replaces the correlated subquery.'

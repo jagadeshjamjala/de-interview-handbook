@@ -40,8 +40,10 @@ rubric:
     weight: 2
     topic: deduplication
 follow_ups:
-  - Two copies have the same `ingested_at`. How do you make the result deterministic?
-  - How would you dedup incrementally each day instead of scanning the whole table?
+  - q: 'Two copies have the same `ingested_at`. How do you make the result deterministic?'
+    a: 'Add a unique tie-breaker after `ingested_at` in the `ORDER BY`: a source sequence or offset if you have one, otherwise a stable column such as the file name plus line number. If the copies are fully identical, any row is fine, but the order must still be deterministic.'
+  - q: 'How would you dedup incrementally each day instead of scanning the whole table?'
+    a: "Only consider keys that appeared in today's batch: union today's rows with the existing latest rows for those keys, keep the newest per key, and `MERGE` the result into the deduplicated table. Partition by date so the lookups are cheap."
 dialect_notes:
   snowflake:
     note: '`QUALIFY ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) = 1` removes the CTE.'

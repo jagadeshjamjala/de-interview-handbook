@@ -43,5 +43,7 @@ rubric:
     weight: 1
     topic: cost
 follow_ups:
-  - The finance team wants per-customer cost for your multi-tenant product. How would you allocate shared compute?
-  - One team says their model "must" refresh every 5 minutes. How do you decide?
+  - q: 'The finance team wants per-customer cost for your multi-tenant product. How would you allocate shared compute?'
+    a: "Tag queries with the tenant (query tags or labels, or per-tenant warehouses or projects), then allocate compute by each tenant's share of measured usage: credits, bytes scanned or slot time. Allocate shared jobs proportionally to rows or data per tenant, and document the method so finance trusts it."
+  - q: 'One team says their model "must" refresh every 5 minutes. How do you decide?'
+    a: "Ask what decision changes within 5 minutes and what it's worth, then show the cost of each refresh frequency. Offer alternatives such as an incremental model, a streaming table for just the few fields that need freshness, or 15–30 minutes. Agree on an SLA and a budget, and let the owner choose knowing the cost."

@@ -33,8 +33,10 @@ check:
   order_matters: true
   float_tolerance: 0.01
 follow_ups:
-  - The table has 5 billion rows. How would you compute an approximate p90, and what's the trade-off?
-  - How do you compute a median in an engine that has no percentile function?
+  - q: "The table has 5 billion rows. How would you compute an approximate p90, and what's the trade-off?"
+    a: "Use the engine's approximate percentile function (`APPROX_QUANTILES`, `APPROX_PERCENTILE`, t-digest or KLL sketches). It's much faster and uses little memory, but the result has a small, bounded error, and some sketches aren't deterministic across runs."
+  - q: 'How do you compute a median in an engine that has no percentile function?'
+    a: 'Number the rows per city with `ROW_NUMBER` ordered by fare, along with the count per city, then average the middle one or two rows: `rn IN (FLOOR((n + 1) / 2.0), CEIL((n + 1) / 2.0))`.'
 dialect_notes:
   snowflake:
     note: '`PERCENTILE_CONT … WITHIN GROUP` works as an aggregate; `MEDIAN(fare)` is a shortcut.'

@@ -42,5 +42,7 @@ rubric:
     weight: 1
     topic: dimensional-modeling
 follow_ups:
-  - An order ships in three parcels on different days. What happens to the accumulating snapshot's grain?
-  - Finance wants revenue recognized at delivery, not at order. What changes?
+  - q: "An order ships in three parcels on different days. What happens to the accumulating snapshot's grain?"
+    a: "The grain must be clear. Either move the accumulating snapshot to one row per shipment (parcel) with its own milestones, or keep one row per order line and define milestones as first and last shipped and delivered dates. Don't silently overwrite one parcel's dates with another's."
+  - q: 'Finance wants revenue recognized at delivery, not at order. What changes?'
+    a: 'Revenue facts need a recognition date. Add a delivered date or a separate revenue-recognition fact keyed by the delivery event, and report finance revenue on that date. Returns and cancellations then reverse revenue at their own event dates.'

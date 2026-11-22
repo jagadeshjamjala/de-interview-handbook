@@ -32,5 +32,7 @@ solution:
 check:
   order_matters: true
 follow_ups:
-  - Generalize to "ordered in every month since signup". What changes?
-  - Return customers who bought from every product category. Same pattern?
+  - q: 'Generalize to "ordered in every month since signup". What changes?'
+    a: 'The required month count now varies per customer: count distinct order months since the signup month and compare them to the number of months between signup and now (inclusive). Watch the partial current month and customers who signed up mid-month.'
+  - q: 'Return customers who bought from every product category. Same pattern?'
+    a: "Yes, it's the same relational-division pattern: group by customer, count distinct categories bought, and keep customers where that equals the total number of categories (`(SELECT COUNT(*) FROM categories)`)."

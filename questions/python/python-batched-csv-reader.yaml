@@ -65,5 +65,7 @@ rubric:
     weight: 1
     topic: files
 follow_ups:
-  - Each batch is written to a database. How do you make a crash halfway resumable?
-  - When would you reach for pandas `read_csv(chunksize=...)` or pyarrow instead?
+  - q: 'Each batch is written to a database. How do you make a crash halfway resumable?'
+    a: 'Checkpoint progress: after each batch commits, record the last row number (or byte offset) in a durable place, ideally in the same transaction as the write. On restart, skip to that point. Making writes idempotent (upserts by key) also protects you if a batch is replayed.'
+  - q: 'When would you reach for pandas `read_csv(chunksize=...)` or pyarrow instead?'
+    a: 'pandas `chunksize` when you need DataFrame operations on each chunk. pyarrow when speed or typed columnar output matters (for example writing Parquet), or when files are large. Plain `csv` with a generator is fine for simple row-by-row work with no dependencies.'

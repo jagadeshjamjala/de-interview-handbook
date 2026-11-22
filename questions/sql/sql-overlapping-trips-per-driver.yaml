@@ -50,5 +50,7 @@ rubric:
     weight: 1
     topic: self-joins
 follow_ups:
-  - Find the maximum number of trips any driver had in progress at the same moment.
-  - How would you turn this into a data quality test that runs after every load?
+  - q: 'Find the maximum number of trips any driver had in progress at the same moment.'
+    a: 'Turn each trip into two events, +1 at start and −1 at end, then run a running sum ordered by time per driver (process ends before starts at the same instant). The maximum running sum is the most simultaneous trips.'
+  - q: 'How would you turn this into a data quality test that runs after every load?'
+    a: 'Write the overlap query as a test that must return zero rows (a dbt singular test), and run it after each load on the newly loaded window, failing or warning with the offending trip ids.'

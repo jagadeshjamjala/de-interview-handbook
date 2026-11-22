@@ -44,5 +44,7 @@ rubric:
     weight: 1
     topic: ml-data
 follow_ups:
-  - Backfilling two years of daily features for 50 million customers is expensive. How do you make it tractable?
-  - Where would you put data quality checks for features, and what would they test?
+  - q: 'Backfilling two years of daily features for 50 million customers is expensive. How do you make it tractable?'
+    a: 'Compute features incrementally per day instead of rescanning history for every date: rolling windows can be built from daily aggregates. Partition by date, process in parallel by date range, sample customers for experiments, and store the results so a backfill runs once.'
+  - q: 'Where would you put data quality checks for features, and what would they test?'
+    a: 'Check at ingestion and before training: null rates, value ranges, row counts per day and distribution shift compared to previous days. Also check point-in-time correctness (no feature timestamp after its label date) and that offline and online values match on a sample.'

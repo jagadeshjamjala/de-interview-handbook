@@ -43,8 +43,10 @@ rubric:
     weight: 1
     topic: kafka
 follow_ups:
-  - A consumer processes records with a thread pool for speed. How do you keep per-order ordering?
-  - How would you design keys for an event where both customer-level and order-level ordering matter?
+  - q: 'A consumer processes records with a thread pool for speed. How do you keep per-order ordering?'
+    a: 'Route each record to a worker by hashing its order key, so one thread handles all events for an order, and commit offsets only up to the lowest offset that every worker has finished. Parallelism then comes from different keys, not from reordering one key.'
+  - q: 'How would you design keys for an event where both customer-level and order-level ordering matter?'
+    a: 'Kafka orders only within a partition, so pick the key at the level where ordering really matters. If both matter, key by customer: orders belong to customers, so customer-level ordering implies order-level ordering. The cost is hot partitions for very large customers.'
 resources:
   - title: Kafka documentation — Introduction (topics, partitions, ordering)
     url: https://kafka.apache.org/documentation/#intro_concepts_and_terms

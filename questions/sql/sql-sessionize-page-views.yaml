@@ -58,8 +58,10 @@ rubric:
     weight: 1
     topic: sessionization
 follow_ups:
-  - Sessions must also end at midnight UTC. What changes?
-  - How do you sessionize a stream where events arrive up to 10 minutes late?
+  - q: 'Sessions must also end at midnight UTC. What changes?'
+    a: 'Start a new session also when the UTC date changes from the previous event: the new-session flag becomes `gap > 30 min OR date(ts) <> date(prev_ts)`.'
+  - q: 'How do you sessionize a stream where events arrive up to 10 minutes late?'
+    a: 'Use event-time session windows with a watermark of at least 10 minutes in a stream processor (Flink, Spark): a session closes only when the watermark passes its last event plus the 30-minute gap. Late events can extend or merge sessions, so downstream must accept updates.'
 dialect_notes:
   snowflake:
     note: "`DATEDIFF('minute', a, b)` counts minute boundaries crossed, not elapsed minutes. Compare `DATEDIFF('second', a, b) > 1800` instead."

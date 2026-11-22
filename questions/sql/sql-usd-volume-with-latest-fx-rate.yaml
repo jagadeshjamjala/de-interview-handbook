@@ -74,8 +74,10 @@ rubric:
   - point: 'Treats USD as rate 1 instead of dropping it'
     weight: 1
 follow_ups:
-  - Finance restates a rate for last Tuesday. Which outputs must be recomputed, and how does your pipeline know?
-  - Would you store converted USD amounts in the fact table or convert at query time? Why?
+  - q: 'Finance restates a rate for last Tuesday. Which outputs must be recomputed, and how does your pipeline know?'
+    a: 'Every output that used that rate: the converted rows from last Tuesday until the next rate, and the aggregates over them. The pipeline knows if the rate table carries a version or `updated_at`, and the converted rows store which rate (date or version) they used, so a changed rate triggers a rebuild of the affected partitions.'
+  - q: 'Would you store converted USD amounts in the fact table or convert at query time? Why?'
+    a: 'Store the amount in the original currency and the converted USD amount with the rate date used, for audit and fast queries. Then a restatement means reprocessing known partitions. Converting at query time is always current but slower, and makes historical reports change without notice.'
 dialect_notes:
   snowflake:
     note: '`ASOF JOIN fx_rates f MATCH_CONDITION(s.txn_date >= f.rate_date) ON s.currency = f.currency` does the as-of lookup natively.'

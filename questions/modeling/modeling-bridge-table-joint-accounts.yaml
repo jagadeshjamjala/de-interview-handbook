@@ -44,5 +44,7 @@ rubric:
     weight: 1
     topic: bridge-tables
 follow_ups:
-  - How would you expose both measures in a BI semantic layer so users can't add the wrong one?
-  - What other domains have this pattern (hint, patients and diagnoses, orders and promotions)?
+  - q: "How would you expose both measures in a BI semantic layer so users can't add the wrong one?"
+    a: "Define two separate, clearly named measures in the semantic layer: the account-level total (which sums each account once) and the allocated per-holder amount (weighted by the bridge's allocation factor). Hide the raw columns and document which to use when, so users can't add the double-counted one."
+  - q: 'What other domains have this pattern (hint, patients and diagnoses, orders and promotions)?'
+    a: 'Any many-to-many between a fact and a dimension: patients and diagnoses, orders and promotions, articles and authors, products and categories, students and classes. Each needs a bridge table and a decision on whether to allocate or count once.'

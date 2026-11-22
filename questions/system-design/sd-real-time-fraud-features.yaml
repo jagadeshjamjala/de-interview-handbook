@@ -38,5 +38,7 @@ rubric:
     weight: 1
     topic: stream-processing
 follow_ups:
-  - A new feature needs 90-day history. How do you backfill it into the online store without downtime?
-  - How would you detect that an online feature has drifted from its offline definition?
+  - q: 'A new feature needs 90-day history. How do you backfill it into the online store without downtime?'
+    a: "Compute the 90-day history offline in batch from the historical events, write it to the online store under the same keys (bulk load), and let the stream keep it current from a cut-over point. Overlapping by a little and making writes idempotent avoids gaps. Serve the feature only after it's verified, behind a flag."
+  - q: 'How would you detect that an online feature has drifted from its offline definition?'
+    a: 'Log the online feature values at inference time, recompute the same features offline for the same entities and timestamps, and compare them (match rate, distribution difference). Alert when the mismatch exceeds a threshold. Sharing one feature definition for both paths also reduces drift.'

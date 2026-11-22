@@ -38,5 +38,7 @@ rubric:
     weight: 1
     topic: idempotency
 follow_ups:
-  - The ops wall flickers because numbers change after they're shown. How do you present provisional data?
-  - A city has almost no traffic at night, so its watermark stalls. What happens, and how do you fix it?
+  - q: "The ops wall flickers because numbers change after they're shown. How do you present provisional data?"
+    a: "Show the numbers as provisional, for example a lighter style or a '~' until the window's watermark passes, then mark them final. Or update less often (every 30 seconds) and show the time the data is complete up to. Set expectations so people know recent numbers can change."
+  - q: 'A city has almost no traffic at night, so its watermark stalls. What happens, and how do you fix it?'
+    a: "With a per-partition or per-key watermark, a quiet city's watermark doesn't advance, so its windows never close. Use an idle-source timeout so idle partitions don't hold back the watermark, or emit heartbeat events, or advance on processing time when no events arrive."

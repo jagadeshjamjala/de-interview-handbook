@@ -52,8 +52,10 @@ rubric:
     weight: 2
     topic: fill-forward
 follow_ups:
-  - Materialize this for every currency and every day since 2010. How do you keep it updated daily?
-  - Finance restates a rate. Which downstream tables must be rebuilt?
+  - q: 'Materialize this for every currency and every day since 2010. How do you keep it updated daily?'
+    a: 'Materialize a table of (currency, date, rate, source_date) from a calendar cross-join with currencies, filled forward. Update it daily with an incremental model that appends new dates and re-fills a short recent window, because rates can arrive late or be corrected.'
+  - q: 'Finance restates a rate. Which downstream tables must be rebuilt?'
+    a: 'Every table that converted amounts with that rate after its date until the next actual rate: the filled-forward rate table, then the fact and aggregate tables that used it. Lineage plus storing `source_date` (or a rate version) on the converted rows tells you exactly which rows.'
 dialect_notes:
   snowflake:
     note: '`LAST_VALUE(usd_rate) IGNORE NULLS OVER (…)`; the IGNORE NULLS goes after the parentheses.'

@@ -44,5 +44,7 @@ rubric:
     weight: 1
     topic: scaling
 follow_ups:
-  - The 15-minute SLA becomes 10 seconds for one fraud dashboard. What do you add, and what do you not change?
-  - A producer bug sent 6 hours of events with the wrong user_id. Walk through the fix.
+  - q: 'The 15-minute SLA becomes 10 seconds for one fraud dashboard. What do you add, and what do you not change?'
+    a: 'Add a streaming path for that one dashboard: a stream processor reading the same Kafka topic and writing to a low-latency store, such as a real-time OLAP database. Keep the existing batch path, its SLA and the warehouse as the source of truth.'
+  - q: 'A producer bug sent 6 hours of events with the wrong user_id. Walk through the fix.'
+    a: 'Find the affected window and events (by producer version and time). Fix the producer, then correct the data: if the true user_id can be derived (from the session or device), rewrite the affected partitions. Otherwise quarantine or flag them. Reprocess downstream aggregates for those hours, and tell the consumers what changed.'
