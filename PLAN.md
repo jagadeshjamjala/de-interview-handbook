@@ -63,7 +63,7 @@ Step 2 — The rounds
   ├─ Pipeline system design (framework + worked designs)
   ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)   [hidden in v1]
   ├─ Data quality & observability                                                                      [hidden in v1]
-  ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [hidden in v1]
+  ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [live: /drills page]
   └─ Behavioral           (DE story bank: incidents, migrations, stakeholder disputes)
 
 Step 3 — Lead / Staff / EM track                                                                       [hidden in v1]
@@ -293,7 +293,7 @@ Write original content, levels-tagged, for:
 ### Phase 8 — Practice tools (2026-11-21)
 The deferred Phase 7 items that need no outside input, one PR each:
 1. Skill radar (`/radar`): rate 8 skills 1–5; skills rated ≤ 2 add their topics to the planner's `w=` weak topics.
-2. Incident drills: branching "what do you check next?" scenarios.
+2. Incident drills (`/drills`): 3 branching scenarios; weak moves loop back with feedback, the debrief links related questions.
 3. Pipeline design canvas with a self-review checklist.
 
 - Python playground (Pyodide) with test cases
