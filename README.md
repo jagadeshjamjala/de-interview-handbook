@@ -11,6 +11,8 @@ A free, open-source **practice** handbook for data engineering interviews, with 
 - **Flashcards:** spaced repetition over 166 follow-up questions, each with a short model answer.
 - **Level tracks everywhere:** pick your level and every page highlights what's expected from you.
 
+**Keep learning:** [DataEngReads](https://jagadeshjamjala.github.io/dataengreads/) (real-world case studies from company engineering blogs) and [DataEngTube](https://dataengtube.com) (a curated library of data engineering videos).
+
 | Solve SQL in the browser | Plan your weeks | Worked designs, by level |
 |---|---|---|
 | ![SQL question solved in the playground](.github/assets/sql-playground.png) | ![DE 75 planner](.github/assets/planner.png) | ![Worked system design in dark mode](.github/assets/worked-design-dark.png) |
