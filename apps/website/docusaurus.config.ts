@@ -170,6 +170,16 @@ const config: Config = {
             {label: 'Blog', to: '/blog'},
           ],
         },
+        {
+          title: 'Keep learning',
+          items: [
+            {
+              label: 'DataEngReads (case studies)',
+              href: 'https://jagadeshjamjala.github.io/dataengreads/',
+            },
+            {label: 'DataEngTube (videos)', href: 'https://dataengtube.com'},
+          ],
+        },
       ],
       copyright: `Code MIT · Content CC BY-SA 4.0 · Structure inspired by the Tech Interview Handbook.`,
     },

@@ -288,7 +288,7 @@ Write original content, levels-tagged, for:
 3. ✅ Python playground (Pyodide, self-hosted)
 4. ✅ Flashcards from `follow_ups` (prompts now; optional `{q, a}` answers can be added per follow-up)
 
-**Deferred to future builds (decided):** company interview loops, custom domain, DataEngTube/DataEngReads cross-links (waiting on links), offer section (waiting on cited sources).
+**Deferred to future builds (decided):** company interview loops, custom domain, offer section (waiting on cited sources). DataEngTube/DataEngReads: site-level links added 2026-11-25 (footer, Start here, system design and tool pages, README); per-topic links via each question's `resources:` still need specific video and case-study URLs.
 
 ### Phase 8 — Practice tools (2026-11-21)
 The deferred Phase 7 items that need no outside input, one PR each:
