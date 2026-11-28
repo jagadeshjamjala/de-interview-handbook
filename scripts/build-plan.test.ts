@@ -43,3 +43,26 @@ test('duplicates, wrong counts, bad roles fail', () => {
   roles.items[0] = {id: 'sql-live', roles: ['chef']};
   assert.match(loadPlan(roles, bank).errors.join('\n'), /roles must be/);
 });
+
+test('role packs: known roles, existing ids, not in DE 75, no duplicates', async () => {
+  const {loadPacks} = await import('./build-plan.ts');
+  const qs = new Map([
+    ['x', {}],
+    ['y', {}],
+    ['in75', {}],
+  ]);
+  const ok = loadPacks({packs: {etl: ['x', 'y'], cloud: []}}, qs, new Set(['in75']));
+  assert.deepEqual(ok.errors, []);
+  assert.deepEqual(ok.packs, {etl: ['x', 'y'], cloud: []});
+  const bad = loadPacks(
+    {packs: {nope: ['x'], etl: ['missing', 'in75', 'x', 'x'], cloud: 'x' as unknown as string[]}},
+    qs,
+    new Set(['in75']),
+  ).errors.join('\n');
+  assert.match(bad, /unknown role/);
+  assert.match(bad, /no question with id "missing"/);
+  assert.match(bad, /already in DE 75/);
+  assert.match(bad, /duplicate x/);
+  assert.match(bad, /must be a list/);
+  assert.deepEqual(loadPacks(null, qs, new Set()).packs, {});
+});

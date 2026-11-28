@@ -2,7 +2,10 @@
 // always gives the same plan and `node --test` can check it.
 import type {Difficulty, Level, Round} from './questions';
 
-export type Role = 'generalist' | 'analytics' | 'platform' | 'streaming' | 'ml';
+export type Role =
+  'generalist' | 'analytics' | 'platform' | 'cloud' | 'etl' | 'warehouse' | 'streaming' | 'ml';
+/** Extra bank questions (not in DE 75) added to the plan for a role: plans/role-packs.yaml. */
+export type RolePacks = Partial<Record<Role, string[]>>;
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type PlanItem = {
@@ -44,6 +47,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   generalist: 'Data Engineer (generalist)',
   analytics: 'Analytics Eng',
   platform: 'Platform DE',
+  cloud: 'Cloud Data Engineer',
+  etl: 'ETL / Integration Eng',
+  warehouse: 'Data Warehouse Eng',
   streaming: 'Streaming DE',
   ml: 'ML Data Eng',
 };
@@ -145,9 +151,10 @@ export function buildPlan(
   input: PlanInput,
   items: PlanItem[],
   byId: Map<string, PlanQuestion>,
+  extra: PlanItem[] = [], // the chosen role's pack, after DE 75 in study order
 ): Plan {
   const live = items.filter((it) => !it.planned && byId.has(it.id));
-  const candidates = live
+  const candidates = [...live, ...extra.filter((it) => byId.has(it.id))]
     .map((it, order) => ({it, q: byId.get(it.id)!, order}))
     .filter(({q}) => q.levels.includes(input.level) && input.focus.includes(q.round));
   const senior = input.level === 'senior' || input.level === 'lead';
@@ -198,4 +205,23 @@ export function studySessions(i: PlanInput, week: number): {date: string; minute
     if (i.days.includes(dow)) out.push({date, minutes});
   }
   return out;
+}
+
+/** The role's pack as plan items (tagged with the role, so they get its priority bonus). */
+export function packItems(
+  role: Role,
+  packs: RolePacks,
+  byId: Map<string, {round: PlanItem['round']}>,
+): PlanItem[] {
+  return (packs[role] ?? [])
+    .filter((id) => byId.has(id))
+    .map((id) => ({id, round: byId.get(id)!.round, roles: [role]}));
+}
+
+/** Every question tied to a role: DE 75 items tagged with it, plus its pack. */
+export function roleQuestionIds(role: Role, items: PlanItem[], packs: RolePacks): Set<string> {
+  return new Set([
+    ...items.filter((it) => !it.planned && it.roles?.includes(role)).map((it) => it.id),
+    ...(packs[role] ?? []),
+  ]);
 }

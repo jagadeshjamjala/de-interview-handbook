@@ -1,0 +1,24 @@
+# Role packs (PLAN.md Phase 10): extra bank questions the planner adds after DE 75 when a role
+# type is chosen. DE 75 stays the shared core; tag DE 75 items with `roles:` in de75.yaml instead
+# of listing them here. `pnpm questions` fails on unknown ids, DE 75 ids or duplicates.
+packs:
+  generalist:
+    - sql-payments-finality-sla
+    - tools-dbt-tests-and-contracts
+  analytics:
+    - tools-dbt-tests-and-contracts
+    - sql-flag-daily-volume-anomalies
+  platform:
+    - sd-data-quality-observability
+    - python-row-count-anomaly-detector
+    - behavioral-build-vs-buy-decision
+  cloud:
+    - sd-data-quality-observability
+    - behavioral-build-vs-buy-decision
+  etl:
+    - sql-payments-finality-sla
+    - sql-flag-daily-volume-anomalies
+    - python-row-count-anomaly-detector
+  warehouse:
+    - tools-dbt-tests-and-contracts
+    - sql-flag-daily-volume-anomalies

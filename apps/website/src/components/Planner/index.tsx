@@ -4,6 +4,7 @@ import Heading from '@theme/Heading';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import {useHistory, useLocation} from '@docusaurus/router';
 import de75 from '@site/src/data/de75.json';
+import rolePacks from '@site/src/data/role-packs.json';
 import {LEVELS, ROUND_LABELS, type Level, type Round} from '@site/src/lib/questions';
 import {indexById as questionsById} from '@site/src/lib/questionIndex';
 import {
@@ -14,11 +15,13 @@ import {
   addDays,
   buildPlan,
   defaults,
+  packItems,
   parseParams,
   studySessions,
   toParams,
   type PlanInput,
   type PlanItem,
+  type RolePacks,
   type Role,
   type Weekday,
 } from '@site/src/lib/plan';
@@ -27,6 +30,7 @@ import {levelStore, plannerStore, progressStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 
 const items = de75 as PlanItem[];
+const packs = rolePacks as RolePacks;
 const liveRounds = ROUND_ORDER.filter((r) => items.some((i) => !i.planned && i.round === r));
 const DAY_LABELS: Record<Weekday, string> = {
   mon: 'Mon',
@@ -76,7 +80,11 @@ export default function Planner(): ReactNode {
   const toggle = <T,>(list: T[], v: T) =>
     list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 
-  const plan = buildPlan(input, items, questionsById);
+  const extra = packItems(input.role, packs, questionsById);
+  const plan = buildPlan(input, items, questionsById, extra);
+  const packScheduled = plan.weeks
+    .flatMap((w) => w.items)
+    .filter((id) => extra.some((e) => e.id === id)).length;
   const scheduledIds = plan.weeks.flatMap((w) => w.items);
   const byRound = ROUND_ORDER.map((r) => {
     const ids = scheduledIds.filter((id) => questionsById.get(id)?.round === r);
@@ -253,6 +261,8 @@ export default function Planner(): ReactNode {
       <p aria-live="polite">
         <strong>{plan.scheduled}</strong> questions over {input.weeks} weeks, {input.hours} h a week
         ({COST_FACTOR}× each question's time: one attempt plus review).
+        {packScheduled > 0 &&
+          ` Includes ${packScheduled} extra question${packScheduled === 1 ? '' : 's'} for ${ROLE_LABELS[input.role]}, after DE 75.`}
         {plan.didNotFit > 0 &&
           ` ${plan.didNotFit} more match your filters but don't fit; add hours or weeks to include them.`}
       </p>
