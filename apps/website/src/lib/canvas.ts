@@ -12,13 +12,45 @@ export const STAGE_LABELS: Record<Stage, string> = {
   transform: 'Transform',
   serve: 'Serve',
 };
-export const PRESETS: Record<Stage, string[]> = {
-  source: ['Postgres (OLTP)', 'SaaS API', 'App events', 'Files (SFTP/S3)'],
-  ingest: ['CDC (Debezium)', 'Kafka', 'Batch extract', 'Managed connector'],
-  store: ['Object storage (lake)', 'Iceberg / Delta table', 'Warehouse'],
-  transform: ['dbt', 'Spark batch', 'Flink / streaming', 'Airflow (orchestration)'],
-  serve: ['BI dashboard', 'Reverse ETL', 'Feature store', 'Data API'],
+export type Provider = 'generic' | 'aws' | 'gcp' | 'azure';
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  generic: 'Generic',
+  aws: 'AWS',
+  gcp: 'Google Cloud',
+  azure: 'Azure',
 };
+/** Palette per provider: the same roles in each stage, named as that cloud's services. */
+export const PROVIDER_PRESETS: Record<Provider, Record<Stage, string[]>> = {
+  generic: {
+    source: ['Postgres (OLTP)', 'SaaS API', 'App events', 'Files (SFTP/S3)'],
+    ingest: ['CDC (Debezium)', 'Kafka', 'Batch extract', 'Managed connector'],
+    store: ['Object storage (lake)', 'Iceberg / Delta table', 'Warehouse'],
+    transform: ['dbt', 'Spark batch', 'Flink / streaming', 'Airflow (orchestration)'],
+    serve: ['BI dashboard', 'Reverse ETL', 'Feature store', 'Data API'],
+  },
+  aws: {
+    source: ['RDS / Aurora', 'SaaS API', 'App events', 'S3 file drop'],
+    ingest: ['DMS (CDC)', 'Kinesis Data Streams', 'MSK (Kafka)', 'Amazon Data Firehose', 'Lambda'],
+    store: ['S3 (lake)', 'Iceberg + Glue Catalog', 'Redshift'],
+    transform: ['Glue (Spark)', 'EMR', 'Athena / dbt', 'MWAA (Airflow)', 'Step Functions'],
+    serve: ['QuickSight', 'Athena', 'Redshift', 'SageMaker Feature Store', 'API Gateway'],
+  },
+  gcp: {
+    source: ['Cloud SQL', 'SaaS API', 'App events', 'Cloud Storage file drop'],
+    ingest: ['Datastream (CDC)', 'Pub/Sub', 'Dataflow', 'Cloud Run job'],
+    store: ['Cloud Storage (lake)', 'BigQuery'],
+    transform: ['Dataflow', 'Dataproc (Spark)', 'BigQuery SQL / dbt', 'Cloud Composer (Airflow)'],
+    serve: ['Looker', 'BigQuery', 'Vertex AI Feature Store', 'Cloud Run API'],
+  },
+  azure: {
+    source: ['Azure SQL Database', 'SaaS API', 'App events', 'Blob file drop'],
+    ingest: ['Data Factory', 'Event Hubs', 'Azure Functions'],
+    store: ['ADLS Gen2 (lake)', 'Delta tables', 'Synapse / Fabric Warehouse'],
+    transform: ['Databricks', 'Synapse Spark', 'Data Factory pipelines', 'dbt'],
+    serve: ['Power BI', 'Synapse SQL', 'Azure ML', 'API Management'],
+  },
+};
+export const PRESETS = PROVIDER_PRESETS.generic;
 /** Questions an interviewer will ask about any design; the reader ticks them off. */
 export const REVIEW: {id: string; text: string}[] = [
   {id: 'grain', text: 'I can state the grain and freshness (SLA) of every output.'},

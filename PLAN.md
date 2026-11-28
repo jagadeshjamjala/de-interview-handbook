@@ -63,7 +63,7 @@ Step 2 — The rounds
   ├─ Data warehouse engineering (columnar storage, MPP distribution, query plans, loading, workload mgmt) [live: Phase 10b]
   ├─ Pipeline system design (framework + worked designs)
   ├─ ETL & integration    (files, rejects, incremental loads, ETL tools, migrating to ELT)                [live: Phase 10c]
-  ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)   [hidden in v1]
+  ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta, Cloud platforms, AWS)   [hidden in v1]
   ├─ Data quality & observability                                                                      [live: Phase 9b]
   ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [live: /drills page]
   └─ Behavioral           (DE story bank: incidents, migrations, stakeholder disputes)

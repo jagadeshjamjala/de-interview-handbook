@@ -1,0 +1,71 @@
+---
+title: Cloud platforms for data engineers
+sidebar_label: Cloud platforms
+sidebar_position: 10
+description: 'Cloud for data engineering interviews: the concepts that carry across AWS, Google Cloud and Azure (identity, networking, infrastructure as code, cost), with a service equivalence table.'
+levels: [junior, mid, senior, lead]
+topic: [tools, cloud, aws, iam, networking]
+---
+
+# Cloud platforms for data engineers
+
+Cloud data engineer interviews ask you to design and run pipelines on **one named cloud**: "how would you build this on AWS?". The services differ in name, but the questions test the same concepts on every cloud. Learn the concepts once, then map them to the cloud on the job description with the table below. There's a [deep dive on AWS](./aws.mdx), the most common cloud in job postings.
+
+<LevelExpectations
+  junior="Know the main data services of one cloud, what object storage, a managed warehouse and managed Spark are, and how a job gets permission to read a bucket."
+  mid="Design a pipeline on one cloud with suitable services, least-privilege roles, private networking basics and a cost estimate."
+  senior="Make trade-offs between serverless and provisioned, design multi-account security and networking, and manage everything as code."
+  lead="Set the cloud platform strategy: account structure, guardrails, FinOps practices, and when to use managed services vs open-source on the cloud."
+/>
+
+## The concepts that carry across clouds
+
+**Identity and access.** Workloads use **roles or service identities with temporary credentials**, never long-lived keys in files. Grant each pipeline only what it touches (least privilege), separate environments into different accounts, projects or subscriptions, and manage table- and column-level data access with the governance layer, not broad storage permissions. See the [IAM question](/questions#tools-iam-least-privilege-for-pipelines).
+
+**Networking.** Data services often sit in private networks.
+- Know VPCs or VNets, private subnets, security groups or firewall rules, and private endpoints to managed services.
+- Most "connection timeout" questions are networking.
+- Data transfer has a cost, especially through NAT gateways, across regions and out to the internet.
+
+See the [networking question](/questions#tools-cloud-networking-for-data).
+
+**Infrastructure as code.** Buckets, jobs, roles, clusters and catalogs are defined in code (Terraform, or the cloud's own tool), reviewed in pull requests and applied from CI. That's how dev and prod stay alike. See the [Terraform question](/questions#tools-terraform-for-data-infrastructure).
+
+**Serverless vs provisioned.** Pay-per-use services cost nothing when idle but have higher unit prices; clusters are cheaper when busy but cost money while idle. Match the model to the workload. See the [compute question](/questions#tools-serverless-vs-cluster-compute).
+
+**Cost (FinOps).**
+- Tag every resource by team and pipeline.
+- Set budgets and alerts.
+- Know your biggest cost lines: usually compute, warehouse queries and data transfer.
+- Design for cost from the start: partitioning, columnar formats, auto-suspend, lifecycle rules.
+
+See [Platform strategy & FinOps](../../lead-track/platform-strategy.mdx).
+
+**Regions and residency.** Keep compute next to the data. Know where personal data is allowed to live, and what cross-region replication costs.
+
+## Service equivalence
+
+The same role on each cloud. Names change; the design questions don't.
+
+| Role | AWS | Google Cloud | Azure |
+|---|---|---|---|
+| Object storage (the lake) | S3 | Cloud Storage | ADLS Gen2 (Blob Storage) |
+| Database CDC | DMS | Datastream | Data Factory change data capture |
+| Event streaming | Kinesis Data Streams, MSK (Kafka) | Pub/Sub | Event Hubs |
+| Managed Spark | EMR, Glue | Dataproc | Databricks, Synapse Spark, Fabric |
+| Stream processing | Managed Service for Apache Flink | Dataflow | Stream Analytics |
+| Orchestration | MWAA (Airflow), Step Functions | Cloud Composer (Airflow) | Data Factory pipelines |
+| SQL on the lake | Athena, Redshift Spectrum | BigQuery external tables | Synapse serverless SQL |
+| Warehouse | Redshift | BigQuery | Synapse dedicated SQL, Fabric Warehouse |
+| Catalog and governance | Glue Data Catalog, Lake Formation | Dataplex, BigQuery policy tags | Microsoft Purview, Unity Catalog (Databricks) |
+| BI | QuickSight | Looker | Power BI |
+| Identity and access | IAM | IAM | Microsoft Entra ID + Azure RBAC |
+| Secrets | Secrets Manager | Secret Manager | Key Vault |
+
+Databricks and Snowflake run on all three clouds; see their deep dives in this section.
+
+## Practice
+
+<RelatedQuestions ids={["sd-aws-batch-lakehouse", "tools-iam-least-privilege-for-pipelines", "tools-cloud-networking-for-data", "tools-terraform-for-data-infrastructure", "tools-serverless-vs-cluster-compute", "python-find-missing-partitions"]} />
+
+On the [design canvas](/canvas), switch **Component names** to AWS, Google Cloud or Azure to sketch with that cloud's services.

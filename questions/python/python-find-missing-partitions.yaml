@@ -1,0 +1,99 @@
+id: python-find-missing-partitions
+title: Find missing and empty date partitions from object storage keys
+round: python
+topic: [parsing, file-ingestion, aws]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+time_minutes: 20
+prompt: |
+  A lake stores tables in object storage with Hive-style partition paths, for example:
+
+  ```
+  raw/orders/dt=2024-03-01/part-0000.parquet
+  raw/orders/dt=2024-03-01/_SUCCESS
+  raw/payments/dt=2024-03-02/part-0001.parquet
+  ```
+
+  Write `check_partitions(keys, tables, start, end)` that takes a list of object keys (as a listing would return them), a list of table names, and an inclusive date range (`datetime.date`). For each table, return the dates in the range that are **missing** (no data file under that partition) and the dates that are **incomplete** (data files but no `_SUCCESS` marker).
+
+  Return `{table: {"missing": [dates], "incomplete": [dates]}}`, with sorted lists of `date` objects. Data files are any key ending in `.parquet`. Ignore keys for other tables, other prefixes, or malformed partition values.
+hints:
+  - Parse each key into (table, date, file name) once, then work with sets.
+  - Generate the expected dates from the range; a missing partition only shows up when you compare against what should be there.
+solution:
+  python: |
+    from datetime import date, timedelta
+
+
+    def check_partitions(keys, tables, start, end):
+        data, success = set(), set()
+        for key in keys:
+            parts = key.split("/")
+            if len(parts) != 4 or parts[0] != "raw" or not parts[2].startswith("dt="):
+                continue
+            table, raw_dt, name = parts[1], parts[2][3:], parts[3]
+            try:
+                d = date.fromisoformat(raw_dt)
+            except ValueError:
+                continue
+            if name.endswith(".parquet"):
+                data.add((table, d))
+            elif name == "_SUCCESS":
+                success.add((table, d))
+        days = [start + timedelta(days=i) for i in range((end - start).days + 1)]
+        return {
+            t: {
+                "missing": [d for d in days if (t, d) not in data],
+                "incomplete": [d for d in days if (t, d) in data and (t, d) not in success],
+            }
+            for t in tables
+        }
+  explanation: |
+    This is the file-system version of a date spine: an absent partition only shows up when you compare the listing against the **expected** dates. Parse every key once into `(table, date)` sets, then check each expected day.
+
+    The `_SUCCESS` marker matters because object stores have no atomic "directory": a reader can list a partition while a job is still writing it. Jobs write the marker last (Spark and Hadoop committers do this by default), so data files without a marker mean a partial or failed write. Table formats such as Iceberg and Delta solve this properly with atomic commits; on plain Parquet-on-S3 the marker plus this check are the usual guard.
+
+    Parsing defensively (exact path shape, valid ISO dates) keeps one odd key, such as `dt=2024-02-30` or a temporary folder, from crashing a monitoring job. Cost is O(keys + days × tables).
+tests: |
+  from datetime import date
+  keys = [
+      "raw/orders/dt=2024-03-01/part-0000.parquet",
+      "raw/orders/dt=2024-03-01/_SUCCESS",
+      "raw/orders/dt=2024-03-02/part-0000.parquet",      # no _SUCCESS -> incomplete
+      "raw/orders/dt=2024-03-04/_SUCCESS",               # marker but no data -> missing
+      "raw/payments/dt=2024-03-01/part-0000.parquet",
+      "raw/payments/dt=2024-03-01/part-0001.parquet",
+      "raw/payments/dt=2024-03-01/_SUCCESS",
+      "raw/payments/dt=2024-02-30/part-0000.parquet",    # malformed date, ignored
+      "raw/orders/_temporary/0/part-9.parquet",          # not a partition, ignored
+      "curated/orders/dt=2024-03-03/part-0000.parquet",  # other prefix, ignored
+      "raw/refunds/dt=2024-03-01/part-0000.parquet",     # table not requested
+  ]
+  r = check_partitions(keys, ["orders", "payments"], date(2024, 3, 1), date(2024, 3, 4))
+  assert r["orders"] == {
+      "missing": [date(2024, 3, 3), date(2024, 3, 4)],
+      "incomplete": [date(2024, 3, 2)],
+  }
+  assert r["payments"] == {
+      "missing": [date(2024, 3, 2), date(2024, 3, 3), date(2024, 3, 4)],
+      "incomplete": [],
+  }
+  assert set(r) == {"orders", "payments"}
+  one = check_partitions([], ["orders"], date(2024, 3, 1), date(2024, 3, 1))
+  assert one == {"orders": {"missing": [date(2024, 3, 1)], "incomplete": []}}
+rubric:
+  - point: 'Parses keys defensively into (table, date) and ignores malformed or unrelated keys'
+    weight: 2
+    topic: parsing
+  - point: 'Generates expected dates to find missing partitions'
+    weight: 2
+    topic: file-ingestion
+  - point: 'Uses the _SUCCESS marker to detect incomplete writes and explains why'
+    weight: 2
+    topic: aws
+follow_ups:
+  - q: 'Listing the bucket takes 20 minutes because there are millions of objects. What would you do instead?'
+    a: 'List only the prefixes you need (one per table and date range) using the delimiter to get partition "folders" without listing every file, or use a storage inventory report or the table catalog''s partition list. Better still, have writers record completed partitions in a table that the check queries.'
+  - q: 'How does a table format like Iceberg or Delta change this check?'
+    a: "Commits are atomic, so readers never see half-written data, and the table's metadata lists exactly which files and partitions exist. You'd query the table's metadata (or partition summary) for missing dates instead of listing storage, and markers aren't needed."

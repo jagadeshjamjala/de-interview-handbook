@@ -1,0 +1,72 @@
+id: sd-aws-batch-lakehouse
+title: Design a batch lakehouse on AWS
+round: system-design
+topic: [aws, lakehouse, iam, cost]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 40
+prompt: |
+  A retailer wants its first data platform on AWS. Sources: a PostgreSQL order database on RDS, a SaaS CRM with a REST API, and CSV files that stores upload daily. About 50 GB of new data a day; 3 years of history (around 40 TB). Consumers: finance dashboards by 07:00, analysts running ad-hoc SQL, and a data science team that wants raw history.
+
+  Design it on AWS: which services for ingestion, storage, processing, orchestration, serving, security and monitoring, and why. Say what you'd choose differently with a smaller team or budget.
+hints:
+  - Separate the layers (ingest, store, transform, serve) first, then pick a service for each. What does each choice cost when idle?
+  - Who should be able to read raw customer data, and how would you enforce it at table and column level?
+solution:
+  answer: |
+    **Shape:** land everything in **S3** as the system of record, organize it into raw → cleaned → curated layers in an open table format, transform in batch, and serve SQL from the lake (and a warehouse if needed).
+
+    **Ingestion**
+    - **RDS PostgreSQL:** change data capture with **AWS DMS** (full load plus ongoing changes) into S3, or a nightly incremental extract if minute-level freshness isn't needed. Read from a replica to protect the primary.
+    - **CRM API:** a small scheduled job (Lambda, or a Glue Python shell job, or a container) with pagination, retries and a watermark, writing raw JSON to S3; or a managed connector if the budget allows.
+    - **Store CSV files:** uploads to an S3 landing prefix; an event or schedule validates them, with a load log and rejects as in any file feed.
+
+    **Storage:** S3 with prefixes per layer and source, partitioned by date, **Parquet in Apache Iceberg tables** (ACID commits, schema evolution, time travel, MERGE for CDC), registered in the **Glue Data Catalog**. Lifecycle rules move old raw files to cheaper storage classes.
+
+    **Processing:** **Glue Spark jobs** (serverless, good for many daily jobs) for cleaning and CDC merges. Curated models are SQL, for example dbt running on Athena or on the warehouse. For heavy backfills of the 40 TB history, a transient **EMR** cluster with spot task nodes.
+
+    **Orchestration:** **Amazon MWAA** (managed Airflow) if the team knows Airflow or needs complex dependencies; **Step Functions** for simpler event-driven flows. Either way: idempotent tasks partitioned by date, retries, and an SLA alert for the 07:00 finance tables.
+
+    **Serving**
+    - **Athena** for ad-hoc SQL on the lake (pay per TB scanned, so partitioning and Parquet matter).
+    - **Redshift** (provisioned or serverless) for the finance dashboards if concurrency and latency need it, loading or querying the curated layer.
+    - Data science reads raw and curated tables directly with Spark or Athena.
+
+    **Security:** separate dev and prod accounts; IAM roles per job with least privilege; **Lake Formation** for table, column and row permissions (PII columns restricted); KMS encryption; S3 gateway endpoints and private subnets; secrets in Secrets Manager; CloudTrail on.
+
+    **Monitoring and cost:** CloudWatch alarms on failures and duration; data quality checks and freshness per table; cost allocation tags per pipeline and Cost Explorer budgets; Athena workgroup scan limits.
+
+    **Smaller team or budget:** drop Redshift and serve from Athena; use Step Functions or a single scheduled container instead of MWAA; nightly incremental extracts instead of DMS; fewer, simpler Glue jobs. **Bigger scale:** streaming ingestion (Kinesis or MSK) and more workload isolation.
+rubric:
+  - point: 'Layers the design (ingest, store, transform, serve) with S3 as system of record and an open table format'
+    weight: 2
+    topic: lakehouse
+  - point: 'Chooses suitable ingestion per source (CDC for RDS, API job with watermark, validated file landing)'
+    weight: 2
+    topic: aws
+  - point: 'Justifies processing, orchestration and serving choices with cost and team trade-offs'
+    weight: 3
+    topic: cost
+  - point: 'Covers security: account separation, least-privilege roles, Lake Formation, encryption, private networking'
+    weight: 2
+    topic: iam
+  - point: 'Covers monitoring, freshness SLAs and cost controls, and adapts the design to a smaller budget'
+    weight: 2
+    topic: aws
+follow_ups:
+  - q: 'How would the same design look on GCP or Azure?'
+    a: 'Same layers, different services. GCP: Cloud Storage, Datastream for CDC, Dataproc or Dataflow, Cloud Composer, BigQuery for serving and governance through IAM and policy tags. Azure: ADLS Gen2, Data Factory for ingestion, Databricks or Synapse Spark, Data Factory or Databricks workflows, Synapse or Fabric for serving, Entra ID and RBAC for access.'
+  - q: 'Finance asks why the 07:00 tables were late twice last week. What would you look at?'
+    a: "The orchestrator's task timeline for those days: which task started late or ran long, and whether it waited on a source (late DMS lag, a slow CRM API) or on compute (Glue capacity, a large backfill competing). Then fix that dependency or schedule, and alert earlier on the critical path."
+resources:
+  - title: AWS DMS docs — What is AWS Database Migration Service?
+    url: https://docs.aws.amazon.com/dms/latest/userguide/Welcome.html
+  - title: AWS Glue docs — What is AWS Glue?
+    url: https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+  - title: Amazon MWAA docs — What is Amazon MWAA?
+    url: https://docs.aws.amazon.com/mwaa/latest/userguide/what-is-mwaa.html
+  - title: AWS Lake Formation docs
+    url: https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html
+  - title: Amazon Athena docs — Partitioning data
+    url: https://docs.aws.amazon.com/athena/latest/ug/partitions.html

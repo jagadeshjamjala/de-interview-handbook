@@ -1,0 +1,68 @@
+---
+title: AWS for data engineering
+sidebar_label: AWS
+sidebar_position: 11
+description: 'AWS for data engineering interviews: S3, Glue, EMR, Athena, Redshift, Kinesis and MSK, DMS, MWAA and Step Functions, Lake Formation, with how they fit together and common traps.'
+levels: [junior, mid, senior, lead]
+topic: [tools, aws, cloud, lakehouse]
+---
+
+# AWS for data engineering
+
+AWS has several services for almost every job, so interviews focus on **choosing**: why Glue over EMR here, Athena or Redshift there, DMS or a custom extract. Know what each service is for, how it's billed, and how they connect. The [cloud platforms](./cloud-platforms.mdx) page covers the concepts that apply on every cloud.
+
+<LevelExpectations
+  junior="Know S3, Glue, Athena and Redshift, and describe a simple pipeline from a source database to a dashboard on AWS."
+  mid="Pick services per workload with cost in mind, set up IAM roles and the Glue catalog, and partition data for Athena."
+  senior="Design a full AWS data platform: CDC, an Iceberg lakehouse, orchestration, Lake Formation governance, private networking and cost controls."
+  lead="Set account structure and guardrails, standardize on a paved road of services, and own AWS data cost."
+/>
+
+## The services by layer
+
+**Storage**
+- **S3** is the system of record for the lake. It has strong read-after-write consistency, lifecycle rules to cheaper storage classes, and event notifications.
+- Store **Parquet** (or **Iceberg** tables), partitioned by date. Avoid millions of small files.
+
+**Ingestion**
+- **DMS:** full load plus ongoing change data capture from databases into S3 or Redshift.
+- **Kinesis Data Streams** or **MSK** (managed Kafka) for event streams.
+- **Amazon Data Firehose** to buffer and deliver streams to S3 or Redshift without writing code.
+- Lambda or Glue Python shell jobs for small API pulls.
+
+**Processing**
+- **Glue:** serverless Spark (and Python shell). It includes **job bookmarks**, which track already-processed data for incremental runs, and the **Glue Data Catalog**, the Hive-compatible metastore that Athena, EMR and Redshift Spectrum share.
+- **EMR:** managed Spark, Hive, Trino and Flink on clusters (or EMR Serverless). It gives full control and is cheaper for long, heavy jobs, especially on transient clusters with spot task nodes.
+- **Managed Service for Apache Flink** for stream processing.
+
+**Orchestration:** **MWAA** (managed Airflow) for complex DAGs; **Step Functions** for simpler, event-driven workflows of AWS service calls.
+
+**Serving**
+- **Athena:** serverless SQL on S3, billed per data scanned. Cheap for light use if data is partitioned and columnar.
+- **Redshift:** provisioned or serverless warehouse for high-concurrency BI. **Redshift Spectrum** queries S3 data from Redshift.
+- **QuickSight** for dashboards.
+
+**Governance and security**
+- **IAM roles** per job.
+- **Lake Formation** for table, column and row permissions on the catalog.
+- **KMS** encryption, **Secrets Manager**, and **CloudTrail** auditing.
+- **VPC endpoints** keep traffic to S3 private and off NAT gateways.
+
+## Common interview questions
+
+- *"Glue or EMR?"* Glue for many small or medium serverless jobs with little operations work; EMR for heavy, long or highly tuned jobs, or when you need specific frameworks and versions. See the [compute question](/questions#tools-serverless-vs-cluster-compute).
+- *"Athena or Redshift?"* Athena for occasional SQL on the lake; Redshift for many concurrent dashboard users and low latency.
+- *"How does a Glue job get access to an S3 prefix and an RDS database?"* An IAM role scoped to the prefix, the secret in Secrets Manager, and a Glue connection in the database's VPC with security groups that allow it. See the [IAM](/questions#tools-iam-least-privilege-for-pipelines) and [networking](/questions#tools-cloud-networking-for-data) questions.
+- *"Design a batch lakehouse on AWS."* See the [design question](/questions#sd-aws-batch-lakehouse).
+
+## Common traps
+
+- Athena tables without partitions, or with CSV or JSON data: every query scans everything, and you pay per TB scanned.
+- New Hive-style partitions not added to the catalog (`MSCK REPAIR TABLE`, a crawler, partition projection, or writing through a table format).
+- Private-subnet jobs reading S3 through a NAT gateway instead of a gateway endpoint, which adds a per-GB charge.
+- Long-lived IAM user keys in job configuration.
+- One huge always-on EMR cluster for work that runs two hours a day.
+
+## Practice
+
+<RelatedQuestions ids={["sd-aws-batch-lakehouse", "tools-iam-least-privilege-for-pipelines", "tools-cloud-networking-for-data", "tools-serverless-vs-cluster-compute", "tools-terraform-for-data-infrastructure", "python-find-missing-partitions"]} />
