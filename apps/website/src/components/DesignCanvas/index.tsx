@@ -5,7 +5,8 @@ import {
   BOX_W,
   CANVAS_H,
   CANVAS_W,
-  PRESETS,
+  PROVIDER_LABELS,
+  PROVIDER_PRESETS,
   REVIEW,
   STAGES,
   STAGE_LABELS,
@@ -17,6 +18,7 @@ import {
   outline,
   removeBox,
   type Box,
+  type Provider,
   type Stage,
 } from '@site/src/lib/canvas';
 import {canvasStore} from '@site/src/lib/store';
@@ -26,6 +28,7 @@ export default function DesignCanvas(): ReactNode {
   const d = canvasStore.use();
   const set = canvasStore.set;
   const [from, setFrom] = useState<string | null>(null); // box waiting for a connection target
+  const [provider, setProvider] = useState<Provider>('generic');
   const [custom, setCustom] = useState('');
   const [customStage, setCustomStage] = useState<Stage>('transform');
   const [copied, setCopied] = useState(false);
@@ -75,10 +78,20 @@ export default function DesignCanvas(): ReactNode {
   return (
     <div className={styles.wrap}>
       <section aria-label="Add components" className={styles.palette}>
+        <label className={styles.provider}>
+          <span>Component names</span>
+          <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)}>
+            {(Object.keys(PROVIDER_LABELS) as Provider[]).map((p) => (
+              <option key={p} value={p}>
+                {PROVIDER_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
         {STAGES.map((s) => (
           <div key={s} className={styles.group}>
             <span className={styles.stageName}>{STAGE_LABELS[s]}</span>
-            {PRESETS[s].map((label) => (
+            {PROVIDER_PRESETS[provider][s].map((label) => (
               <button
                 key={label}
                 type="button"
@@ -124,7 +137,7 @@ export default function DesignCanvas(): ReactNode {
           : 'Drag boxes, or focus one and use the arrow keys (Shift for bigger steps). Use “Connect” to draw an arrow.'}
       </p>
 
-      <div className={styles.scroller}>
+      <div className={styles.scroller} tabIndex={0} role="region" aria-label="Pipeline canvas">
         <div className={styles.canvas} style={{width: CANVAS_W, height: CANVAS_H}}>
           {STAGES.map((s, i) => (
             <span key={s} className={styles.lane} style={{left: 20 + i * 200}} aria-hidden="true">

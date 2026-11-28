@@ -1,0 +1,62 @@
+id: tools-terraform-for-data-infrastructure
+title: Managing data infrastructure with Terraform
+round: tools
+topic: [infrastructure-as-code, aws, data-security]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your data team's cloud resources (buckets, Glue jobs and catalog databases, IAM roles, a Redshift cluster, Kafka topics) were created by hand in the console over two years. Dev and prod differ in ways nobody can list, and last month someone deleted a prod bucket policy by mistake.
+
+  How would you bring this under Terraform? Cover how Terraform works (state, plan, apply), how you'd structure it for several environments, how changes get reviewed and applied, and what you would not manage with it.
+hints:
+  - Terraform has to know which real resource each block in your code refers to. Where does it keep that, and who else can read it?
+  - The resources already exist. How do you adopt them without recreating them?
+solution:
+  answer: |
+    **How Terraform works.** You declare resources in configuration. Terraform keeps a **state file** that maps each resource block to the real object it manages. `terraform plan` compares configuration, state and reality and shows what would change; `terraform apply` makes those changes. Because the plan is explicit, reviewers see "1 to change, 0 to destroy" before anything happens.
+
+    **State is critical, so treat it carefully:**
+    - Store it in a **remote backend** (for example an S3 bucket with locking, or Terraform Cloud), never on a laptop, so the team shares one state and two applies can't run at once.
+    - State can contain **sensitive values** (initial passwords, tokens) in plain text, so restrict and encrypt the backend, and keep real secrets in a secrets manager instead.
+    - **Split state** by environment and by area (networking, data platform, warehouse), so one change can't touch everything and plans stay fast.
+
+    **Adopting existing resources:** write configuration that matches each resource, then **import** it into state (an `import` block or `terraform import`), and run `plan` until it shows no changes. Do it in small batches, highest-risk resources first (IAM and bucket policies). Then lock down console write access in prod so drift doesn't return.
+
+    **Structure:** reusable **modules** (a "pipeline" module creating its bucket prefix, Glue job, role and alarms; a "dataset" module for a catalog database and permissions), and one root configuration per environment that calls them with different variables. Dev and prod then differ only where the variables say so.
+
+    **Workflow:** every change is a pull request. CI runs format and validation checks, then `plan`, and posts the plan for review. `apply` runs from CI after approval, with prod applies gated. Schedule a regular `plan` to detect drift.
+
+    **What not to manage with Terraform:**
+    - **Data itself** (table contents, files) or schema migrations that change data; use the pipeline and migration tools for those.
+    - **Short-lived runtime resources** that jobs create on their own.
+
+    Be careful with resources whose deletion loses data: use `prevent_destroy` on prod buckets and databases, and read any plan that says "destroy".
+rubric:
+  - point: 'Explains state, plan and apply, and why state maps configuration to real resources'
+    weight: 2
+    topic: infrastructure-as-code
+  - point: 'Uses a remote, locked, access-controlled backend and treats state as sensitive; splits state'
+    weight: 2
+    topic: data-security
+  - point: 'Imports existing resources until plan shows no changes; prevents console drift'
+    weight: 2
+    topic: infrastructure-as-code
+  - point: 'Uses modules plus per-environment configuration, a PR-based plan/apply workflow, and protects data-bearing resources'
+    weight: 3
+    topic: infrastructure-as-code
+follow_ups:
+  - q: 'A plan shows Terraform will destroy and recreate the prod Redshift cluster because of a renamed parameter. What do you do?'
+    a: "Don't apply. Find out why it forces replacement (a changed immutable attribute or a renamed resource address). If it's a rename in code, use a moved block (or state mv) so Terraform knows it's the same resource. If the attribute really requires replacement, plan a migration with a snapshot and downtime window instead. Adding prevent_destroy to such resources makes this fail safely."
+  - q: 'How do you handle a secret, such as a database password, that a Terraform-created resource needs?'
+    a: "Don't put it in variables files or code. Generate or store it in a secrets manager and reference it, or let the service manage the password itself, and restrict who can read the state, since resource attributes may still record it."
+resources:
+  - title: Terraform docs — State
+    url: https://developer.hashicorp.com/terraform/language/state
+  - title: Terraform docs — Sensitive data in state
+    url: https://developer.hashicorp.com/terraform/language/state/sensitive-data
+  - title: Terraform docs — Remote state
+    url: https://developer.hashicorp.com/terraform/language/state/remote
+  - title: Terraform docs — terraform plan
+    url: https://developer.hashicorp.com/terraform/cli/commands/plan

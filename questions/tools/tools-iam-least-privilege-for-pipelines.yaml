@@ -1,0 +1,60 @@
+id: tools-iam-least-privilege-for-pipelines
+title: IAM and least privilege for data pipelines
+round: tools
+topic: [iam, data-security, aws]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A new AWS data platform has 30 pipelines (Glue jobs, Lambda functions and Airflow tasks) reading from and writing to S3, a Redshift cluster and a few RDS databases. Today they all use one IAM user's access keys, stored in a config file, with an `AdministratorAccess` policy "so nothing breaks".
+
+  Explain what's wrong, and how you'd redesign identity and access for the pipelines. How do you keep it least-privilege without blocking the team every week?
+hints:
+  - What's the difference between an IAM user with access keys and a role that a service assumes?
+  - If one pipeline is compromised, what should it be able to reach?
+solution:
+  answer: |
+    **What's wrong:**
+    - **Long-lived access keys** in a config file can leak (repositories, logs, laptops) and never expire.
+    - **One identity for everything** means no isolation and no useful audit trail: every action looks like the same user.
+    - **Administrator access** means a bug or a leaked key can delete data, open buckets to the internet or create resources anywhere.
+
+    **Redesign:**
+    1. **Roles, not users.** Each workload assumes an **IAM role** and gets **temporary credentials** automatically: Glue job roles, Lambda execution roles, and roles for Airflow workers (for example through the managed Airflow service's execution role or Kubernetes service accounts mapped to roles). No access keys on disk.
+    2. **One role per pipeline or domain, scoped to what it touches.** A role for the orders ingestion job can read the source bucket prefix and write `s3://lake/raw/orders/*` only, use the specific KMS key, and write its Glue catalog table, and nothing else. Separate read and write; separate dev and prod accounts.
+    3. **Secrets in a secrets manager.** Database passwords live in AWS Secrets Manager (with rotation) or come from IAM database authentication; the role is allowed to read only its own secrets.
+    4. **Guardrails above the roles:** account separation per environment, organization-level policies (service control policies) that forbid things like public buckets or disabling logging, and bucket policies that require encryption and deny access from outside the organization.
+    5. **Data-level access** for people and tools querying the lake: Lake Formation or the warehouse's grants for table, column and row permissions, rather than broad S3 access.
+
+    **Keeping it practical:**
+    - Define roles and policies as code (Terraform), reviewed in pull requests, with a module per pipeline type, so a new pipeline gets a correct role by default.
+    - Start from AWS-managed or broader policies in dev, then use **IAM Access Analyzer** to generate policies from actual activity and tighten them before production.
+    - Log with CloudTrail and alert on denied calls and unusual activity.
+rubric:
+  - point: 'Identifies long-lived keys, a shared identity and admin permissions as the risks'
+    weight: 2
+    topic: iam
+  - point: 'Uses roles with temporary credentials per workload instead of access keys'
+    weight: 3
+    topic: iam
+  - point: 'Scopes each role to specific resources and prefixes; keeps secrets in a secrets manager'
+    weight: 2
+    topic: data-security
+  - point: 'Adds guardrails (account separation, SCPs, bucket policies), data-level access, policies as code and least-privilege tooling'
+    weight: 2
+    topic: aws
+follow_ups:
+  - q: 'A pipeline in the analytics account needs to read a bucket in the payments account. How do you grant it?'
+    a: "Cross-account access: the payments account's bucket policy (and KMS key policy, if encrypted) allows a specific role from the analytics account, and that role has a policy allowing the read. Alternatively the pipeline assumes a read-only role in the payments account. Either way, grant only the needed prefix and actions."
+  - q: 'After tightening permissions, a job fails with AccessDenied in production. How do you debug it quickly?'
+    a: "Read the error: it names the action and resource. Check CloudTrail for the denied call, then the role's policies, any bucket or key policies, and organization policies, since an explicit deny anywhere wins. Fix with the narrowest grant, in code, and add the case to the dev environment so it's caught earlier next time."
+resources:
+  - title: AWS IAM docs — Security best practices
+    url: https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
+  - title: AWS IAM docs — IAM roles
+    url: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+  - title: AWS Secrets Manager docs
+    url: https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html
+  - title: AWS Lake Formation docs
+    url: https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html

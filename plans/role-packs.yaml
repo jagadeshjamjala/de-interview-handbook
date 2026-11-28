@@ -12,11 +12,19 @@ packs:
     - sql-flag-daily-volume-anomalies
     - sql-month-end-balance-semi-additive
   platform:
+    - tools-terraform-for-data-infrastructure
+    - tools-iam-least-privilege-for-pipelines
     - sd-warehouse-workload-management
     - sd-data-quality-observability
     - python-row-count-anomaly-detector
     - behavioral-build-vs-buy-decision
   cloud:
+    - sd-aws-batch-lakehouse
+    - tools-iam-least-privilege-for-pipelines
+    - tools-cloud-networking-for-data
+    - tools-terraform-for-data-infrastructure
+    - tools-serverless-vs-cluster-compute
+    - python-find-missing-partitions
     - sd-data-quality-observability
     - behavioral-build-vs-buy-decision
   etl:

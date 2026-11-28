@@ -1,0 +1,56 @@
+id: tools-serverless-vs-cluster-compute
+title: Serverless vs cluster compute for data jobs
+round: tools
+topic: [serverless, cost, aws, spark]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 15
+prompt: |
+  Your team runs three kinds of AWS workloads:
+
+  - About 200 small daily jobs, each processing 1–5 GB for 5–10 minutes.
+  - One large nightly Spark job over 6 TB that runs for 3 hours.
+  - Analysts running ad-hoc SQL on the lake a few times a day.
+
+  For each, would you use serverless options (Glue, Lambda, Athena, EMR Serverless) or provisioned clusters (EMR on EC2, a provisioned warehouse)? Explain the cost models and the trade-offs.
+hints:
+  - How are you billed when nothing is running, in each model?
+  - What does a cluster give you that serverless doesn't, and when is that worth paying for?
+solution:
+  answer: |
+    **Cost models.**
+    - **Serverless:** pay per use: per second of capacity used (Glue DPUs, EMR Serverless), per request and duration (Lambda), or per data scanned (Athena). Nothing to pay when idle, no cluster to operate, but a higher unit price and less control. Some services have startup latency and limits (for example Lambda's maximum run time and memory).
+    - **Provisioned clusters:** pay for instances while they run, whether busy or not. Lower unit cost when highly utilized, especially with spot or reserved capacity, plus full control of versions, instance types and tuning. But you pay for idle time and operate it yourself.
+
+    **The three workloads.**
+    1. **200 small daily jobs:** serverless. They're short and spread out, so a cluster would sit mostly idle. Glue or EMR Serverless for Spark-style jobs, or even a SQL engine or Lambda for the smallest. Watch per-job minimum billing and startup time, and batch tiny jobs together if overhead dominates.
+    2. **The 6 TB nightly job:** either can work; it depends on utilization and tuning. A **transient EMR cluster** (created for the run, terminated after) with spot task nodes is often cheapest for a long, predictable, heavy job and lets you tune it. EMR Serverless is simpler to operate at a higher unit cost. Benchmark both on the real job.
+    3. **Ad-hoc analyst SQL:** **Athena** (pay per TB scanned) when usage is light and data is partitioned and in a columnar format, so scans are small. If usage grows to many users all day, a warehouse with provisioned or capacity pricing becomes cheaper and more predictable.
+
+    **General rule:** serverless for spiky, small or unpredictable work, and when team time is scarce; provisioned for steady, heavy, well-understood workloads where utilization is high. Measure cost per job or per query, and revisit as usage changes.
+rubric:
+  - point: 'Explains both cost models (pay per use vs pay for running capacity) and idle cost'
+    weight: 3
+    topic: cost
+  - point: 'Chooses serverless for the many small jobs and explains why'
+    weight: 2
+    topic: serverless
+  - point: 'Weighs a transient cluster (with spot) vs serverless for the large job, suggests benchmarking'
+    weight: 2
+    topic: spark
+  - point: 'Chooses Athena for light ad-hoc SQL with partitioning/columnar formats, and knows when a warehouse wins'
+    weight: 2
+    topic: aws
+follow_ups:
+  - q: 'The Athena bill for ad-hoc queries tripled. What do you check first?'
+    a: 'Which queries scan the most data: look for missing partition filters, SELECT * on wide tables, and data stored as uncompressed CSV or JSON. Fix the layout (Parquet, partitions, compaction), add workgroup limits on data scanned per query, and teach the common patterns.'
+  - q: 'What are the risks of running the nightly job on spot instances?'
+    a: "Spot capacity can be reclaimed, losing executors mid-job. Keep the core nodes on demand (they hold shuffle data and HDFS), use spot for task nodes, diversify instance types, and make the job restartable from checkpoints or by partition so an interruption doesn't mean starting over."
+resources:
+  - title: AWS Glue docs — What is AWS Glue?
+    url: https://docs.aws.amazon.com/glue/latest/dg/what-is-glue.html
+  - title: Amazon EMR docs — What is Amazon EMR?
+    url: https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-what-is-emr.html
+  - title: Amazon Athena docs — What is Amazon Athena?
+    url: https://docs.aws.amazon.com/athena/latest/ug/what-is.html

@@ -1,0 +1,60 @@
+id: tools-cloud-networking-for-data
+title: Cloud networking for data engineers (VPCs, endpoints, NAT)
+round: tools
+topic: [networking, aws, cost]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Two problems on your AWS data platform:
+
+  1. A new Glue job that reads from a PostgreSQL database on RDS (in a private subnet) fails with a connection timeout. The credentials are correct.
+  2. The monthly bill shows a large "NAT Gateway" line. Most of it comes from EMR clusters in private subnets reading and writing several TB a day in S3.
+
+  Explain the networking concepts involved and how you'd fix both.
+hints:
+  - A timeout (rather than "authentication failed") tells you the packets never got an answer. What sits between the job and the database?
+  - How does traffic from a private subnet reach S3, and is there a path that doesn't go through the NAT gateway?
+solution:
+  answer: |
+    **The concepts:**
+    - A **VPC** is a private network. **Subnets** are public (with a route to an internet gateway) or private (no direct inbound access from the internet).
+    - **Route tables** decide where traffic goes. **Security groups** are stateful firewalls on each network interface: they allow specific inbound and outbound traffic.
+    - A **NAT gateway** lets private resources reach the internet and public service endpoints; it is billed per hour plus **per GB processed**.
+    - **VPC endpoints** let resources reach AWS services privately: **gateway endpoints** (S3 and DynamoDB, through route-table entries, no additional charge) and **interface endpoints** (PrivateLink, an elastic network interface in your subnet, billed hourly and per GB).
+
+    **Problem 1: the Glue job times out.** A timeout means the traffic is blocked or misrouted, not rejected by the database.
+    - Glue needs a **connection** configured with the VPC, a subnet that can route to the database, and a security group. AWS Glue creates network interfaces in that subnet.
+    - The database's security group must allow inbound traffic on port 5432 from the Glue job's security group.
+    - The Glue security group needs a **self-referencing inbound rule**, because Glue's own components talk to each other.
+    - The job's subnet also needs a route to S3 (a gateway endpoint or a NAT) for its scripts and temporary files.
+
+    Check these in order, testing reachability with the connection test or VPC Reachability Analyzer.
+
+    **Problem 2: the NAT bill.** Traffic from private subnets to S3 without an endpoint goes out through the NAT gateway and is charged per GB processed. Add an **S3 gateway endpoint** to the private subnets' route tables; S3 traffic then goes through the endpoint with no NAT processing charge, and you can restrict it with an endpoint policy. Do the same for DynamoDB if used. For other AWS services with heavy traffic, compare interface endpoint costs with NAT costs. Keep compute and buckets in the same region to avoid inter-region transfer charges.
+rubric:
+  - point: 'Explains VPC, subnets, route tables, security groups, NAT and endpoints'
+    weight: 2
+    topic: networking
+  - point: 'Diagnoses the timeout as network reachability: Glue connection subnet, DB security group inbound rule, self-referencing rule'
+    weight: 3
+    topic: networking
+  - point: 'Fixes the NAT cost with an S3 gateway endpoint and explains why it is cheaper'
+    weight: 3
+    topic: cost
+  - point: 'Mentions region alignment and interface endpoint trade-offs'
+    weight: 1
+    topic: aws
+follow_ups:
+  - q: 'The security team requires that the lake bucket can only be reached from inside your VPC. How do you enforce it?'
+    a: 'Add a bucket policy that denies access unless the request comes through your VPC endpoint (an aws:SourceVpce condition), with exceptions for the admin roles you need, and an endpoint policy that only allows your buckets. Test carefully: it also blocks console and tool access from outside the VPC.'
+  - q: 'How would you find which jobs cause the most data transfer cost?'
+    a: 'Use cost allocation tags on clusters and jobs, Cost Explorer filtered by usage type (NAT processing, data transfer), and VPC Flow Logs to see which sources and destinations move the most bytes. Then fix the biggest flows first.'
+resources:
+  - title: Amazon VPC docs — Gateway endpoints for Amazon S3
+    url: https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html
+  - title: Amazon VPC docs — NAT gateway pricing
+    url: https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-pricing.html
+  - title: AWS Glue docs — Connecting to a JDBC data store in a VPC
+    url: https://docs.aws.amazon.com/glue/latest/dg/connection-JDBC-VPC.html

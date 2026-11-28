@@ -478,4 +478,155 @@ export const DRILLS: Drill[] = [
       },
     },
   },
+  {
+    id: 'cloud-access-denied',
+    title: 'A Glue job fails with AccessDenied after a deploy',
+    summary:
+      'Infrastructure changes went out last night; this morning a key ingestion job cannot read its data.',
+    levels: ['mid', 'senior'],
+    topic: ['incidents', 'iam', 'aws'],
+    related: [
+      'tools-iam-least-privilege-for-pipelines',
+      'tools-terraform-for-data-infrastructure',
+      'sd-aws-batch-lakehouse',
+    ],
+    start: 'alert',
+    steps: {
+      alert: {
+        text: "The `orders_raw_to_clean` Glue job failed at 05:10 with `AccessDenied` on `s3:GetObject` for `s3://lake-prod/raw/orders/dt=…`. It ran fine yesterday. Last night's Terraform apply changed IAM roles and bucket policies for the security tightening project.",
+        choices: [
+          {
+            label: 'Read the full error and find the denied call in CloudTrail',
+            next: 'trail',
+            verdict: 'best',
+            why: 'The error and the CloudTrail event name the exact principal, action and resource, and often hint at which policy denied it. Start from facts, not guesses.',
+          },
+          {
+            label: 'Attach AdministratorAccess to the job role to get it running',
+            next: 'alert',
+            verdict: 'weak',
+            why: 'It may not even work (an explicit deny in a bucket or key policy still wins), and it undoes the security work and hides the cause.',
+          },
+          {
+            label: 'Roll back the whole Terraform apply',
+            next: 'trail',
+            verdict: 'ok',
+            why: 'A safe mitigation if the job is urgent and the apply is cleanly reversible, but it also reverts every other change. Better to find the one policy, unless time is critical.',
+          },
+        ],
+      },
+      trail: {
+        text: "CloudTrail shows the call came from the job's role, and the error says it was denied by a **KMS key policy**: the raw objects are encrypted with a customer-managed key, and the apply replaced the key policy with a new template.",
+        choices: [
+          {
+            label:
+              'Compare the old and new key policy in the Terraform diff and see which principals lost access',
+            next: 'fix',
+            verdict: 'best',
+            why: 'The plan and the pull request show exactly what changed. Reading S3 objects encrypted with a KMS key needs permission on both the bucket and the key.',
+          },
+          {
+            label: "Add s3:* on the bucket to the job role's IAM policy",
+            next: 'trail',
+            verdict: 'weak',
+            why: "The S3 permission isn't the problem: decrypting needs kms:Decrypt allowed by the key policy as well. Wider S3 access changes nothing here.",
+          },
+        ],
+      },
+      fix: {
+        text: "The new key policy template only lists the admin role and the new ingestion roles. The older transformation jobs' roles, including this one, were left out.",
+        choices: [
+          {
+            label:
+              'Add the transformation roles to the key policy in code, apply through the normal pipeline, rerun the job, and check other jobs using that key',
+            next: 'done',
+            verdict: 'best',
+            why: "Fix it in code so the next apply doesn't undo it, keep the grant narrow (kms:Decrypt for those roles), and look for the other victims before they page you.",
+          },
+          {
+            label: 'Edit the key policy directly in the console to save time',
+            next: 'fix',
+            verdict: 'weak',
+            why: 'The next Terraform apply will silently revert your fix, and the change bypasses review. If you must hotfix by hand, put the same change in code immediately.',
+          },
+        ],
+      },
+      done: {
+        text: 'Three jobs were affected; all reran by 07:20. Follow-ups: a dev environment that mirrors prod key policies, a post-apply smoke test that runs one read per data domain, and a plan review checklist item for any change to key or bucket policies.',
+      },
+    },
+  },
+  {
+    id: 'cloud-bill-doubled',
+    title: 'The cloud bill doubled this month',
+    summary:
+      "Finance flags that the data platform's AWS bill is twice last month's, with no new projects.",
+    levels: ['mid', 'senior', 'lead'],
+    topic: ['incidents', 'cost', 'aws'],
+    related: [
+      'tools-serverless-vs-cluster-compute',
+      'tools-cloud-networking-for-data',
+      'sd-cut-runaway-warehouse-cost',
+    ],
+    start: 'alert',
+    steps: {
+      alert: {
+        text: "Finance asks why the data platform account spent **twice** last month's amount. No new projects launched. Resources are mostly tagged by team and pipeline.",
+        choices: [
+          {
+            label:
+              'Break the increase down by service and usage type in the cost tool, compared with last month',
+            next: 'breakdown',
+            verdict: 'best',
+            why: 'Cost increases are usually concentrated in one or two lines. Find where the money went before guessing why.',
+          },
+          {
+            label: 'Ask every team to cut 30% of their usage',
+            next: 'alert',
+            verdict: 'weak',
+            why: "Spreading cuts evenly punishes teams that didn't cause it, and doesn't stop the real cause from growing.",
+          },
+        ],
+      },
+      breakdown: {
+        text: 'Two lines explain most of it: **Athena data scanned** is up 4×, and a new **NAT gateway data processing** charge appeared in mid-month.',
+        choices: [
+          {
+            label:
+              'Look at the top Athena queries by data scanned, and at which resources send traffic through the NAT gateway',
+            next: 'causes',
+            verdict: 'best',
+            why: 'Query history and VPC flow logs (or tagged usage) point at the specific queries and jobs. Two concrete leads beat a general review.',
+          },
+          {
+            label: 'Switch Athena off until next month',
+            next: 'breakdown',
+            verdict: 'weak',
+            why: 'Analysts lose their tool and the NAT cost keeps running. Find the expensive queries instead of blocking everyone.',
+          },
+        ],
+      },
+      causes: {
+        text: "A new dashboard runs a query every 15 minutes on a table stored as **JSON with no partitions**, scanning 2 TB each time. And a cluster moved to private subnets mid-month now reads S3 **through the NAT gateway**, because the subnets' route table has no S3 gateway endpoint.",
+        choices: [
+          {
+            label:
+              'Convert the table to partitioned Parquet and point the dashboard at a small aggregate; add an S3 gateway endpoint to those route tables',
+            next: 'done',
+            verdict: 'best',
+            why: 'Both fixes remove the cause: scans drop by orders of magnitude, and S3 traffic stops paying NAT processing. Neither limits what people can do.',
+          },
+          {
+            label: 'Reduce the dashboard refresh to hourly',
+            next: 'causes',
+            verdict: 'weak',
+            why: 'A fine stopgap for today (4× fewer scans), but not the fix: each run still scans 2 TB, and the NAT cost is untouched. What removes both causes?',
+          },
+        ],
+      },
+      done: {
+        text: 'Next month the bill is back near its baseline. Follow-ups: budgets with alerts per team, Athena workgroup limits on data scanned per query, a design review item for anything moving into private subnets, and a monthly cost review with the top 10 lines and their owners.',
+      },
+    },
+  },
 ];

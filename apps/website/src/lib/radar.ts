@@ -130,6 +130,12 @@ export const SKILLS: Skill[] = [
     ],
   },
   {
+    id: 'cloud',
+    label: 'Cloud & infrastructure',
+    short: 'Cloud',
+    topics: ['aws', 'iam', 'networking', 'infrastructure-as-code', 'serverless'],
+  },
+  {
     id: 'warehouse',
     label: 'Warehouse performance',
     short: 'Warehouse',

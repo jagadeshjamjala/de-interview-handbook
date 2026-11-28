@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
   BOX_H,
   CANVAS_H,
+  PROVIDER_PRESETS,
+  STAGES,
   addBox,
   clampBox,
   connect,
@@ -52,4 +54,18 @@ test('findings: missing stages, loose boxes, no source→serve path; none for a 
   assert.deepEqual(findings(d), []);
   assert.ok(findings(removeBox(d, 'b3')).some((f) => f.startsWith('No store')));
   assert.equal(outline(d).split('\n')[0], 'PG (Source) → CDC (Ingest)');
+});
+
+test('every provider palette covers every stage with unique names', () => {
+  for (const [provider, palette] of Object.entries(PROVIDER_PRESETS)) {
+    assert.deepEqual(Object.keys(palette).sort(), [...STAGES].sort(), provider);
+    for (const s of STAGES) {
+      assert.ok(palette[s].length >= 2, `${provider}.${s}`);
+      assert.equal(new Set(palette[s]).size, palette[s].length, `${provider}.${s} duplicates`);
+      assert.ok(
+        palette[s].every((l) => l.length <= 40),
+        `${provider}.${s} label too long`,
+      );
+    }
+  }
 });

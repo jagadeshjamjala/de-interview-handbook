@@ -10,6 +10,24 @@
   gap: 0.75rem 1.5rem;
 }
 
+.provider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-basis: 100%;
+  font-weight: 600;
+}
+
+.provider select {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-500);
+  border-radius: var(--ifm-global-radius);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+}
+
 .group {
   display: flex;
   flex-wrap: wrap;
@@ -63,6 +81,11 @@
   overflow: auto;
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: var(--ifm-global-radius);
+}
+
+.scroller:focus-visible {
+  outline: 3px solid var(--ifm-color-primary);
+  outline-offset: 2px;
 }
 
 .canvas {
