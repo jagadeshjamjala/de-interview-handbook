@@ -1,0 +1,74 @@
+---
+title: ETL & integration
+sidebar_position: 4.5
+description: How ETL and integration engineer interviews work — file feeds, validation and rejects, incremental loads and CDC, ETL tools and moving to ELT — with practice questions on a messy-files dataset.
+levels: [junior, mid, senior, lead]
+topic: [etl, file-ingestion, reject-handling, incremental-loads]
+---
+
+# ETL & integration
+
+ETL and integration roles move data between systems reliably: from operational databases, partner files and APIs into the warehouse, and sometimes back out. Interviews are **SQL-heavy and scenario-driven**: "a file arrived late", "3% of rows were rejected", "implement this mapping", "rerun yesterday's load safely". Coding is usually lighter than for platform roles; questions about specific tools are common.
+
+<LevelExpectations
+  junior="Validate and load a file, explain full vs incremental loads, write the SQL for a simple upsert, and say where rejected rows go."
+  mid="Design incremental loads with watermarks or CDC, handle duplicates, resends and late files, and make every load idempotent."
+  senior="Design a multi-source integration platform with load logs, layout versioning, reject workflows, SLAs and parity-checked migrations."
+  lead="Set integration standards and data contracts with partners, decide ETL tool vs ELT, and run large migrations off legacy tools."
+/>
+
+## The load patterns
+
+| Pattern | How it works | Use when | Watch out for |
+|---|---|---|---|
+| **Full reload** | Truncate and reload everything | Small tables, or no reliable change marker | Cost and runtime as data grows; a brief empty table unless you swap atomically |
+| **Incremental by watermark** | Pull rows with `updated_at` after the last successful run | The source has a trustworthy update timestamp | Late or backdated updates; equal timestamps at the boundary (overlap a little and upsert) |
+| **CDC** | Read the database's change log (inserts, updates, deletes) | Large or busy tables, or you need deletes | Ordering, schema changes, the initial snapshot |
+| **File feeds** | Partners or systems drop files on a schedule | External parties, legacy systems | Missing, late, duplicate or truncated files; layout changes |
+
+Whatever the pattern, **make the load idempotent**: running it twice for the same input gives the same result (upsert by key, or overwrite the date partition in one transaction). Resends, retries and backfills then become routine.
+
+## Validation and rejects
+
+1. **File-level checks first:** the expected file arrived, once, on time, complete (header and trailer counts or a manifest), with the right layout. If any fails, stop the whole file.
+2. **Row-level checks:** required keys present, types and formats parse, codes are known. Give each rejected row **one reason** in a defined order.
+3. **Quarantine, don't drop.** Write rejects to a table with file, line number, reason and the raw content, report them to the source, and reprocess fixed rows.
+4. **Threshold.** Load the valid rows only if the reject rate is normal. A spike usually means a format change, and loading the rest would publish a partial picture.
+
+## Change detection and upserts
+
+- **Deduplicate first:** one row per key (the latest), or `MERGE` will fail or behave unpredictably.
+- **Trim and normalize keys** before matching, or padded codes become new records.
+- **Compare NULL-safely:** `a <> b` is NULL when either side is NULL. Use `IS DISTINCT FROM`, `COALESCE` on both sides, or a row hash.
+- **Type 1 vs type 2:** overwrite changed attributes, or close the current version and insert a new one. See the [SCD cheatsheet](../cheatsheets/scd-types.mdx).
+
+## ETL tools and ELT
+
+Traditional ETL tools are visual and run transformations on their own servers:
+- **Informatica PowerCenter:** mappings run by sessions inside workflows.
+- **SSIS:** packages with control flows and data flows.
+- **Azure Data Factory:** pipelines of activities, plus mapping data flows.
+
+**Pushdown** turns parts of a mapping into SQL that runs in the database instead. **ELT** loads raw data first and transforms it with SQL in the warehouse (often with dbt), so transformations scale with the warehouse, are versioned and tested, and can be rerun from raw data.
+
+Schedulers such as Control-M and Autosys often hold the real dependency graph, so include them in any migration inventory.
+
+## Practice on messy files
+
+The **integration** dataset in the [SQL playground](/playground) is a month of raw daily CRM files exactly as an ETL team receives them. It has a missing day, a resent file, late and truncated deliveries, and lines with blank codes, bad emails and unparseable timestamps. The SQL questions below use it.
+
+<RelatedQuestions ids={["sql-feed-reject-reasons", "sql-feed-file-completeness", "sql-upsert-change-detection", "python-fixed-width-parser", "tools-etl-tools-and-elt-migration", "sd-partner-file-ingestion"]} />
+
+Related questions elsewhere in the bank:
+
+<RelatedQuestions ids={["python-batched-csv-reader", "python-paginated-api-with-retries", "python-idempotent-upsert-writer", "sql-build-scd2-from-change-log", "sd-cdc-postgres-to-lakehouse", "sd-legacy-to-cloud-migration"]} />
+
+Then try the [incident drills](/drills) "The partner's file didn't arrive" and "The reject rate jumped to 30%".
+
+## Common traps
+
+- Loading a resent file on top of the original instead of replacing it.
+- Assuming a file is complete because it exists; check the trailer or manifest.
+- Loading late files under the arrival date instead of their business date.
+- `CAST` on raw text that fails the whole load on one bad value; use safe parsing and rejects.
+- Comparing columns with `<>` when either side can be NULL.

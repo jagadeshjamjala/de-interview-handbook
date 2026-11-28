@@ -305,4 +305,177 @@ export const DRILLS: Drill[] = [
       },
     },
   },
+  {
+    id: 'partner-file-missing',
+    title: "The partner's file didn't arrive",
+    summary: 'A daily bank settlement file is missing and finance closes the books at 09:00.',
+    levels: ['junior', 'mid', 'senior'],
+    topic: ['incidents', 'file-ingestion', 'slas'],
+    related: [
+      'sql-feed-file-completeness',
+      'sd-partner-file-ingestion',
+      'sd-payments-ledger-reconciliation',
+    ],
+    start: 'alert',
+    steps: {
+      alert: {
+        text: "06:15. The expected-file check alerts: **no settlement file from the bank for yesterday**. It's usually on the SFTP server by 04:00. Finance's reconciliation runs at 08:00 and closes at 09:00.",
+        choices: [
+          {
+            label: 'Check the SFTP server and the load log yourself before contacting anyone',
+            next: 'check',
+            verdict: 'best',
+            why: "Confirm it's really missing on your side first: the file may be there but stuck (wrong folder, a new name, a failed pickup or decryption).",
+          },
+          {
+            label: 'Email the bank straight away asking them to send the file',
+            next: 'alert',
+            verdict: 'weak',
+            why: "If the file is sitting in your landing folder under a new name, you've wasted their time and yours. Check your own side first; it takes two minutes.",
+          },
+          {
+            label: 'Run the reconciliation with yesterday missing and fix it later',
+            next: 'alert',
+            verdict: 'weak',
+            why: 'Finance would reconcile against incomplete data and every unmatched payment would look like a break. Partial data is worse than a clear delay.',
+          },
+        ],
+      },
+      check: {
+        text: "The SFTP folder has no new file. The load log shows the pickup job ran at 04:00, 05:00 and 06:00 and found nothing. The bank's status page shows no incident.",
+        choices: [
+          {
+            label:
+              "Contact the bank's operations desk through the agreed channel, and tell finance there may be a delay",
+            next: 'bank',
+            verdict: 'best',
+            why: 'Now it really is on their side. Use the contact in the integration runbook, and give finance a heads-up early so they can plan.',
+          },
+          {
+            label: 'Keep waiting for the 07:00 pickup run before telling anyone',
+            next: 'check',
+            verdict: 'weak',
+            why: "Finance needs time to plan around a delay. Silence until 07:00 leaves them one hour. Tell them now that it's late and when you'll update.",
+          },
+        ],
+      },
+      bank: {
+        text: "08:10. The bank replies: their batch failed overnight, and they'll send the file around 11:00.",
+        choices: [
+          {
+            label:
+              "Tell finance the new time; agree to reconcile the other partners now and the bank's settlements when the file lands",
+            next: 'arrive',
+            verdict: 'best',
+            why: 'Most of the close can proceed. A clear plan with a time is what finance needs, and per-partner loads make it possible.',
+          },
+          {
+            label:
+              "Load the day before's file again as a placeholder so the reconciliation has data",
+            next: 'bank',
+            verdict: 'weak',
+            why: 'Duplicating old settlements creates false matches and breaks that someone has to unpick later. Never fake data to fill a gap.',
+          },
+        ],
+      },
+      arrive: {
+        text: "11:05. The file arrives. The pipeline loads it into yesterday's business date, the trailer count matches, and 3 of 4,120 rows are rejected.",
+        choices: [
+          {
+            label:
+              "Rerun the bank's reconciliation for that date, send the 3 rejects to the bank, and close the alert",
+            next: 'done',
+            verdict: 'best',
+            why: 'Because loads are idempotent per business date, a late file is a normal rerun. The rejects go back to the sender with line numbers.',
+          },
+          {
+            label: "Load it into today's date so the dashboards pick it up faster",
+            next: 'arrive',
+            verdict: 'weak',
+            why: 'Settlements belong to the business date they describe. Loading by arrival date shifts amounts between days and breaks the reconciliation.',
+          },
+        ],
+      },
+      done: {
+        text: "Finance closes at 12:30 instead of 09:00, with complete data. Follow-ups: alert at 05:00 rather than 06:15 for this partner, add the bank's operations contact and escalation path to the runbook, and ask the bank to notify you when their batch fails.",
+      },
+    },
+  },
+  {
+    id: 'reject-rate-spike',
+    title: 'The reject rate jumped to 30%',
+    summary: 'A customer feed that normally rejects 1% of rows suddenly rejects almost a third.',
+    levels: ['junior', 'mid', 'senior'],
+    topic: ['incidents', 'reject-handling', 'data-quality'],
+    related: [
+      'sql-feed-reject-reasons',
+      'python-fixed-width-parser',
+      'sql-upsert-change-detection',
+    ],
+    start: 'alert',
+    steps: {
+      alert: {
+        text: "The customer feed load finished, but the reject-rate monitor fired: **31% of rows rejected** (usual: under 1%). The load's threshold is 5%, so the valid rows were **not** loaded.",
+        choices: [
+          {
+            label: 'Group the rejects by reason and look at a few raw lines',
+            next: 'reasons',
+            verdict: 'best',
+            why: 'A sudden spike almost always has one cause. Counts by reason plus a handful of raw lines usually show it in minutes.',
+          },
+          {
+            label: 'Raise the threshold to 35% so the valid rows load',
+            next: 'alert',
+            verdict: 'weak',
+            why: 'The threshold just did its job. Loading now would publish a third of customers as missing changes, without knowing why.',
+          },
+        ],
+      },
+      reasons: {
+        text: 'Almost all rejects are `bad_timestamp`. The raw values look like `2024-03-14T10:22:05Z`; before today they were `2024-03-14 10:22:05`.',
+        choices: [
+          {
+            label:
+              'Check with the source team whether the format change is intentional and permanent',
+            next: 'confirm',
+            verdict: 'best',
+            why: "It's a format change, not bad data. Before changing the parser, confirm it's deliberate, which timezone it uses, and whether it applies to all fields.",
+          },
+          {
+            label: 'Patch the parser to accept both formats and rerun immediately',
+            next: 'confirm',
+            verdict: 'ok',
+            why: 'Probably the right fix, but the `Z` means UTC; if the old values were local time, accepting both silently shifts timestamps. Confirm the semantics first, or at least in parallel.',
+          },
+          {
+            label: 'Manually edit the file to the old format and reload it',
+            next: 'reasons',
+            verdict: 'weak',
+            why: "Hand-editing a source file breaks the audit trail, and tomorrow's file will fail the same way.",
+          },
+        ],
+      },
+      confirm: {
+        text: 'The source team confirms: they upgraded their export tool. Timestamps are now ISO 8601 in UTC; the old ones were in UTC too, just without the marker. No other fields changed.',
+        choices: [
+          {
+            label:
+              'Add the new format as a new layout version effective today, reprocess the raw file, and check the reject rate is back to normal',
+            next: 'done',
+            verdict: 'best',
+            why: 'A versioned layout keeps old files parseable and makes the change explicit. Reprocessing from the raw file needs no resend.',
+          },
+          {
+            label: 'Replace the old format everywhere with the new one',
+            next: 'confirm',
+            verdict: 'weak',
+            why: 'Backfills and reprocessing of older files would then fail. Keep both formats, chosen by effective date.',
+          },
+        ],
+      },
+      done: {
+        text: 'The reprocessed file rejects 0.8% of rows and loads at 10:40. Follow-ups: ask the source team for change notice in the data contract, and add a check that alerts on a new rejection reason dominating, which points straight at format changes.',
+      },
+    },
+  },
 ];

@@ -62,6 +62,7 @@ Step 2 — The rounds
   ├─ Data modeling        (grain, Kimball, SCD 1/2/3/6, Data Vault, OBT, "model X")
   ├─ Data warehouse engineering (columnar storage, MPP distribution, query plans, loading, workload mgmt) [live: Phase 10b]
   ├─ Pipeline system design (framework + worked designs)
+  ├─ ETL & integration    (files, rejects, incremental loads, ETL tools, migrating to ELT)                [live: Phase 10c]
   ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)   [hidden in v1]
   ├─ Data quality & observability                                                                      [live: Phase 9b]
   ├─ Incident drills      ("the dashboard is wrong", "the job is 3h late")                              [live: /drills page]
@@ -205,6 +206,7 @@ Non-SQL questions use the same shape, but `solution` holds a model answer (Pytho
   - `rides` (drivers, riders, trips, ratings)
   - `payments` (accounts, transactions, fx_rates, chargebacks) — fintech flavor
   - `events` (users, logins, page_views, sessions)
+  - `integration` (feed_files, customer_feed, customers_target): a month of raw daily CRM files with planted delivery and row-level problems (Phase 10c)
 - **Determinism:** stdlib `random.Random(seed)`, plain Python, no Faker, NumPy only if needed; pinned deps. `datasets/checksums.sha256` is committed; a CI job regenerates and fails if checksums differ.
 - **Schema panel:** tables, columns, types, row counts, "preview 10 rows".
 - **Check my answer:** run the user's query and the hidden reference query, then compare result sets (column count, row count, values; order-aware only if `check.order_matters`; float tolerance). Show "✅ Correct", "❌ Wrong row count (got 12, expected 9)", or "❌ Values differ in row 3".

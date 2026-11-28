@@ -1,0 +1,60 @@
+id: sd-partner-file-ingestion
+title: Design a reliable partner file ingestion pipeline
+round: system-design
+topic: [file-ingestion, reject-handling, idempotency, slas]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 40
+prompt: |
+  You integrate with 25 external partners (banks, logistics providers, a payroll vendor). Each sends daily files over SFTP: CSV or fixed-width, some encrypted, each with its own layout, and they occasionally resend corrected files. Finance needs the data loaded by 07:00, and partners need to hear about bad records quickly.
+
+  Design the ingestion: from file arrival to loaded warehouse tables, including validation, rejects, duplicates, late or missing files and monitoring.
+hints:
+  - What is the first thing you do with a file before parsing it, so you can always reprocess it later?
+  - How does the pipeline know a file is complete, is the right one, and hasn't been loaded already?
+  - Which problems should stop a load, and which should only quarantine some rows?
+solution:
+  answer: |
+    **1. Land and preserve.** Pick files up from SFTP and copy them unchanged, with their metadata, to **immutable raw storage** (object storage, partitioned by partner and business date). Decrypt into a separate, access-controlled area. Raw files are the source of truth for reprocessing and audits; keep them per your retention policy.
+
+    **2. Register every file in a load log.** Record partner, file name, business date (from the name or header), size, checksum, received time and status. The log drives everything else:
+    - **Duplicates:** the same checksum means skip; a new version for an already-loaded date means *replace* that date's data atomically.
+    - **Completeness:** wait for a done or manifest file, or a stable size, before processing; check header and trailer control counts.
+    - **Expected-file calendar:** each partner's schedule says which files should arrive, so missing ones alert at the deadline rather than when someone notices.
+
+    **3. Parse with layouts as configuration.** A versioned layout per partner (positions or columns, types, formats, the effective date). Generic parsers read the config, so a new partner is new configuration rather than new code.
+
+    **4. Validate in two tiers.**
+    - **File-level** (trailer mismatch, wrong date, unreadable): fail the whole file and alert. Loading part of a file publishes a misleading picture.
+    - **Row-level** (bad formats, missing keys, unknown codes): write rejects to a **quarantine table** with file, line, reason and raw content; load the valid rows if the reject rate is under the partner's threshold, otherwise fail.
+
+    **5. Load idempotently.** Stage, then upsert by business key or overwrite the business-date partition, in one transaction. Re-running any file or date gives the same result, so resends and backfills are routine.
+
+    **6. Close the loop.**
+    - Daily reject reports to each partner (automated email or portal) with line numbers and reasons.
+    - Alerts on missing or late files, failures and reject-rate spikes, routed to the owning team, with an SLA dashboard per partner against the 07:00 target.
+    - Runbooks for the common cases: resend, late file, layout change.
+
+    **Security:** PGP keys in a secrets manager, separate credentials per partner, PII masked or restricted in the raw zone, and access logged.
+rubric:
+  - point: 'Lands files unchanged in immutable storage before processing'
+    weight: 2
+    topic: file-ingestion
+  - point: 'Uses a load log with checksums for duplicates, resends and completeness (manifest/trailer), plus an expected-file calendar'
+    weight: 3
+    topic: file-ingestion
+  - point: 'Separates file-level failures from row-level rejects, with quarantine and thresholds'
+    weight: 3
+    topic: reject-handling
+  - point: 'Loads idempotently (upsert or partition overwrite) so resends and backfills are safe'
+    weight: 2
+    topic: idempotency
+  - point: 'Monitors SLAs and reports rejects back to partners; handles keys and PII securely'
+    weight: 2
+    topic: slas
+follow_ups:
+  - q: 'A partner changes their layout without warning and every row is rejected. What happens, and what should happen?'
+    a: 'The reject-rate threshold fails the file instead of loading nothing silently, and the owner is alerted with sample rejected lines. The fix is a new layout version with an effective date, then reprocessing the raw file from storage. Afterwards, agree on change notice with the partner and add a header-based layout check.'
+  - q: 'Finance asks to see exactly which file and line produced a number in their report. How do you support that?'
+    a: 'Carry lineage columns through the pipeline: source file id (from the load log) and line number on each staged row, and keep them in the warehouse tables or a link table. Combined with immutable raw files, any figure can be traced back to its original line.'

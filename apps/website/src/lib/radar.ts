@@ -79,7 +79,7 @@ export const SKILLS: Skill[] = [
   },
   {
     id: 'pipelines',
-    label: 'Batch pipeline design',
+    label: 'Batch pipelines & ETL',
     short: 'Pipelines',
     topics: [
       'idempotency',
@@ -92,6 +92,10 @@ export const SKILLS: Skill[] = [
       'lakehouse',
       'batch',
       'data-quality',
+      'file-ingestion',
+      'reject-handling',
+      'incremental-loads',
+      'etl-tools',
     ],
   },
   {

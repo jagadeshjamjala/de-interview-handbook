@@ -1,0 +1,76 @@
+id: sql-feed-reject-reasons
+title: Validate a raw feed and count rejects by reason
+round: sql
+topic: [data-quality, reject-handling, file-ingestion]
+levels: [junior, mid]
+difficulty: easy
+companies: []
+dataset: integration
+time_minutes: 15
+prompt: |
+  Table: `customer_feed(file_name, line_no, customer_code, full_name, email, country, updated_at)`. Every column arrives as **text**, exactly as it was in the daily CSV files.
+
+  Before loading, each line is checked in this order, and gets the **first** reason that applies:
+
+  1. `missing_code`: `customer_code` is empty or only spaces.
+  2. `bad_email`: `email` isn't of the form `something@something.something` with no spaces.
+  3. `bad_country`: `country` isn't exactly 2 characters.
+  4. `bad_timestamp`: `updated_at` isn't a valid timestamp in the format `YYYY-MM-DD HH:MM:SS`.
+
+  Lines that pass every check are `valid`. Count the lines per outcome, across all files.
+
+  Output: `outcome, rows`. Order by `outcome`.
+hints:
+  - A `CASE` expression checks conditions in order and stops at the first match, which gives you the precedence for free.
+  - How do you test whether text parses as a timestamp without the query failing on the bad ones? Some bad values look almost right.
+solution:
+  sql: |
+    WITH checked AS (
+      SELECT CASE
+               WHEN TRIM(customer_code) = '' THEN 'missing_code'
+               WHEN NOT regexp_full_match(email, '[^@ ]+@[^@ ]+\.[^@ ]+') THEN 'bad_email'
+               WHEN LENGTH(country) <> 2 THEN 'bad_country'
+               WHEN TRY_STRPTIME(updated_at, '%Y-%m-%d %H:%M:%S') IS NULL THEN 'bad_timestamp'
+               ELSE 'valid'
+             END AS outcome
+      FROM customer_feed
+    )
+    SELECT outcome, COUNT(*) AS rows
+    FROM checked
+    GROUP BY outcome
+    ORDER BY outcome;
+  explanation: |
+    Validating raw text before it reaches typed tables is the core of an ETL load. Three details matter:
+
+    - **Precedence.** One line can break several rules; give it one reason, in a defined order, so reject counts add up to the number of rejected lines.
+    - **Safe parsing.** `CAST(updated_at AS TIMESTAMP)` would fail the whole query on the first bad value. `TRY_STRPTIME` (or `TRY_CAST`) returns NULL instead, and an explicit format catches values like `03/14/2024 10:22`. It also rejects impossible dates such as `2024-02-30`, which a simple pattern check would let through.
+    - **Trim before checking.** A code of `'  C0123 '` is valid after trimming; a code of `'   '` is empty.
+
+    In production the rejected lines go to a reject table with the file name, line number and reason, so the source team can fix and resend them, and the reject rate is monitored per file.
+check:
+  order_matters: true
+rubric:
+  - point: 'Applies the checks in the stated order with one reason per line'
+    weight: 2
+    topic: reject-handling
+  - point: 'Parses timestamps safely (TRY_STRPTIME / TRY_CAST) and catches impossible dates'
+    weight: 2
+    topic: data-quality
+  - point: 'Explains where rejects go and how they are reported and reprocessed'
+    weight: 2
+    topic: reject-handling
+follow_ups:
+  - q: 'The source team fixes 20 rejected lines and resends them. How do you load them without duplicating the good lines?'
+    a: 'Make the load idempotent: upsert by the business key (customer_code) with the newest updated_at winning, so reloading a corrected line replaces or ignores rather than duplicates. Mark the original rejects as resolved, linked to the resend file, so reprocessing is traceable.'
+  - q: 'When should a reject rate stop the whole load instead of loading the valid rows?'
+    a: "When the rate is far above normal (for example over 5% when it's usually 1%), or a critical field fails everywhere. That usually means a format change or a broken extract, and loading the rest would publish a partial, misleading picture. Set a threshold per feed and fail loudly above it."
+dialect_notes:
+  snowflake:
+    note: "`TRY_TO_TIMESTAMP(updated_at, 'YYYY-MM-DD HH24:MI:SS')` returns NULL instead of failing on bad values."
+    source: https://docs.snowflake.com/en/sql-reference/functions/try_to_timestamp
+  bigquery:
+    note: "`SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', updated_at)` returns NULL instead of an error."
+    source: https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-reference#safe_prefix
+  sqlserver:
+    note: '`TRY_CONVERT(datetime2, updated_at, 120)` parses the ODBC canonical format and returns NULL on failure.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/functions/try-convert-transact-sql

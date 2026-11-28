@@ -1,0 +1,81 @@
+id: sql-feed-file-completeness
+title: Check a month of feed files for missing, late and broken deliveries
+round: sql
+topic: [file-ingestion, data-quality, date-spine, slas]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: integration
+time_minutes: 20
+prompt: |
+  Tables:
+
+  - `feed_files(file_name, feed, business_date, received_at, declared_rows)`: one row per file received. `declared_rows` is the line count the sender put in the file's trailer.
+  - `customer_feed(file_name, line_no, ...)`: the lines actually loaded from each file.
+
+  The CRM sends **one file per business day**, due by **06:00 the next day**. Produce an audit of March 2024 that lists every problem:
+
+  - `missing`: no file for a business date (`file_name` is NULL).
+  - `duplicate`: a second or later file for the same business date (the extra file).
+  - `late`: a file received after 06:00 on the day after its business date.
+  - `row_count_mismatch`: a file whose loaded line count differs from `declared_rows`.
+
+  A file can have more than one issue. Output: `business_date, issue, file_name`. Order by `business_date, issue`.
+hints:
+  - A missing file has no row anywhere. What do you need in order to notice an absence?
+  - '"Late" is relative to each file''s own business date: build the deadline from it.'
+  - Compare declared counts with what was loaded, and remember a file could have zero loaded lines.
+solution:
+  sql: |
+    WITH days AS (
+      SELECT CAST(d AS DATE) AS business_date
+      FROM generate_series(DATE '2024-03-01', DATE '2024-03-31', INTERVAL 1 DAY) AS t(d)
+    ),
+    loaded AS (
+      SELECT file_name, COUNT(*) AS n FROM customer_feed GROUP BY file_name
+    ),
+    ranked AS (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY business_date ORDER BY received_at) AS nth
+      FROM feed_files
+    )
+    SELECT d.business_date, 'missing' AS issue, CAST(NULL AS VARCHAR) AS file_name
+    FROM days d
+    WHERE NOT EXISTS (SELECT 1 FROM feed_files f WHERE f.business_date = d.business_date)
+    UNION ALL
+    SELECT business_date, 'duplicate', file_name FROM ranked WHERE nth > 1
+    UNION ALL
+    SELECT business_date, 'late', file_name
+    FROM feed_files
+    WHERE received_at > CAST(business_date AS TIMESTAMP) + INTERVAL 30 HOUR
+    UNION ALL
+    SELECT f.business_date, 'row_count_mismatch', f.file_name
+    FROM feed_files f
+    LEFT JOIN loaded l ON l.file_name = f.file_name
+    WHERE f.declared_rows <> COALESCE(l.n, 0)
+    ORDER BY business_date, issue;
+  explanation: |
+    A file-based feed needs a **control check** before anyone trusts the data: did everything arrive, once, on time and complete?
+
+    - **Missing files need a calendar.** You can't find an absent file by querying the files table; you compare against the dates you *expected*. Same idea as a date spine.
+    - **Duplicates:** keep the first file per business date and flag the rest. In a real load, a resend should replace or be ignored, never be added on top, or every row is double counted.
+    - **Late:** the deadline is per file: business date + 1 day + 6 hours (30 hours after midnight of the business date).
+    - **Completeness:** a trailer or control count (`declared_rows`) catches truncated transfers. `COALESCE(n, 0)` keeps a file with no loaded lines from slipping through the comparison as NULL.
+
+    One query, one row per problem, makes a good daily alert: if it returns rows, someone looks.
+check:
+  order_matters: true
+rubric:
+  - point: 'Uses a calendar of expected dates to find missing files'
+    weight: 3
+    topic: date-spine
+  - point: "Flags duplicates (keeping the first) and computes lateness from each file's own deadline"
+    weight: 2
+    topic: file-ingestion
+  - point: 'Reconciles declared vs loaded rows, handling files with no loaded lines'
+    weight: 2
+    topic: data-quality
+follow_ups:
+  - q: 'The 17 March file arrives on 20 March. How should the pipeline handle it?'
+    a: 'Load it into its own business date (17 March), not the day it arrived, then rerun the downstream steps for that date. Because loads are idempotent per business date, this is a normal backfill. Close the "missing" alert and record it as late.'
+  - q: 'How would you stop a resent file from being loaded twice?'
+    a: "Track processed files in a load log keyed by business date and a content hash (or file name plus checksum). A resend for an already-loaded date either replaces that date's data atomically (delete-and-insert or partition overwrite) or is skipped if its hash matches. Never append blindly."

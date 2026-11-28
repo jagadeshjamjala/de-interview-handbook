@@ -1,0 +1,6 @@
+outcome,rows
+bad_country,8
+bad_email,15
+bad_timestamp,30
+missing_code,14
+valid,1095
