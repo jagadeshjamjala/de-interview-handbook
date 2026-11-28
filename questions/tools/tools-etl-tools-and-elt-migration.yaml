@@ -1,0 +1,63 @@
+id: tools-etl-tools-and-elt-migration
+title: ETL tools (Informatica, SSIS, Data Factory) and moving to ELT
+round: tools
+topic: [etl-tools, migrations, incremental-loads]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your company runs about 300 Informatica PowerCenter and SSIS jobs that extract from operational databases and files, transform the data on the ETL server, and load a SQL Server warehouse. Leadership wants to move to a cloud warehouse with an ELT approach (load raw data first, transform with SQL in the warehouse, for example with dbt).
+
+  Explain how traditional ETL tools are structured, what "pushdown" means, how ETL and ELT differ in practice, and how you'd plan the migration.
+hints:
+  - Where does the transformation run in each approach, and what does that mean for scaling and cost?
+  - What do these tools give you besides transformations (scheduling, error handling, lineage)? Something has to replace each of those.
+solution:
+  answer: |
+    **How the tools are structured.** Traditional ETL tools are visual: you build data flows from sources, transformations and targets, then wrap them in control flows that handle ordering, retries and parameters.
+    - **Informatica PowerCenter:** *mappings* (source → transformations → target) run by *sessions*, which *workflows* orchestrate.
+    - **SSIS:** *packages* with a *control flow* (tasks, precedence) and *data flows* (sources, transformations, destinations).
+    - **Azure Data Factory:** *pipelines* of *activities* (copy, data flow, stored procedure) with triggers, plus mapping data flows that run on managed Spark.
+
+    These tools also provide connectors, scheduling, error rows (reject outputs), logging and some lineage.
+
+    **ETL vs ELT.**
+    - **ETL:** transformations run on the ETL engine's servers, row by row or in its own memory. That engine has to scale with your data, and it's licensed and operated separately.
+    - **ELT:** raw data is loaded first and transformed with SQL inside the warehouse, which scales compute on demand. Transformations live as versioned SQL with tests and CI, and the raw data stays available for reprocessing.
+    - **Pushdown optimization** is the middle ground: the ETL tool translates parts of a mapping into SQL that runs in the source or target database, instead of moving the rows through its own engine.
+
+    **Planning the migration.**
+    1. **Inventory and triage:** list the jobs with their sources, targets, schedules, consumers and last run. Retire jobs nobody uses.
+    2. **Classify:** some jobs are simple extract-and-load (replace with a managed ingestion or copy tool); most are transformation logic (rewrite as SQL models); a few have complex procedural logic (rewrite carefully, or keep temporarily).
+    3. **Land raw first:** set up ingestion into the cloud warehouse with the same incremental logic (watermarks, CDC), so the old and new pipelines can run in parallel.
+    4. **Rebuild transformations as SQL models** in layers (staging → intermediate → marts), adding tests that the old jobs never had.
+    5. **Replace the hidden features:** scheduling and dependencies (an orchestrator), reject handling (quarantine tables and data tests), logging and alerting, lineage.
+    6. **Prove parity:** run both pipelines side by side and compare row counts, sums and key metrics automatically, then cut over consumers in waves.
+
+    **Watch out for:** logic hidden in stored procedures, ETL tool expressions with different NULL or rounding behavior, and scheduler dependencies that live outside the ETL tool (for example Control-M or Autosys).
+rubric:
+  - point: 'Describes the structure of ETL tools (mappings/packages/pipelines, control vs data flow)'
+    weight: 2
+    topic: etl-tools
+  - point: 'Contrasts ETL and ELT on where compute runs, scaling, versioning and reprocessing; explains pushdown'
+    weight: 3
+    topic: etl-tools
+  - point: 'Plans the migration: inventory, classify, land raw, rebuild in SQL, parallel run and parity checks'
+    weight: 3
+    topic: migrations
+  - point: 'Replaces what the tools did implicitly (scheduling, rejects, logging, lineage)'
+    weight: 2
+    topic: incremental-loads
+follow_ups:
+  - q: 'A PowerCenter mapping uses a lookup with a cache and an update strategy. What does that become in SQL?'
+    a: 'The cached lookup becomes a join (usually a LEFT JOIN to the lookup table, with the same handling of misses), and the update strategy (insert, update, reject) becomes a MERGE or an incremental model with a unique key, plus a reject table for rows the strategy rejected.'
+  - q: 'When would you keep an ETL tool rather than move everything to ELT?'
+    a: "When the transformation must happen before data lands (masking PII before it leaves a regulated network), when sources are niche systems that only the tool has connectors for, or when the team's skills and support contracts make a rewrite riskier than the benefit. Many teams keep the tool for extraction and do transformations in the warehouse."
+resources:
+  - title: SQL Server Integration Services (SSIS) docs
+    url: https://learn.microsoft.com/en-us/sql/integration-services/sql-server-integration-services
+  - title: Azure Data Factory docs — Introduction
+    url: https://learn.microsoft.com/en-us/azure/data-factory/introduction
+  - title: Azure Data Factory docs — Mapping data flows
+    url: https://learn.microsoft.com/en-us/azure/data-factory/concepts-data-flow-overview

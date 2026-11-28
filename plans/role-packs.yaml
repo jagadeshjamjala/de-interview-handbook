@@ -3,6 +3,8 @@
 # of listing them here. `pnpm questions` fails on unknown ids, DE 75 ids or duplicates.
 packs:
   generalist:
+    - sql-upsert-change-detection
+    - sd-partner-file-ingestion
     - sql-payments-finality-sla
     - tools-dbt-tests-and-contracts
   analytics:
@@ -18,10 +20,17 @@ packs:
     - sd-data-quality-observability
     - behavioral-build-vs-buy-decision
   etl:
+    - sql-feed-reject-reasons
+    - sql-feed-file-completeness
+    - sql-upsert-change-detection
+    - python-fixed-width-parser
+    - tools-etl-tools-and-elt-migration
+    - sd-partner-file-ingestion
     - sql-payments-finality-sla
     - sql-flag-daily-volume-anomalies
     - python-row-count-anomaly-detector
   warehouse:
+    - sql-upsert-change-detection
     - sql-distribution-key-skew
     - sql-month-end-balance-semi-additive
     - tools-reading-query-plans

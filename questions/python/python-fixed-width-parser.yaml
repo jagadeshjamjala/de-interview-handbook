@@ -1,0 +1,113 @@
+id: python-fixed-width-parser
+title: Parse a fixed-width file with a layout spec and a reject list
+round: python
+topic: [parsing, file-ingestion, reject-handling]
+levels: [junior, mid]
+difficulty: medium
+companies: []
+time_minutes: 25
+prompt: |
+  A bank partner sends fixed-width files. Each record line has fields at fixed positions; the first line is a header (`H` + file date) and the last is a trailer (`T` + record count, zero-padded to 6 digits).
+
+  Write `parse_fixed_width(lines, spec)` where `spec` is a list of `(name, start, length, kind)` tuples (0-based `start`; `kind` is `"str"`, `"int"` or `"cents"`). It returns `(records, rejects)`:
+
+  - Each record line starts with `D`. Slice every field from its spec position, strip spaces, and convert: `"int"` → `int`, `"cents"` → `int` cents parsed from a field like `000012345` (so `12345`), `"str"` → `str`. A record is a `dict` of field names.
+  - A record line that is too short for the spec, or whose `int`/`cents` field isn't all digits after stripping, goes to `rejects` as `(line_number, reason)` with 1-based line numbers; reasons are `"too_short"` or `"bad_number:<field>"` (the first bad field in spec order).
+  - Ignore blank lines. If the trailer's count doesn't equal the number of `D` lines (valid or not), raise `ValueError`.
+
+  Use only the standard library.
+hints:
+  - A line's length tells you whether every field fits, before you slice anything.
+  - '`str.isdigit()` on the stripped field covers the number check; decide what an empty numeric field means.'
+  - Count record lines separately from valid records, because the trailer counts what was sent, not what you accepted.
+solution:
+  python: |
+    def parse_fixed_width(lines, spec):
+        need = max(start + length for _, start, length, _ in spec)
+        records, rejects, sent, trailer = [], [], 0, None
+        for n, raw in enumerate(lines, start=1):
+            line = raw.rstrip("\r\n")
+            if not line.strip():
+                continue
+            kind = line[0]
+            if kind == "T":
+                trailer = int(line[1:7])
+                continue
+            if kind != "D":
+                continue  # header
+            sent += 1
+            if len(line) < need:
+                rejects.append((n, "too_short"))
+                continue
+            rec, bad = {}, None
+            for name, start, length, typ in spec:
+                value = line[start:start + length].strip()
+                if typ in ("int", "cents"):
+                    if not value.isdigit():
+                        bad = name
+                        break
+                    rec[name] = int(value)
+                else:
+                    rec[name] = value
+            if bad:
+                rejects.append((n, f"bad_number:{bad}"))
+            else:
+                records.append(rec)
+        if trailer is None or trailer != sent:
+            raise ValueError(f"trailer count {trailer} != {sent} record lines")
+        return records, rejects
+  explanation: |
+    Fixed-width files are still everywhere in banking, insurance and government integrations, and parsing them is an ETL interview staple. The points that separate a solid answer:
+
+    - **Positions come from a spec, not from the code.** A layout table (name, start, length, type) is the contract with the sender; changing the layout means changing data, not logic.
+    - **Validate before converting.** Check the line length, then each numeric field, and record *why* a line was rejected with its line number, so the sender can fix it. Never silently drop a line.
+    - **Money as integer cents.** Implied-decimal amounts (`000012345` = 123.45) stay exact as integers; floats would introduce rounding.
+    - **Control totals.** The trailer counts what was *sent*. If it doesn't match the record lines received, the file is incomplete or corrupt, and the whole file should fail rather than load partially. A rejected line still counts as sent.
+
+    It's a single pass, O(n), and streams naturally if `lines` is a file object.
+tests: |
+  spec = [("account", 1, 6, "str"), ("amount", 7, 9, "cents"), ("qty", 16, 3, "int"), ("name", 19, 8, "str")]
+  good = [
+      "H20240315",
+      "DACC001000012345007Alice   ",
+      "DACC002000000099001Bob     ",
+      "",
+      "DACC00300000x100002Carl    ",   # bad amount
+      "DACC004000000050",             # too short
+      "DACC005000000100   Dina    ",   # blank qty
+      "T000005",
+  ]
+  recs, rej = parse_fixed_width(good, spec)
+  assert recs == [
+      {"account": "ACC001", "amount": 12345, "qty": 7, "name": "Alice"},
+      {"account": "ACC002", "amount": 99, "qty": 1, "name": "Bob"},
+  ]
+  assert rej == [(5, "bad_number:amount"), (6, "too_short"), (7, "bad_number:qty")]
+  # trailer must match the number of record lines sent, valid or not
+  try:
+      parse_fixed_width(good[:-1] + ["T000004"], spec)
+      raise AssertionError("expected ValueError")
+  except ValueError:
+      pass
+  try:
+      parse_fixed_width(good[:-1], spec)   # no trailer at all
+      raise AssertionError("expected ValueError")
+  except ValueError:
+      pass
+  # Windows line endings and an empty file body
+  assert parse_fixed_width(["H20240315\r\n", "T000000\r\n"], spec) == ([], [])
+rubric:
+  - point: 'Drives slicing and typing from the spec, stripping padding'
+    weight: 2
+    topic: parsing
+  - point: 'Rejects with line number and reason instead of dropping or crashing'
+    weight: 3
+    topic: reject-handling
+  - point: 'Keeps amounts as integer cents and checks the trailer against lines sent'
+    weight: 2
+    topic: file-ingestion
+follow_ups:
+  - q: 'The partner adds a new field at the end of each line next month. How do you avoid breaking?'
+    a: 'Version the layout spec and pick it from the header (a layout version or file date) or a configuration keyed by the effective date. Lines longer than the old spec still parse; the new field is read only under the new version. Agree on change notice with the partner.'
+  - q: 'The file is 20 GB. What changes?'
+    a: 'Nothing in the logic if you stream: iterate the file object line by line, write records and rejects in batches, and keep only counters in memory. For speed, split by byte ranges at line boundaries across workers, and check the trailer after all parts finish.'

@@ -263,6 +263,71 @@ def events(r):
     return {"users": users, "logins": logins, "page_views": views, "sessions": sessions}
 
 
+def integration(r):
+    countries = ["US", "GB", "DE", "FR", "IN", "JP", "BR"]
+    names = {"DE": "Germany", "FR": "France", "JP": "Japan", "BR": "Brazil"}
+    state = {}  # customer_code -> (full_name, email, country); the source system's truth
+    target = []
+    for n in range(1, 401):
+        code = f"C{n:04d}"
+        name = person(r)
+        email = f"{name.split()[0].lower()}.{n}@example.com"
+        state[code] = (name, email, r.choice(countries))
+        if n <= 360:  # 40 customers are new in March
+            t_email = None if r.random() < 0.1 else email  # target lost some emails
+            at = datetime(2024, 2, 1) + timedelta(seconds=r.randint(0, 28 * 86_400))
+            target.append((code, state[code][0], t_email, state[code][2], ts(at)))
+
+    files, lines = [], []
+    for day in range(1, 32):
+        d = date(2024, 3, day)
+        if day == 17:  # the file for 17 March never arrives
+            continue
+        rows = []
+        for _ in range(r.randint(25, 45)):
+            code = f"C{r.randint(1, 400):04d}"
+            name, email, country = state[code]
+            change = r.random()
+            if change < 0.25:
+                email = f"{name.split()[0].lower()}.{code.lower()}.{day}@example.org"
+            elif change < 0.35:
+                country = r.choice([c for c in countries if c != country])
+            elif change < 0.40:
+                name = person(r)
+            state[code] = (name, email, country)  # else: a re-send of unchanged values
+            at = datetime(d.year, d.month, d.day) + timedelta(seconds=r.randint(0, 86_399))
+            row = [code, name, email, country, at.strftime("%Y-%m-%d %H:%M:%S")]
+            bad = r.random()
+            if bad < 0.012:
+                row[0] = ""
+            elif bad < 0.024:
+                row[0] = f"  {code} "  # padded but valid after TRIM
+            elif bad < 0.036:
+                row[2] = email.replace("@", " at ")
+            elif bad < 0.046 and country in names:
+                row[3] = names[country]
+            elif bad < 0.056:
+                row[4] = at.strftime("%m/%d/%Y %H:%M")
+            elif bad < 0.062:
+                row[4] = f"2024-02-30 {at:%H:%M:%S}"
+            rows.append(row)
+            if r.random() < 0.03:
+                rows.append(list(row))  # exact duplicate line within the file
+        name_ = f"crm_customers_{d:%Y%m%d}.csv"
+        late = day in (4, 22)
+        arrived = datetime(d.year, d.month, d.day) + timedelta(days=1, seconds=(
+            r.randint(9 * 3600, 14 * 3600) if late else r.randint(3600, 5 * 3600 + 1800)))
+        declared = len(rows) + (3 if day == 26 else 0)  # 26 March is truncated in transit
+        batches = [(name_, arrived)]
+        if day == 9:  # resent later the same morning with identical content
+            batches.append((f"crm_customers_{d:%Y%m%d}_resend.csv", arrived + timedelta(hours=2)))
+        for fname, at in batches:
+            files.append((fname, "crm_customers", d, ts(at), declared))
+            for i, row in enumerate(rows, start=1):
+                lines.append((fname, i, *row))
+    return {"feed_files": files, "customer_feed": lines, "customers_target": target}
+
+
 # Edge cases the questions rely on. Each query must return true.
 INVARIANTS = {
     "ecommerce": [
@@ -287,6 +352,20 @@ INVARIANTS = {
         "SELECT COUNT(*) > 0 FROM transactions WHERE dayofweek(txn_ts) IN (0, 6) AND currency <> 'USD'",
         "SELECT MIN(rate_date) < DATE '2024-01-01' FROM fx_rates",
         "SELECT COUNT(*) = 0 FROM fx_rates WHERE currency = 'USD'",
+    ],
+    "integration": [
+        "SELECT COUNT(*) = 30 FROM (SELECT DISTINCT business_date FROM feed_files)",
+        "SELECT COUNT(*) = 1 FROM (SELECT business_date FROM feed_files GROUP BY 1 HAVING COUNT(*) > 1)",
+        "SELECT COUNT(*) = 2 FROM feed_files WHERE received_at > CAST(business_date AS TIMESTAMP) + INTERVAL 30 HOUR",
+        "SELECT COUNT(*) = 1 FROM feed_files f WHERE declared_rows <> (SELECT COUNT(*) FROM customer_feed c WHERE c.file_name = f.file_name)",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE customer_code = ''",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE customer_code <> TRIM(customer_code) AND TRIM(customer_code) <> ''",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE email NOT LIKE '%@%'",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE LENGTH(country) <> 2",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE TRY_STRPTIME(updated_at, '%Y-%m-%d %H:%M:%S') IS NULL",
+        "SELECT COUNT(*) > 0 FROM customer_feed WHERE updated_at LIKE '2024-02-30%'",
+        "SELECT COUNT(*) > 0 FROM (SELECT file_name, customer_code, updated_at FROM customer_feed GROUP BY ALL HAVING COUNT(*) > 1)",
+        "SELECT COUNT(*) > 0 FROM customers_target WHERE email IS NULL",
     ],
     "events": [
         "SELECT COUNT(*) > 0 FROM users u WHERE NOT EXISTS (SELECT 1 FROM logins l WHERE l.user_id = u.user_id)",
@@ -322,7 +401,8 @@ def build(name, tables):
 
 
 def main():
-    generators = {"ecommerce": ecommerce, "rides": rides, "payments": payments, "events": events}
+    generators = {"ecommerce": ecommerce, "rides": rides, "payments": payments, "events": events,
+                  "integration": integration}
     manifest = {name: build(name, gen(random.Random(SEED + i)))
                 for i, (name, gen) in enumerate(generators.items())}
     (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

@@ -412,5 +412,90 @@
         }
       ]
     }
+  },
+  "integration": {
+    "feed_files": {
+      "rows": 31,
+      "columns": [
+        {
+          "name": "file_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "feed",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "business_date",
+          "type": "DATE"
+        },
+        {
+          "name": "received_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "declared_rows",
+          "type": "INTEGER"
+        }
+      ]
+    },
+    "customer_feed": {
+      "rows": 1162,
+      "columns": [
+        {
+          "name": "file_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "line_no",
+          "type": "INTEGER"
+        },
+        {
+          "name": "customer_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "updated_at",
+          "type": "VARCHAR"
+        }
+      ]
+    },
+    "customers_target": {
+      "rows": 360,
+      "columns": [
+        {
+          "name": "customer_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP"
+        }
+      ]
+    }
   }
 }

@@ -1,0 +1,88 @@
+id: sql-upsert-change-detection
+title: Decide insert, update or unchanged for an incremental load
+round: sql
+topic: [upserts, null-traps, deduplication, incremental-loads]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: integration
+time_minutes: 25
+prompt: |
+  Tables:
+
+  - `customer_feed(file_name, line_no, customer_code, full_name, email, country, updated_at)`: a month of raw daily files, all text. Some lines are invalid; one file was resent.
+  - `customers_target(customer_code, full_name, email, country, updated_at)`: the warehouse table before March's load. Some `email` values are NULL.
+
+  Before running a `MERGE`, you want to know what it will do. Using only **valid** feed lines (the code is non-blank after trimming, `email` contains `@` and a dot after it with no spaces, `country` has exactly 2 characters, `updated_at` parses as `YYYY-MM-DD HH:MM:SS`), take the **latest** line per customer by `updated_at`. Compare it with the target on `full_name`, `email` and `country`:
+
+  - `insert`: the customer isn't in the target.
+  - `update`: at least one of the three columns differs.
+  - `unchanged`: all three are the same.
+
+  Output: `action, customers`. Order by `action`.
+hints:
+  - Customer codes sometimes arrive with spaces around them. What happens to the join if you don't trim?
+  - The target has NULL emails. What does `NULL <> 'a@b.com'` evaluate to, and what does that do to your update count?
+solution:
+  sql: |
+    WITH valid AS (
+      SELECT TRIM(customer_code) AS customer_code, full_name, email, country,
+             STRPTIME(updated_at, '%Y-%m-%d %H:%M:%S') AS updated_at
+      FROM customer_feed
+      WHERE TRIM(customer_code) <> ''
+        AND regexp_full_match(email, '[^@ ]+@[^@ ]+\.[^@ ]+')
+        AND LENGTH(country) = 2
+        AND TRY_STRPTIME(updated_at, '%Y-%m-%d %H:%M:%S') IS NOT NULL
+    ),
+    latest AS (
+      SELECT *
+      FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_code ORDER BY updated_at DESC) AS rn
+        FROM valid
+      ) v
+      WHERE rn = 1
+    )
+    SELECT CASE
+             WHEN t.customer_code IS NULL THEN 'insert'
+             WHEN l.full_name IS DISTINCT FROM t.full_name
+               OR l.email IS DISTINCT FROM t.email
+               OR l.country IS DISTINCT FROM t.country THEN 'update'
+             ELSE 'unchanged'
+           END AS action,
+           COUNT(*) AS customers
+    FROM latest l
+    LEFT JOIN customers_target t ON t.customer_code = l.customer_code
+    GROUP BY action
+    ORDER BY action;
+  explanation: |
+    This is the change detection inside every incremental load (an SCD type 1 merge). Three traps each change the answer:
+
+    1. **NULL comparisons.** `l.email <> t.email` is NULL, not true, when the target email is NULL, so a customer whose email was finally captured is counted as `unchanged` and the fix never reaches the warehouse. `IS DISTINCT FROM` treats NULL as a comparable value. In engines without it, compare `COALESCE(a, '') <> COALESCE(b, '')`, or use a row hash that maps NULL to a fixed token.
+    2. **Untrimmed keys.** `'  C0123 '` doesn't match `'C0123'`, so it looks like a brand-new customer, and the merge would insert a duplicate.
+    3. **Deduplicate first.** A month of files, a resent file and repeated lines mean several rows per customer. `MERGE` fails or behaves unpredictably when more than one source row matches a target row, so reduce to the latest valid row per key before merging.
+
+    Counting the actions before running the merge is also a cheap sanity check: an unexpected spike in updates or inserts usually means a key or format problem upstream.
+check:
+  order_matters: true
+rubric:
+  - point: 'Uses NULL-safe comparison (IS DISTINCT FROM or equivalent) and explains the NULL trap'
+    weight: 3
+    topic: null-traps
+  - point: 'Trims keys and filters invalid lines before matching'
+    weight: 2
+    topic: incremental-loads
+  - point: 'Reduces to the latest row per key before comparing (required for MERGE)'
+    weight: 2
+    topic: deduplication
+follow_ups:
+  - q: 'Comparing every column gets slow on a table with 80 columns. What do teams do instead?'
+    a: 'Compute a hash of the tracked columns (with NULLs mapped to a fixed token and a delimiter between values) on both sides and compare the hashes. Store the hash on the target row so each load only hashes the incoming rows.'
+  - q: 'How does this change if the target keeps history (SCD type 2)?'
+    a: 'An update no longer overwrites: it closes the current version (sets valid_to and is_current = false) and inserts a new version. Inserts create the first version; unchanged rows do nothing. The comparison is against the current version only.'
+dialect_notes:
+  sqlserver:
+    note: '`IS DISTINCT FROM` is available in SQL Server 2022 and later; on earlier versions compare with `ISNULL` / `COALESCE` or `EXISTS (SELECT a EXCEPT SELECT b)`.'
+    source: https://learn.microsoft.com/en-us/sql/t-sql/queries/is-distinct-from-transact-sql
+  snowflake:
+    note: '`IS DISTINCT FROM` is supported, and `EQUAL_NULL(a, b)` is a NULL-safe equality function.'
+    source: https://docs.snowflake.com/en/sql-reference/functions/equal_null

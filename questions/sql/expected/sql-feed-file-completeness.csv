@@ -1,0 +1,6 @@
+business_date,issue,file_name
+2024-03-04,late,crm_customers_20240304.csv
+2024-03-09,duplicate,crm_customers_20240309_resend.csv
+2024-03-17,missing,
+2024-03-22,late,crm_customers_20240322.csv
+2024-03-26,row_count_mismatch,crm_customers_20240326.csv
