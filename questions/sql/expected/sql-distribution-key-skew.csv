@@ -1,0 +1,4 @@
+dist_key,slices_used,max_rows,skew
+city,3,6496,3.97
+driver_id,8,2303,1.41
+trip_id,8,1703,1.04

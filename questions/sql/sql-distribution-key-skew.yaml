@@ -1,0 +1,72 @@
+id: sql-distribution-key-skew
+title: Choose a distribution key by measuring skew
+round: sql
+topic: [distribution-keys, data-skew, performance]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+dataset: rides
+time_minutes: 20
+prompt: |
+  Table: `trips(trip_id, driver_id, rider_id, city, requested_at, completed_at, status, fare)`
+
+  You're moving `trips` to an MPP warehouse that spreads each table's rows across **8 slices** by hashing a distribution key. Three candidates have been proposed: `city`, `driver_id` and `trip_id`.
+
+  Simulate it: for each candidate, assign every row to slice `hash(key) % 8` and report how many slices receive rows, the row count of the fullest slice, and a skew factor = fullest slice ÷ the ideal per-slice count (total rows ÷ 8), rounded to 2 decimals. Use all trips, including cancelled ones.
+
+  Output: `dist_key, slices_used, max_rows, skew`. Order by `dist_key`.
+hints:
+  - One `GROUP BY hash(col) % 8` per candidate, combined with `UNION ALL`, then aggregate per candidate.
+  - Why can a key with 5 distinct values never use all 8 slices? What happens to rows where the key is NULL?
+solution:
+  sql: |
+    WITH slices AS (
+      SELECT 'city' AS dist_key, hash(city) % 8 AS slice, COUNT(*) AS n
+      FROM trips GROUP BY 1, 2
+      UNION ALL
+      SELECT 'driver_id', hash(driver_id) % 8, COUNT(*)
+      FROM trips GROUP BY 1, 2
+      UNION ALL
+      SELECT 'trip_id', hash(trip_id) % 8, COUNT(*)
+      FROM trips GROUP BY 1, 2
+    )
+    SELECT dist_key,
+           COUNT(*) AS slices_used,
+           MAX(n) AS max_rows,
+           ROUND(MAX(n) * 8.0 / SUM(n), 2) AS skew
+    FROM slices
+    GROUP BY dist_key
+    ORDER BY dist_key;
+  explanation: |
+    In an MPP warehouse, a query is only as fast as its **busiest slice**, so the distribution key decides both balance and whether joins need data movement.
+
+    - **`city`** has only 5 values, so at most 5 slices can hold rows. Here hash collisions leave just 3 in use, and one slice holds about 4× its fair share. **Low-cardinality keys always skew.**
+    - **`driver_id`** has high cardinality but is NULL for cancelled trips with no driver. All NULLs hash to the same slice, which adds visible skew. NULL or default values in a key are a classic hidden hot spot.
+    - **`trip_id`** is unique, so rows spread almost perfectly. But a unique key doesn't co-locate anything: joins to `drivers` or `riders` still move data between slices.
+
+    The real choice weighs balance against **co-located joins**: distribute the big fact on the key it's most often joined on (if that key is high-cardinality and rarely NULL), and replicate small dimensions to every slice (`DISTSTYLE ALL` in Redshift, `REPLICATE` in Synapse). Use even/round-robin distribution when there's no good join key.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Explains that the slowest (fullest) slice bounds query time'
+    weight: 2
+    topic: distribution-keys
+  - point: 'Identifies low cardinality and NULL concentration as causes of skew'
+    weight: 3
+    topic: data-skew
+  - point: 'Weighs even distribution against co-located joins, and replicating small dimensions'
+    weight: 3
+    topic: distribution-keys
+follow_ups:
+  - q: 'trips is joined to drivers in most queries. Which distribution would you pick for each table?'
+    a: 'Replicate the small drivers table to every slice (or distribute both on driver_id so the join is co-located), and distribute trips on driver_id if its skew is acceptable. Handle the NULL driver_id rows, for example by giving them a spread-out surrogate value, or choose even distribution for trips and rely on the replicated dimension.'
+  - q: 'How would you check skew on a real Redshift or Synapse table?'
+    a: 'In Redshift, `SVV_TABLE_INFO.skew_rows` gives the ratio of rows in the fullest slice to the emptiest. In Synapse dedicated pools, `DBCC PDW_SHOWSPACEUSED` shows rows per distribution across the 60 distributions. Also check query plans for data redistribution steps on joins.'
+dialect_notes:
+  redshift:
+    note: 'Distribution styles are `AUTO`, `EVEN`, `KEY` and `ALL`; `SVV_TABLE_INFO.skew_rows` is the ratio of rows in the fullest slice to the emptiest.'
+    source: https://docs.aws.amazon.com/redshift/latest/dg/c_choosing_dist_sort.html
+  sqlserver:
+    note: 'Azure Synapse dedicated SQL pools spread each table over 60 distributions using `HASH`, `ROUND_ROBIN` or `REPLICATE`; choose a hash column with many distinct values and few NULLs.'
+    source: https://learn.microsoft.com/en-us/azure/synapse-analytics/sql-data-warehouse/sql-data-warehouse-tables-distribute

@@ -1,0 +1,101 @@
+id: sql-month-end-balance-semi-additive
+title: Month-end account balances (a semi-additive measure)
+round: sql
+topic: [semi-additive-measures, periodic-snapshot, date-spine, window-functions]
+levels: [mid, senior]
+difficulty: hard
+companies: []
+dataset: payments
+time_minutes: 30
+prompt: |
+  Tables:
+
+  - `transactions(txn_id, account_id, txn_ts, amount, currency, txn_type, status, ingested_at)`: contains replays; the copy with the latest `ingested_at` per `txn_id` is the truth.
+  - `accounts(account_id, customer_name, country, currency, opened_date)`
+
+  Finance wants a monthly balance report for **USD accounts**. An account's balance changes only through its **settled** transactions: a `payment` adds `amount`, a `refund` subtracts it, and `transfer`s are ignored. The **month-end balance** is the sum of those changes from the account's first settled change up to the end of the month.
+
+  For each month of 2024, report how many accounts have a balance (any account whose first settled change is on or before that month, even if nothing happened to it that month), their total month-end balance, and the average month-end balance per account, rounded to 2 decimals.
+
+  Output: `month, accounts, total_balance, avg_balance` (`month` = first day of the month). Order by `month`.
+hints:
+  - Deduplicate first, then compute each account's net change per month.
+  - An account with no transactions in March still has a balance in March. What table gives it a row?
+  - Balances add up across accounts, but not across months. Which window turns monthly changes into a balance?
+solution:
+  sql: |
+    WITH latest AS (
+      SELECT *
+      FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY txn_id ORDER BY ingested_at DESC) AS rn
+        FROM transactions
+      ) t
+      WHERE rn = 1
+    ),
+    flows AS (
+      SELECT l.account_id,
+             CAST(DATE_TRUNC('month', l.txn_ts) AS DATE) AS month,
+             SUM(CASE WHEN l.txn_type = 'payment' THEN l.amount ELSE -l.amount END) AS net
+      FROM latest l
+      JOIN accounts a ON a.account_id = l.account_id
+      WHERE a.currency = 'USD'
+        AND l.status = 'settled'
+        AND l.txn_type IN ('payment', 'refund')
+      GROUP BY l.account_id, CAST(DATE_TRUNC('month', l.txn_ts) AS DATE)
+    ),
+    months AS (
+      SELECT CAST(m AS DATE) AS month
+      FROM generate_series(DATE '2024-01-01', DATE '2024-12-01', INTERVAL 1 MONTH) AS t(m)
+    ),
+    firsts AS (
+      SELECT account_id, MIN(month) AS first_month FROM flows GROUP BY account_id
+    ),
+    grid AS (
+      SELECT f.account_id, m.month
+      FROM firsts f
+      JOIN months m ON m.month >= f.first_month
+    ),
+    balances AS (
+      SELECT g.account_id, g.month,
+             SUM(COALESCE(fl.net, 0)) OVER (PARTITION BY g.account_id ORDER BY g.month) AS balance
+      FROM grid g
+      LEFT JOIN flows fl ON fl.account_id = g.account_id AND fl.month = g.month
+    )
+    SELECT month,
+           COUNT(*) AS accounts,
+           SUM(balance) AS total_balance,
+           ROUND(AVG(balance), 2) AS avg_balance
+    FROM balances
+    GROUP BY month
+    ORDER BY month;
+  explanation: |
+    A balance is a **semi-additive measure**: you can add balances across accounts on the same date, but never across time. Adding January's and February's balance means nothing. The warehouse pattern is a **periodic snapshot**: one row per account per month, holding the balance at month end.
+
+    Building it from transactions needs two things:
+
+    1. **A running sum per account** (`SUM(net) OVER (PARTITION BY account_id ORDER BY month)`) to turn monthly changes into a balance.
+    2. **An account × month grid.** Without it, an account with no activity in a month has no row, so it drops out of `accounts` and `avg_balance`. That's the common wrong answer here: the totals look plausible, but the account count dips in quiet months and the averages are wrong.
+
+    The grid starts at each account's first settled change, so accounts don't appear before they have a balance. Deduplication comes first, as always with this table.
+check:
+  order_matters: true
+  float_tolerance: 0.01
+rubric:
+  - point: 'Explains semi-additive measures: balances add across accounts, not across time'
+    weight: 2
+    topic: semi-additive-measures
+  - point: 'Builds an account × month grid so accounts without activity keep their balance'
+    weight: 3
+    topic: date-spine
+  - point: 'Uses a running sum per account and deduplicates replays first'
+    weight: 2
+    topic: window-functions
+follow_ups:
+  - q: 'Finance also wants the average daily balance per month. What changes?'
+    a: "You need a daily grain: an account × day grid with the running balance per day, then the average over the days of each month (counting days before the first change as no balance). It's far bigger, so in a warehouse you'd build it as a daily snapshot table incrementally rather than on the fly."
+  - q: 'How would you store this so dashboards stay fast for 10 million accounts?'
+    a: "Materialize the monthly (or daily) snapshot as a fact table, partitioned by month and built incrementally: next month's balance is last month's balance plus the month's net change. Dashboards then read the snapshot instead of recomputing from transactions."
+dialect_notes:
+  redshift:
+    note: 'Redshift lists `GENERATE_SERIES()` among unsupported PostgreSQL functions, so build the month grid from a calendar dimension table (or a recursive CTE) instead.'
+    source: https://docs.aws.amazon.com/redshift/latest/dg/c_unsupported-postgresql-functions.html

@@ -60,6 +60,7 @@ Step 2 — The rounds
   ├─ SQL round            (patterns + playground questions)
   ├─ Python / coding round (DE-flavored: parsing, generators, APIs, files; light DSA) — text-only in v1
   ├─ Data modeling        (grain, Kimball, SCD 1/2/3/6, Data Vault, OBT, "model X")
+  ├─ Data warehouse engineering (columnar storage, MPP distribution, query plans, loading, workload mgmt) [live: Phase 10b]
   ├─ Pipeline system design (framework + worked designs)
   ├─ Tool deep dives      (Spark, Kafka, Airflow, dbt, Snowflake, BigQuery, Databricks, Iceberg/Delta)   [hidden in v1]
   ├─ Data quality & observability                                                                      [live: Phase 9b]

@@ -1,0 +1,54 @@
+id: tools-indexes-vs-columnar-storage
+title: Indexes in row stores vs columnar warehouses
+round: tools
+topic: [indexes, columnar-storage, performance]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  Your team is moving reporting from SQL Server to a cloud columnar warehouse. A senior DBA asks: "Where do I create the indexes? Our reports depend on 40 of them."
+
+  Explain how indexes work in a row store like SQL Server or Postgres, why columnar warehouses mostly don't use them, what replaces them, and when SQL Server's own columnstore indexes fit in.
+hints:
+  - What does a B-tree index help you find, and what does a reporting query usually need instead?
+  - What metadata does a columnar engine keep per block of data?
+solution:
+  answer: |
+    **Row stores and B-tree indexes.** A row store keeps whole rows together. A **B-tree index** is a sorted structure on one or more columns that lets the engine **seek** directly to matching rows instead of scanning the table. It's ideal for selective lookups (`WHERE order_id = 42`, a customer's last 10 orders). A **clustered index** defines the table's physical order; **nonclustered** indexes are separate structures pointing to rows, and a **covering** index includes every column a query needs so the table isn't touched. The cost: every insert, update and delete must also maintain each index, so many indexes slow loads, and they take storage.
+
+    **Why columnar warehouses don't need them.** Reporting queries read many rows but few columns (sum revenue by region for a month). Columnar engines store each column separately and compressed, so a query reads only the columns it uses. Instead of indexes they keep **min/max metadata per block or micro-partition** (zone maps) and skip blocks that can't match: pruning. Physical layout does the job indexes did:
+
+    - **Sort or cluster** large tables by the columns most used in filters (sort keys in Redshift, clustering keys in Snowflake and BigQuery, Z-ordering or liquid clustering on Delta).
+    - **Partition** by date.
+    - **Distribute** for joins in MPP engines.
+    - **Materialized views or aggregate tables** for repeated heavy aggregations, and search optimization features for rare point lookups.
+
+    **SQL Server columnstore indexes** bring the columnar format into SQL Server itself: a **clustered columnstore** stores the whole table by column (the default in Azure Synapse dedicated pools), suited to large fact tables and analytics; a **nonclustered columnstore** can sit on a row-store table to serve analytic queries alongside OLTP.
+
+    **For the migration:** inventory the 40 indexes and the queries they serve. Most map to a sort or clustering key, a partition, or simply disappear because column scans with pruning are fast enough. Point lookups that remain need a different answer (search optimization, or serving them from an operational store).
+rubric:
+  - point: 'Explains B-tree seeks, clustered vs nonclustered/covering indexes, and their write cost'
+    weight: 2
+    topic: indexes
+  - point: 'Explains columnar storage, compression and min/max pruning instead of indexes'
+    weight: 3
+    topic: columnar-storage
+  - point: 'Maps index use cases to sort/cluster keys, partitioning, distribution and aggregates'
+    weight: 2
+    topic: performance
+  - point: 'Knows SQL Server clustered vs nonclustered columnstore indexes and where they fit'
+    weight: 2
+    topic: indexes
+follow_ups:
+  - q: 'A table in SQL Server has 15 nonclustered indexes and the nightly load got 4× slower. What do you check?'
+    a: 'Index maintenance during the load: each insert updates all 15 indexes. Check which indexes are actually used (index usage statistics), drop unused ones, and for large loads consider disabling or dropping nonclustered indexes, loading, then rebuilding them. Also check fragmentation and whether a columnstore suits the table better.'
+  - q: 'When does a columnar warehouse still struggle, even with good clustering?'
+    a: "Highly selective point lookups on a high-cardinality column that isn't the clustering key, very wide SELECT * queries, frequent single-row updates, and many small concurrent queries. Those suit an OLTP database, a key-value store, or the warehouse's search optimization and caching features."
+resources:
+  - title: SQL Server docs — Index architecture and design guide
+    url: https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-index-design-guide
+  - title: SQL Server docs — Columnstore indexes overview
+    url: https://learn.microsoft.com/en-us/sql/relational-databases/indexes/columnstore-indexes-overview
+  - title: Amazon Redshift docs — Sort keys
+    url: https://docs.aws.amazon.com/redshift/latest/dg/t_Sorting_data.html

@@ -1,0 +1,58 @@
+id: tools-reading-query-plans
+title: Read a query plan and find why a query is slow
+round: tools
+topic: [query-plans, performance, partition-pruning]
+levels: [mid, senior]
+difficulty: medium
+companies: []
+time_minutes: 20
+prompt: |
+  A finance dashboard query joins `fact_sales` (4 billion rows, partitioned or sorted by `sale_date`) to `dim_customer` (20 million rows) and `dim_date`, filters to the last 30 days, and aggregates revenue by region. It used to take 8 seconds; now it takes 6 minutes. Nobody changed the query.
+
+  Walk through how you'd use the query plan (`EXPLAIN`, or the warehouse's query profile) to find the cause. What would you look for, and what are the usual culprits?
+hints:
+  - Is the plan you're reading the estimated plan or what actually happened? Which one shows the difference between estimated and actual rows?
+  - The date filter should read a tiny fraction of the fact table. How would the plan show whether it did?
+solution:
+  answer: |
+    **Get the real plan, not just the estimate.** `EXPLAIN` shows the optimizer's estimated plan; `EXPLAIN ANALYZE` (Postgres, DuckDB) or the **query profile** (Snowflake, BigQuery execution details, an actual execution plan in SQL Server, Redshift's query summary views) shows what actually ran: rows per step, time per step, spills and data movement. Compare it with the plan from when the query was fast, if you have one.
+
+    **Read it from the most expensive step outwards.** Find the operators that took the most time, then check:
+
+    1. **Scan size and pruning.** Partitions or blocks scanned versus total. If the 30-day filter scans most of the table, pruning broke. Usual causes: a function wrapped around the filter column (`CAST(sale_date AS VARCHAR) LIKE ...`, `DATE_TRUNC(sale_date) = ...`), a type mismatch forcing a conversion, or data no longer loaded in date order so min/max ranges overlap.
+    2. **Estimated vs actual rows.** A large gap (estimated 10k, actual 50 million) means stale or missing **statistics**, and the optimizer picked the wrong join order or algorithm. Refresh statistics (`ANALYZE`, `UPDATE STATISTICS`), or check whether a recent load changed the data shape.
+    3. **Join algorithm and data movement.** A broadcast of the big table instead of the small one, a redistribution (shuffle) of 4 billion rows, or a nested loop where a hash join was expected. In MPP warehouses, look for redistribution steps caused by mismatched distribution keys.
+    4. **Row explosion.** A join whose output is much bigger than its inputs suggests a duplicated key in a dimension (for example two current rows per customer after a bad SCD load), which also makes the results wrong.
+    5. **Spilling.** Hash tables or sorts spilling to disk point to memory pressure or an oversized intermediate result.
+    6. **Not the query at all.** Queuing time versus execution time: if it waited 5 minutes in a queue, the problem is concurrency and workload management, not the plan.
+
+    **Then fix the cause and confirm with the plan:** rewrite the filter on the raw column, refresh statistics, deduplicate the dimension, re-cluster or re-sort, or adjust workload management. A good answer checks the plan again after the fix.
+rubric:
+  - point: 'Distinguishes estimated plan (EXPLAIN) from actual execution (EXPLAIN ANALYZE / query profile)'
+    weight: 2
+    topic: query-plans
+  - point: 'Checks scanned vs total partitions and names what breaks pruning'
+    weight: 2
+    topic: partition-pruning
+  - point: 'Compares estimated and actual rows and links gaps to statistics and join choices'
+    weight: 2
+    topic: query-plans
+  - point: 'Checks join algorithm, data movement, row explosion and spills; separates queue time from run time'
+    weight: 3
+    topic: performance
+follow_ups:
+  - q: 'The plan shows estimated rows 12,000 and actual rows 48 million on the dimension join. What happened, and how do you fix it?'
+    a: "The optimizer's estimate is badly off: usually stale statistics after a large load, or a real data problem such as duplicated keys in the dimension multiplying rows. Check the dimension's key uniqueness first (it would also make results wrong), then refresh statistics and confirm the plan changes."
+  - q: 'How would you catch plan regressions before users notice?'
+    a: "Track runtime and bytes or partitions scanned for important queries over time from the warehouse's query history, and alert on large changes. Run key dashboard queries in CI or after deployments against production-sized data, and keep statistics maintenance scheduled."
+resources:
+  - title: PostgreSQL docs — Using EXPLAIN
+    url: https://www.postgresql.org/docs/current/using-explain.html
+  - title: DuckDB docs — EXPLAIN
+    url: https://duckdb.org/docs/stable/guides/meta/explain
+  - title: Snowflake docs — Query Profile
+    url: https://docs.snowflake.com/en/user-guide/ui-query-profile
+  - title: BigQuery docs — Query plan and timeline
+    url: https://cloud.google.com/bigquery/docs/query-plan-explanation
+  - title: Amazon Redshift docs — Query plan
+    url: https://docs.aws.amazon.com/redshift/latest/dg/c-the-query-plan.html
