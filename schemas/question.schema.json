@@ -164,7 +164,7 @@
     "dialect_notes": {
       "type": "object",
       "propertyNames": {
-        "enum": ["snowflake", "bigquery", "databricks", "sqlserver", "teradata"]
+        "enum": ["snowflake", "bigquery", "databricks", "redshift", "sqlserver", "teradata"]
       },
       "additionalProperties": {
         "type": "object",

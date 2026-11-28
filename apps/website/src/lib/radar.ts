@@ -126,6 +126,19 @@ export const SKILLS: Skill[] = [
     ],
   },
   {
+    id: 'warehouse',
+    label: 'Warehouse performance',
+    short: 'Warehouse',
+    topics: [
+      'query-plans',
+      'distribution-keys',
+      'indexes',
+      'columnar-storage',
+      'workload-management',
+      'materialized-views',
+    ],
+  },
+  {
     id: 'behavioral',
     label: 'Behavioral & communication',
     short: 'Behavioral',

@@ -1,0 +1,63 @@
+id: sd-warehouse-workload-management
+title: Keep dashboards fast while loads and ad-hoc queries compete
+round: system-design
+topic: [workload-management, performance, materialized-views, cost]
+levels: [senior, lead]
+difficulty: hard
+companies: []
+time_minutes: 40
+prompt: |
+  Every morning between 08:00 and 10:00, executive dashboards on your cloud warehouse slow from 3 seconds to over a minute. During the same window, the overnight ELT is still finishing its last loads, about 40 analysts start running ad-hoc queries, and a data science team runs a large feature extraction.
+
+  Design how the warehouse should handle these competing workloads so dashboards meet a 5-second target, without simply buying a much bigger warehouse. Cover isolation, prioritization, what you'd precompute, and how you'd monitor it.
+hints:
+  - Are the dashboards slow because their queries got slower, or because they wait? How would you tell?
+  - Which of these workloads needs to finish by 08:00, and which can wait or run elsewhere?
+  - What can a dashboard read instead of scanning the 4-billion-row fact table every time?
+solution:
+  answer: |
+    **1. Diagnose before changing anything.** From query history, split dashboard latency into **queue time** and **execution time**. Long queues mean contention for compute (concurrency slots, warehouse size); long execution with the same plan means resource sharing (cache, memory, I/O); a changed plan means a data or statistics problem. Also check whether ELT really should still be running at 08:00.
+
+    **2. Isolate workloads.**
+    - **Separate compute per workload** where the platform allows it: in Snowflake, separate virtual warehouses for ELT, BI, ad-hoc and data science, each sized and auto-suspended on its own; in BigQuery, reservations and assignments per workload; in Redshift, **workload management (WLM) queues** with query priorities, and concurrency scaling for read bursts.
+    - Give the BI workload priority and a reserved share; cap ad-hoc queries with timeouts and limits on the bytes they may scan; move the data science extraction to a separate cluster, a schedule outside business hours, or unloaded files in the lake.
+
+    **3. Precompute what dashboards read.**
+    - **Aggregate tables or materialized views** at the grain the dashboards need (daily revenue by region and product), refreshed incrementally after the ELT, so dashboards read thousands of rows, not billions.
+    - **Result caching**: identical queries on unchanged data return cached results (Snowflake persisted results, BigQuery cached results). Keep dashboard SQL stable so the cache hits.
+    - A BI-tool extract or semantic-layer cache for the highest-traffic views.
+
+    **4. Fix the schedule.** Make the critical ELT finish earlier: start sooner, run independent models in parallel, make heavy models incremental, and publish the dashboard tables first. Set an SLA for "dashboard tables ready by 07:30" with an alert.
+
+    **5. Monitor and control cost.** Track per workload: p95 dashboard latency, queue time, credits or slot usage, and the share of dashboard queries served from aggregates or cache. Alert when p95 passes 5 seconds. Isolation can cost more if every warehouse runs all day, so use auto-suspend and right-size each one, and show the cost per workload.
+
+    **Trade-off to state:** separate compute gives the strongest isolation but adds cost and governance overhead; queues and priorities share one pool more cheaply but protect dashboards less. A small team often starts with priorities plus aggregates and isolates only the noisiest workload.
+rubric:
+  - point: 'Separates queue time from execution time to find the real cause'
+    weight: 2
+    topic: workload-management
+  - point: 'Isolates workloads (separate compute, queues/priorities, reservations) and protects BI'
+    weight: 3
+    topic: workload-management
+  - point: 'Precomputes with aggregate tables / materialized views and uses result caching'
+    weight: 3
+    topic: materialized-views
+  - point: 'Fixes the ELT schedule and SLA, and monitors latency, queueing and cost per workload'
+    weight: 2
+    topic: cost
+follow_ups:
+  - q: 'A materialized view keeps the dashboard fast, but refreshing it after every small load costs a lot. What are your options?'
+    a: "Refresh on a schedule that matches the dashboard's freshness need instead of after every load, or replace it with an incrementally built aggregate table that only processes new partitions. Check whether the view's grain is finer than the dashboards actually use."
+  - q: 'Analysts complain that the new ad-hoc limits block legitimate heavy queries. How do you handle it?'
+    a: 'Give a supported path instead of a blanket block: a larger ad-hoc warehouse or queue that users can request, scheduled heavy queries off-peak, or curated aggregate tables that answer common heavy questions. Review which queries hit the limits and fix the patterns (missing filters, SELECT *).'
+resources:
+  - title: Amazon Redshift docs — Workload management
+    url: https://docs.aws.amazon.com/redshift/latest/dg/cm-c-implementing-workload-management.html
+  - title: Amazon Redshift docs — Concurrency scaling
+    url: https://docs.aws.amazon.com/redshift/latest/dg/concurrency-scaling.html
+  - title: Snowflake docs — Multi-cluster warehouses
+    url: https://docs.snowflake.com/en/user-guide/warehouses-multicluster
+  - title: Snowflake docs — Using persisted query results
+    url: https://docs.snowflake.com/en/user-guide/querying-persisted-results
+  - title: BigQuery docs — Workload management using reservations
+    url: https://cloud.google.com/bigquery/docs/reservations-workload-management

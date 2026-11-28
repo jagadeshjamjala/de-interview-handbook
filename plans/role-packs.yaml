@@ -8,7 +8,9 @@ packs:
   analytics:
     - tools-dbt-tests-and-contracts
     - sql-flag-daily-volume-anomalies
+    - sql-month-end-balance-semi-additive
   platform:
+    - sd-warehouse-workload-management
     - sd-data-quality-observability
     - python-row-count-anomaly-detector
     - behavioral-build-vs-buy-decision
@@ -20,5 +22,10 @@ packs:
     - sql-flag-daily-volume-anomalies
     - python-row-count-anomaly-detector
   warehouse:
+    - sql-distribution-key-skew
+    - sql-month-end-balance-semi-additive
+    - tools-reading-query-plans
+    - tools-indexes-vs-columnar-storage
+    - sd-warehouse-workload-management
     - tools-dbt-tests-and-contracts
     - sql-flag-daily-volume-anomalies

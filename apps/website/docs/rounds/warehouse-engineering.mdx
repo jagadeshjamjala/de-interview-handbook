@@ -1,0 +1,80 @@
+---
+title: Data warehouse engineering
+sidebar_position: 3.5
+description: The physical side of data warehousing for interviews — columnar storage, partitioning and clustering, MPP distribution, query plans, workload management and loading — with practice questions.
+levels: [mid, senior, lead]
+topic: [data-warehouse, performance, query-plans, distribution-keys]
+---
+
+# Data warehouse engineering
+
+[Data modeling](./data-modeling.mdx) decides **what tables exist**. Warehouse engineering decides **how they're stored, loaded and queried fast**: the physical design. It's the core of data warehouse engineer interviews, and it comes up for everyone else as "why is this query slow?" or "how would you lay this table out?".
+
+<LevelExpectations
+  mid="Explain columnar storage and pruning, read a query plan for the expensive step, and pick partition and sort or cluster keys for a fact table."
+  senior="Design physical layout and distribution for an MPP warehouse, diagnose regressions from plans and statistics, and set up workload isolation."
+  lead="Set platform standards: table layout conventions, workload and cost governance, and when a workload belongs outside the warehouse."
+/>
+
+## How warehouses store data
+
+- **Columnar storage.** Each column is stored and compressed separately, so a query reads only the columns it uses. Wide fact tables are cheap to keep; `SELECT *` is expensive.
+- **Blocks with min/max metadata.** Data is stored in blocks or micro-partitions, each with the min and max of every column. A filter skips blocks whose range can't match: **pruning**. This replaces most of what indexes do in a row store; see the [indexes question](/questions#tools-indexes-vs-columnar-storage).
+- **Layout decides pruning.** Pruning only works if data with similar values sits together:
+  - **Partition** big tables by date.
+  - **Sort or cluster** by the columns most used in filters: sort keys in Redshift, clustering keys in Snowflake and BigQuery, Z-ordering or liquid clustering in Delta.
+  - Data loaded in time order is naturally clustered by time.
+
+## MPP distribution
+
+Massively parallel warehouses split each table across nodes or slices. A query runs on every slice at once, so it's only as fast as the **busiest slice**, and joins between tables on different slices must **move data** first.
+
+| Strategy | Redshift | Synapse dedicated pool | Use for |
+|---|---|---|---|
+| Hash on a key | `DISTSTYLE KEY` | `HASH` | Big facts, on the most common join key (high cardinality, few NULLs) |
+| Copy to every node | `DISTSTYLE ALL` | `REPLICATE` | Small dimensions joined everywhere |
+| Spread evenly | `DISTSTYLE EVEN` | `ROUND_ROBIN` | No good join key; staging tables |
+
+Teradata's primary index plays the same role. Snowflake and BigQuery manage distribution for you, but skewed join keys still slow their joins.
+
+## Reading query plans
+
+1. Get the **actual** plan (`EXPLAIN ANALYZE`, the query profile), not only the estimate.
+2. Start at the **most expensive step**.
+3. Check **partitions or blocks scanned vs total**: did pruning work?
+4. Compare **estimated vs actual rows**: big gaps mean stale statistics or a data problem such as duplicate dimension keys.
+5. Look at **joins**: algorithm, broadcast or redistribution, row explosion.
+6. Look for **spills** to disk, and separate **queue time** from execution time.
+
+The [query plan question](/questions#tools-reading-query-plans) walks through a full diagnosis. You can run `EXPLAIN` on any query in the [SQL playground](/playground).
+
+## Loading
+
+- **Bulk load from files**, not row-by-row inserts: `COPY` in Redshift and Snowflake, load jobs in BigQuery. Use many medium-sized compressed files (tens to hundreds of MB) so all nodes load in parallel.
+- **Stage, then merge:** load into a staging table, validate, then `MERGE` or swap partitions into the target in one transaction.
+- **Constraints usually aren't enforced.** Most cloud warehouses accept primary and foreign key definitions only as hints, so duplicates are your pipeline's job to prevent and test.
+- **Keep statistics and layout healthy** after big loads: `ANALYZE` and `VACUUM` in Redshift, and re-clustering where the platform doesn't do it automatically.
+
+## Serving many users
+
+- **Workload isolation:** separate compute per workload (Snowflake warehouses, BigQuery reservations) or queues and priorities (Redshift WLM).
+- **Precompute:** aggregate tables and materialized views at the grain dashboards need, refreshed incrementally.
+- **Caching:** identical queries on unchanged data can return cached results.
+
+The [workload management design](/questions#sd-warehouse-workload-management) puts these together.
+
+## Common traps
+
+- Wrapping filter columns in functions (`CAST`, `DATE_TRUNC`, `UPPER`), which defeats pruning.
+- Distributing on a low-cardinality or often-NULL column.
+- Adding a clustering key to a small table, or to one that already prunes well. It costs credits and gains nothing.
+- Summing a semi-additive measure such as a balance across time.
+- Blaming the query when the time is spent waiting in a queue.
+
+## Practice
+
+<RelatedQuestions ids={["sql-distribution-key-skew", "sql-month-end-balance-semi-additive", "tools-reading-query-plans", "tools-indexes-vs-columnar-storage", "sd-warehouse-workload-management"]} />
+
+Related questions elsewhere in the bank:
+
+<RelatedQuestions ids={["tools-snowflake-clustering-and-pruning", "tools-bigquery-partitioning-and-cost", "modeling-inventory-periodic-snapshot", "sd-cut-runaway-warehouse-cost", "sql-fix-fan-out-order-count"]} />
