@@ -1,23 +1,23 @@
 ---
 title: Which DE are you?
 sidebar_position: 3
-description: Generalist, analytics, platform, streaming or ML data engineer, and how each changes your interview prep.
+description: The eight kinds of data engineering job, from generalist to cloud, ETL, warehouse, analytics, platform, streaming and ML, and how each changes your interview prep.
 levels: [junior, mid, senior, lead]
 topic: [interview-process, role-types]
 ---
 
 # Which DE are you?
 
-"Data engineer" covers several different jobs. Job titles are unreliable, so read the job description for **what you'd build** and **who you'd serve**, then match it to one of these five types. Most roles are a blend; pick the closest one to guide your prep.
+"Data engineer" covers several different jobs. Job titles are unreliable, so read the job description for **what you'd build** and **who you'd serve**, then match it to one of the eight types below. Most roles are a blend; pick the closest one to guide your prep. The [DE 75 planner](/planner) and [mock interviews](/mock) both take your role type.
 
 <LevelExpectations
   junior="Pick the role type closest to your target job and focus on its top two rounds. Breadth comes later."
   mid="Be strong in your type's core rounds, and conversational in the others."
   senior="Show depth in your type, and know where it hands off to the others (for example platform to analytics)."
-  lead="Be able to explain how all five fit into one data organization, and when to hire for which."
+  lead="Be able to explain how these roles fit into one data organization, and when to hire for which."
 />
 
-## The five types
+## The default: generalist
 
 ### Data engineer (generalist)
 **Builds:** batch pipelines end to end: ingesting from databases, APIs and files, modeling the warehouse or lakehouse tables, scheduling and monitoring the jobs. The most common "Data Engineer" posting, especially at small and mid-size companies.
@@ -25,11 +25,7 @@ topic: [interview-process, role-types]
 **Interviews weight:** **SQL**, **Python**, **pipeline design** (idempotency, backfills, incremental loads), data modeling, and one or two tools (usually Spark and Airflow). Broad rather than deep: you're expected to be solid in every round.
 **Prep priority:** SQL → pipeline design → Python → modeling → Spark/Airflow deep dive.
 
-### Analytics engineer
-**Builds:** the modeled layer analysts and BI tools use: dbt models, metrics definitions, tests, documentation.
-**Serves:** analysts, finance, product.
-**Interviews weight:** **SQL (heavy)**, **data modeling (heavy)**, metrics and definitions, data quality, stakeholder behavioral. System design is lighter and focused on the warehouse.
-**Prep priority:** SQL → modeling → behavioral (metric disputes) → dbt and warehouse deep dive.
+## Build the platform
 
 ### Platform data engineer
 **Builds:** the infrastructure everyone else runs on: ingestion frameworks, orchestration, lakehouse storage, compute, access control, cost.
@@ -37,11 +33,41 @@ topic: [interview-process, role-types]
 **Interviews weight:** **pipeline system design (heavy)**, **Python / coding (heavy)**, tool deep dives (Spark, Airflow, storage formats), reliability and cost. SQL is still tested, usually at a lower bar.
 **Prep priority:** system design → Python → tool internals → SQL.
 
+### Cloud data engineer
+**Builds:** data pipelines and storage on one cloud's managed services: object storage, managed Spark or serverless ETL, a cloud warehouse, managed streaming, with access control, networking and infrastructure as code around them.
+**Serves:** data and product teams that run on that cloud.
+**Interviews weight:** **pipeline system design on a named cloud (heavy)**: which services, why, and how they're secured and paid for. Identity and access management, infrastructure as code (for example Terraform), cost and reliability. SQL and Python at a normal bar. Often asked "how would you build this on AWS?".
+**Prep priority:** system design with cloud services → security and IAM → cost → SQL → Python.
+
+## Move the data
+
+### ETL / integration engineer
+**Builds:** the movement of data between systems: scheduled loads from databases, files and APIs, often with tool-based ETL (Informatica, SSIS, Azure Data Factory, Talend) or integration platforms, plus the mappings, error handling and reprocessing around them.
+**Serves:** the warehouse, operational systems and partner integrations.
+**Interviews weight:** **SQL (heavy)**, **scenario questions (heavy)**: a file arrives late, 3% of rows are rejected, a mapping specification to implement, a load to rerun safely. Incremental loads, CDC, slowly changing dimensions, scheduling and dependencies. Coding is usually lighter than for platform roles, and tool-specific questions are common.
+**Prep priority:** SQL → load patterns and error handling → incremental and CDC → scheduling → the tools on the job description.
+
 ### Streaming data engineer
 **Builds:** real-time pipelines: Kafka, Flink or Spark Structured Streaming, CDC, low-latency serving.
 **Serves:** product features, fraud, ops dashboards.
 **Interviews weight:** **system design with streaming semantics (heavy)**: event time, watermarks, exactly-once, ordering, state. Also coding and Kafka internals.
 **Prep priority:** streaming system design → coding → Kafka/Flink deep dive → SQL.
+
+## Model and serve the data
+
+### Data warehouse engineer
+**Builds:** the warehouse itself: dimensional models, loading patterns, and the physical design that keeps it fast, such as distribution and sort keys, partitioning, indexes, statistics and workload management.
+**Serves:** BI, analysts and finance.
+**Interviews weight:** **SQL (heavy)**, **dimensional modeling (heavy)**, and **performance**: reading a query plan, why a query is slow, how data is distributed across nodes in an MPP warehouse (Redshift, Synapse, Teradata). Loading and SCD patterns.
+**Prep priority:** SQL → modeling and SCDs → query plans and tuning → the warehouse on the job description.
+
+### Analytics engineer
+**Builds:** the modeled layer analysts and BI tools use: dbt models, metrics definitions, tests, documentation.
+**Serves:** analysts, finance, product.
+**Interviews weight:** **SQL (heavy)**, **data modeling (heavy)**, metrics and definitions, data quality, stakeholder behavioral. System design is lighter and focused on the warehouse.
+**Prep priority:** SQL → modeling → behavioral (metric disputes) → dbt and warehouse deep dive.
+
+## Feed machine learning
 
 ### ML data engineer
 **Builds:** data for machine learning: feature pipelines, training datasets, feature stores, data versioning, inference logging.
@@ -54,17 +80,27 @@ topic: [interview-process, role-types]
 | If the job description says… | You're probably looking at |
 |---|---|
 | ETL/ELT, Airflow, Spark, "build and maintain pipelines", a mix of everything | Data engineer (generalist) |
-| dbt, Looker/Tableau, "metrics", "single source of truth" | Analytics engineer |
 | Spark, Kubernetes, Terraform, "self-serve platform", "cost" | Platform DE |
+| AWS / GCP / Azure in the title, Glue, EMR, Dataflow, Data Factory, IAM, Terraform | Cloud data engineer |
+| Informatica, SSIS, Talend, Data Factory, "integration", "mappings", flat files, Control-M | ETL / integration engineer |
 | Kafka, Flink, "real-time", "sub-second", CDC | Streaming DE |
+| Redshift, Synapse, Teradata, "data warehouse", "performance tuning", "star schema" | Data warehouse engineer |
+| dbt, Looker/Tableau, "metrics", "single source of truth" | Analytics engineer |
 | feature store, "training data", "model features", MLflow | ML data engineer |
+
+## How the role changes your plan
+
+Every role studies the same **DE 75** core. Picking a role in the planner does two things: questions tagged for your role are kept first when your time is short, and a **role pack** of extra questions for that role is added after DE 75. In [mock interviews](/mock), *Role focus* limits the questions to the ones tied to your role.
 
 ## Start practicing
 
 The [question bank](/questions) is filterable by round and topic. Some good first picks by type:
 
 - **Generalist:** <RelatedQuestions ids={["tools-airflow-idempotent-dags", "python-idempotent-upsert-writer", "sql-build-scd2-from-change-log"]} />
-- **Analytics:** <RelatedQuestions ids={["sql-weekly-cohort-retention", "modeling-customer-address-scd", "behavioral-metric-definition-dispute"]} />
 - **Platform:** <RelatedQuestions ids={["sd-daily-batch-with-backfills", "sd-cdc-postgres-to-lakehouse", "python-paginated-api-with-retries"]} />
+- **Cloud:** <RelatedQuestions ids={["sd-clickstream-to-warehouse", "sd-cut-runaway-warehouse-cost", "tools-iceberg-vs-delta-table-formats"]} />
+- **ETL / integration:** <RelatedQuestions ids={["python-batched-csv-reader", "sql-dedup-replayed-transactions", "sd-payments-ledger-reconciliation"]} />
 - **Streaming:** <RelatedQuestions ids={["sd-late-and-out-of-order-events", "sd-clickstream-to-warehouse", "sql-sessionize-page-views"]} />
+- **Data warehouse:** <RelatedQuestions ids={["modeling-ride-sharing-trips-star-schema", "tools-snowflake-clustering-and-pruning", "sql-fix-fan-out-order-count"]} />
+- **Analytics:** <RelatedQuestions ids={["sql-weekly-cohort-retention", "modeling-customer-address-scd", "behavioral-metric-definition-dispute"]} />
 - **ML data:** <RelatedQuestions ids={["modeling-point-in-time-training-data", "sql-revenue-by-country-at-order-time", "sql-transaction-status-as-of-cutoff"]} />

@@ -17,7 +17,16 @@ import {
   type Answer,
   type Mark,
 } from '@site/src/lib/mock';
-import {toParams} from '@site/src/lib/plan';
+import de75 from '@site/src/data/de75.json';
+import rolePacks from '@site/src/data/role-packs.json';
+import {
+  ROLE_LABELS,
+  roleQuestionIds,
+  toParams,
+  type PlanItem,
+  type Role,
+  type RolePacks,
+} from '@site/src/lib/plan';
 import {levelStore} from '@site/src/lib/store';
 import styles from './styles.module.css';
 
@@ -53,8 +62,19 @@ function Builder({onStart}: {onStart: (s: Session) => void}): ReactNode {
   const [round, setRound] = useState<RoundChoice>('mixed');
   const [level, setLevel] = useState<Level>(saved ?? 'mid');
   const [minutes, setMinutes] = useState(45);
+  const [role, setRole] = useState<Role | 'any'>('any');
   const [copied, setCopied] = useState<string | null>(null);
-  const pick = () => pickQuestions(questions, {round, level, minutes}, Math.random);
+  const pool =
+    role === 'any'
+      ? questions
+      : (() => {
+          const ids = roleQuestionIds(role, de75 as PlanItem[], rolePacks as RolePacks);
+          return questions.filter((q) => ids.has(q.id));
+        })();
+  const available = pool.filter(
+    (q) => q.levels.includes(level) && (round === 'mixed' || q.round === round),
+  ).length;
+  const pick = () => pickQuestions(pool, {round, level, minutes}, Math.random);
 
   const copyPrompt = async () => {
     const qs = pick();
@@ -80,6 +100,17 @@ function Builder({onStart}: {onStart: (s: Session) => void}): ReactNode {
           {ROUNDS.map((r) => (
             <option key={r} value={r}>
               {r === 'mixed' ? 'Mixed' : ROUND_LABELS[r]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Role focus</span>
+        <select value={role} onChange={(e) => setRole(e.target.value as Role | 'any')}>
+          <option value="any">Any role</option>
+          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABELS[r]}
             </option>
           ))}
         </select>
@@ -112,6 +143,7 @@ function Builder({onStart}: {onStart: (s: Session) => void}): ReactNode {
         <button
           type="button"
           className="button button--primary"
+          disabled={available === 0}
           onClick={() => {
             const qs = pick();
             onStart({
@@ -126,10 +158,20 @@ function Builder({onStart}: {onStart: (s: Session) => void}): ReactNode {
         >
           Start mock interview
         </button>
-        <button type="button" className="button button--secondary" onClick={copyPrompt}>
+        <button
+          type="button"
+          className="button button--secondary"
+          disabled={available === 0}
+          onClick={copyPrompt}
+        >
           Copy as AI mock prompt
         </button>
       </div>
+      {available === 0 && (
+        <p role="status">
+          No questions match this role, round and level yet. Try another round or Any role.
+        </p>
+      )}
       {copied && <p role="status">{copied}</p>}
     </form>
   );

@@ -4,6 +4,8 @@ import {
   buildPlan,
   defaults,
   nextMonday,
+  packItems,
+  roleQuestionIds,
   parseParams,
   studySessions,
   toParams,
@@ -143,4 +145,22 @@ test('generalist is the default role; links with other roles still parse', () =>
   assert.equal(base.role, 'generalist');
   assert.equal(parseParams('?role=analytics', base).role, 'analytics');
   assert.equal(parseParams('?role=nope', base).role, 'generalist');
+});
+
+test('role packs: appended after DE 75, tagged with the role, live/total stay DE 75', () => {
+  const byId = new Map(qs.map((x) => [x.id, x]));
+  const de75: PlanItem[] = [
+    {id: 'a', round: 'sql'},
+    {id: 'c', round: 'modeling', roles: ['etl']},
+  ];
+  const extra = packItems('etl', {etl: ['e', 'missing'], cloud: ['b']}, byId);
+  assert.deepEqual(extra, [{id: 'e', round: 'sql', roles: ['etl']}]);
+  const input = {...defaults(new Date(2024, 4, 15), ['sql', 'modeling']), role: 'etl' as const};
+  const plan = buildPlan({...input, weeks: 2, hours: 10}, de75, byId, extra);
+  const order = plan.weeks.flatMap((w) => w.items);
+  assert.deepEqual(order, ['a', 'c', 'e']);
+  assert.equal(plan.live, 2);
+  assert.equal(plan.total, 2);
+  assert.deepEqual([...roleQuestionIds('etl', de75, {etl: ['e']})].sort(), ['c', 'e']);
+  assert.deepEqual([...roleQuestionIds('ml', de75, {})], []);
 });

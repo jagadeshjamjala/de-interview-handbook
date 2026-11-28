@@ -7,7 +7,7 @@
 | Decision | Choice |
 |---|---|
 | Audience | All levels, with **level tracks**: Junior (0–2y), Mid (2–5y), Senior (5–8y), Lead/Staff & EM (8y+) |
-| Role types | **Data Engineer (generalist, default) / Analytics Eng / Platform DE / Streaming DE / ML Data Eng** — used everywhere (Start here, planner). Lead is a level, not a role |
+| Role types | **Data Engineer (generalist, default) / Platform DE / Cloud DE / ETL-Integration Eng / Streaming DE / Data Warehouse Eng / Analytics Eng / ML Data Eng** — used everywhere (Start here, planner). Lead is a level, not a role |
 | Stack | **Docusaurus v3** (MDX, TypeScript, React 18) |
 | v1 differentiators | **SQL Playground** (DuckDB-WASM), **DE 75 Study Planner**, **Mock Interview Mode** |
 | License | **MIT for code**, **CC BY-SA 4.0 for content** (`docs/`, `blog/`, `questions/`) in `LICENSE-CONTENT`. README explains both |
@@ -46,7 +46,7 @@ Sections not written in v1 are **hidden** from the sidebar (no stub pages). One 
 ```
 Start here
   ├─ How DE interviews work (loop types by company size)
-  ├─ Which DE are you? (Data Engineer (generalist, default) / Analytics Eng / Platform DE / Streaming DE / ML Data Eng)
+  ├─ Which DE are you? (Data Engineer (generalist, default) / Platform DE / Cloud DE / ETL-Integration Eng / Streaming DE / Data Warehouse Eng / Analytics Eng / ML Data Eng)
   ├─ Pick your level track
   ├─ The DE 75 planner  →  /planner
   └─ Roadmap (what's coming + contribute)
@@ -217,7 +217,7 @@ Non-SQL questions use the same shape, but `solution` holds a model answer (Pytho
 - Curriculum in `plans/de75.yaml`: 75 target questions across SQL (30), Python (10), Modeling (10), System design (10), Tools (10), Behavioral (5).
 - **v1 ships 55 live:** 30 SQL, 10 modeling, 5 system design, 5 Python, 5 behavioral. The other 20 (5 Python, 5 system design, 10 tools) stay in `de75.yaml` with `planned: true`. CI checks every non-planned ID exists and skips planned ones. The planner hides planned items and shows a "55 / 75 live" counter.
 - **Order:** the order in `de75.yaml` is the order — hand-curated (window functions before gaps-and-islands, etc.). No dependency graph. The planner filters by level, focus and role, then slices the remaining list into weeks.
-- **Inputs:** level track, weeks available (2–12), hours per week, focus areas (checkboxes), target role type (Data Engineer (generalist, default) / Analytics Eng / Platform DE / Streaming DE / ML Data Eng), **start date** (default next Monday), **study days** (multi-select, default Sat + Sun), **start time** (default 9:00).
+- **Inputs:** level track, weeks available (2–12), hours per week, focus areas (checkboxes), target role type (Data Engineer (generalist, default) / Platform DE / Cloud DE / ETL-Integration Eng / Streaming DE / Data Warehouse Eng / Analytics Eng / ML Data Eng), **start date** (default next Monday), **study days** (multi-select, default Sat + Sun), **start time** (default 9:00).
 - **Role weighting:** harder/leadership items weighted up for Senior+/Lead. ML Data Eng weights feature pipelines, point-in-time correctness, training/serving skew and data versioning.
 - **Progress:** check off items, stored in `localStorage` (wrapped in try/catch); progress bar per round.
 - **Shareable link:** all inputs + weak topics (`w=gaps-and-islands,scd-type-2`) in URL query params, so the link fully reproduces the plan. Self-scores and progress stay in localStorage only.
@@ -315,6 +315,13 @@ No outside input needed; one PR each:
    - Theme toggle: cycles and persists across reloads
 
    No browser-specific fixes were needed. Not covered: real iOS/Android devices (touch drag on the canvas), Safari itself (WebKit is close but not identical).
+
+### Phase 10 — More role types (2026-11-28)
+Adds **Cloud Data Engineer**, **ETL / Integration Engineer** and **Data Warehouse Engineer**. Decisions: DE 75 stays the fixed shared core and each role gets a **role pack** (`plans/role-packs.yaml`, bank questions not in DE 75) that the planner appends; content is concept-first with vendor specifics cited from official docs; AWS first for cloud. One PR each:
+1. Role-pack framework, the three roles in planner and mock (*Role focus*), and "Which DE are you?" grouped into families.
+2. Data Warehouse Engineer: warehouse engineering page, query-plan and MPP questions, radar axis.
+3. ETL / Integration Engineer: ETL & integration page, messy-files dataset and questions, drills.
+4. Cloud Data Engineer: cloud platforms pages (AWS first, service equivalence table), questions, canvas presets, radar axis, drills.
 
 - Python playground (Pyodide) with test cases
 - Pipeline design canvas (drag boxes: source → ingest → store → transform → serve) with a self-review checklist

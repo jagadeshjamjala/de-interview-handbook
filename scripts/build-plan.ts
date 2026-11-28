@@ -13,7 +13,16 @@ export const TARGETS: Record<string, number> = {
   tools: 10,
   behavioral: 5,
 };
-const ROLES = new Set(['generalist', 'analytics', 'platform', 'streaming', 'ml']);
+export const ROLES = new Set([
+  'generalist',
+  'analytics',
+  'platform',
+  'cloud',
+  'etl',
+  'warehouse',
+  'streaming',
+  'ml',
+]);
 
 type Item = {id?: unknown; round?: unknown; title?: unknown; planned?: unknown; roles?: unknown};
 type Out = {id: string; round: string; planned?: true; title?: string; roles?: string[]};
@@ -76,6 +85,37 @@ export function loadPlan(
   return {items, errors};
 }
 
+/** plans/role-packs.yaml: `packs: {role: [question ids not in DE 75]}`. */
+export function loadPacks(
+  doc: {packs?: Record<string, unknown>} | null,
+  questions: Map<string, unknown>,
+  de75: Set<string>,
+): {packs: Record<string, string[]>; errors: string[]} {
+  const errors: string[] = [];
+  const packs: Record<string, string[]> = {};
+  for (const [role, ids] of Object.entries(doc?.packs ?? {})) {
+    if (!ROLES.has(role)) {
+      errors.push(`pack "${role}": unknown role (use ${[...ROLES].join('|')})`);
+      continue;
+    }
+    if (!Array.isArray(ids)) {
+      errors.push(`pack "${role}": must be a list of question ids`);
+      continue;
+    }
+    const seen = new Set<string>();
+    for (const id of ids) {
+      if (typeof id !== 'string' || !questions.has(id))
+        errors.push(`pack "${role}": no question with id ${JSON.stringify(id)}`);
+      else if (de75.has(id))
+        errors.push(`pack "${role}": ${id} is already in DE 75; tag it with roles there instead`);
+      else if (seen.has(id)) errors.push(`pack "${role}": duplicate ${id}`);
+      else seen.add(id);
+    }
+    packs[role] = [...seen];
+  }
+  return {packs, errors};
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   const bank = JSON.parse(
@@ -92,4 +132,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   writeFileSync(out, JSON.stringify(items, null, 2) + '\n');
   const live = items.filter((i) => !i.planned).length;
   console.log(`✓ DE 75: ${live} / ${items.length} live → apps/website/src/data/de75.json`);
+
+  const packDoc = parse(readFileSync(join(root, 'plans/role-packs.yaml'), 'utf8'));
+  const ids = new Map(bank.map((q) => [q.id, q]));
+  const {packs, errors: packErrors} = loadPacks(packDoc, ids, new Set(items.map((i) => i.id)));
+  if (packErrors.length) {
+    console.error(`✗ ${packErrors.length} role-packs.yaml error(s):\n  ${packErrors.join('\n  ')}`);
+    process.exit(1);
+  }
+  writeFileSync(
+    join(root, 'apps/website/src/data/role-packs.json'),
+    JSON.stringify(packs, null, 2) + '\n',
+  );
+  const n = Object.values(packs).reduce((a, p) => a + p.length, 0);
+  console.log(
+    `✓ role packs: ${n} questions across ${Object.keys(packs).length} roles → apps/website/src/data/role-packs.json`,
+  );
 }
